@@ -213,3 +213,10 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
+.idea/.name
+.idea/encodings.xml
+.idea/misc.xml
+.idea/nintendo_dwc_emulator.iml
+.idea/scopes/scope_settings.xml
+.idea/vcs.xml
+.idea/workspace.xml
