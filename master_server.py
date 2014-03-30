@@ -13,7 +13,7 @@ address = ('0.0.0.0', 27900) # accessible to outside connections (use this if yo
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.bind(address)
 
-utils.print_log("Server is now listening on listening on %s:%s..." % (address[0], address[1]))
+utils.print_log("Server is now listening on %s:%s..." % (address[0], address[1]))
 
 while(1):
 	recv_data, addr = s.recvfrom(2048)

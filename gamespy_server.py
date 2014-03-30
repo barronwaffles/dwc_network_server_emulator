@@ -15,7 +15,7 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind(address)
 s.listen(backlog)
 
-utils.print_log("Server is now listening on listening on %s:%s..." % (address[0], address[1]))
+utils.print_log("Server is now listening on %s:%s..." % (address[0], address[1]))
 
 while 1:
 	client, address = s.accept()
