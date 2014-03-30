@@ -1,5 +1,6 @@
 # Server emulator for *.available.gs.nintendowifi.net and *.master.gs.nintendowifi.net
 import socket
+import gamespy.gs_utility as gs_utils
 import other.utils as utils
 
 def get_game_id(data):
@@ -17,6 +18,9 @@ utils.print_log("Server is now listening on %s:%s..." % (address[0], address[1])
 while 1:
     recv_data, addr = s.recvfrom(2048)
 
+    # Tetris DS overlay 10 @ 02144184 - Handle responses back to server
+    # Tetris DS overlay 10 @ 02144184 - Handle responses back to server
+    #
     # After some more packet inspection, it seems the format goes something like this:
     # - All server messages seem to always start with \xfe\xfe.
     # - The first byte from the client (or third byte from the server) is a command.
@@ -32,7 +36,9 @@ while 1:
     #   Commands range from 0x00 to 0x09 (for client only at least?) (Tetris DS overlay 10 @ 0216DDCC)
     #
     #   CLIENT:
-    #       0x01 - Unknown (Tetris DS overlay 10 @ 216DCA4)
+    #       0x01 - Response (Tetris DS overlay 10 @ 216DCA4)
+    #           Sends back base64 of RC4 encrypted string that was gotten from the server's 0x01. Server doesn't respond?
+    #
     #       0x03 - Send client state? (Tetris DS overlay 10 @ 216DA30)
     #           Data sent:
     #           1) Loop for each localip available on the system, write as localip%d\x00(local ip)
@@ -48,26 +54,38 @@ while 1:
     #
     #       0x07 - Unknown, related to server's 0x06 (returns value sent from server)
     #
+    #       0x08 - Keep alive? Sent after 0x03
     #
-    #       0x08 - Keep alive?
     #       0x09 - Availability check
     #
     #   SERVER:
     #       0x01 - Unknown
+    #           Data sent:
+    #           8 random ASCII characters (?) followed by the public IP and port of the client as a hex string
+    #
     #       0x06 - Unknown
-    #       0x0a - Unknown
+    #
+    #       0x0a - Response to 0x01
+    #           Gets sent after receiving 0x01 from the client. So, server 0x01 -> client 0x01 -> server 0x0a.
+    #           Has no other data besides the client ID.
     #
     #  - \xfd\xfc commands get passed directly between the other player(s)?
     #
 
-    if [ord(x) for x in recv_data[0:5]] == [0x09, 0x00, 0x00, 0x00, 0x00]:
-        utils.print_log("Received request for '%s' from %s:%s... %s" % (
+    if recv_data[0] == '\x01':
+        utils.print_log("Response received from %s:%s... %s" % (addr[0], addr[1], recv_data[5:]))
+    elif recv_data[0] == '\x03':
+        utils.print_log("Received client state from %s:%s... %s" % (addr[0], addr[1], recv_data[5:]))
+    elif recv_data[0] == '\x07':
+        utils.print_log("Received unknown data from %s:%s... %s" % (addr[0], addr[1], recv_data[5:]))
+    elif recv_data[0] == '\x08':
+        utils.print_log("Received keep alive from %s:%s..." % (addr[0], addr[1]))
+    elif recv_data[0] == '\x09':
+        # Availability check only sent to *.available.gs.nintendowifi.net
+        utils.print_log("Received availability request for '%s' from %s:%s... %s" % (
             get_game_id(recv_data), addr[0], addr[1], [elem.encode("hex") for elem in recv_data]))
 
-        # I have not seen any games that use anything other than \x09\x00\x00\x00\x00 + null terminated game id,
-        # but just in case there are others out there, copy the data received from the game as the response.
         s.sendto(bytearray([0xfe, 0xfd, recv_data[0], recv_data[1], recv_data[2], recv_data[3], recv_data[4]]), addr)
     else:
         utils.print_log(
             "Unknown request from %s:%s: %s" % (addr[0], addr[1], [elem.encode("hex") for elem in recv_data]))
-
