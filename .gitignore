@@ -220,3 +220,5 @@ pip-log.txt
 .idea/scopes/scope_settings.xml
 .idea/vcs.xml
 .idea/workspace.xml
+gpcm.db
+.idea/dictionaries/Nagato.xml

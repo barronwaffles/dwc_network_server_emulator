@@ -119,6 +119,40 @@ while 1:
                 # Handle status update
                 msg = ""
 
+            elif data_parsed['__cmd__'] == "ka":
+                # Unknown
+
+                msg = ""
+
+            elif data_parsed['__cmd__'] == "bm":
+                # Friends list-related
+                #
+                # Example of friend logging in:
+                #   \bm\100\f\217936895\msg\|s|1|ss||ls||ip|-1405615422|p|0|qm|0\final\
+                #   \bm\100\f\217936895\msg\|s|1|ss||ls|97YBAAAAAAAAAAAA-wA*|ip|-1405615422|p|0|qm|0\final\
+                #
+                # Example of friend hosting game:
+                #   \bm\100\f\217936895\msg\|s|1|ss||ls|97YBAAAAAAAAAAAAAAA*|ip|-1405615422|p|0|qm|0\final\
+                #   \bm\100\f\217936895\msg\|s|6|ss|/SCM/2/SCN/1/VER/3|ls|97YBAAAAAAAAAAAAAAA*|ip|-1405615422|p|0|qm|0\final\
+                #
+                # Example of friend closing game:
+                #   \bm\100\f\217936895\msg\|s|1|ss||ls|97YBAAAAAAAAAAAAAAA*|ip|-1405615422|p|0|qm|0\final\
+                #   \bm\100\f\217936895\msg\|s|1|ss||ls|97YBAAAAAAAAAAAA-wA*|ip|-1405615422|p|0|qm|0\final\
+                #
+                # Example of friend hosting game again:
+                #   \bm\100\f\217936895\msg\|s|1|ss||ls|97YBAAAAAAAAAAAAAAA*|ip|-1405615422|p|0|qm|0\final\
+                #   \bm\100\f\217936895\msg\|s|6|ss|/SCM/2/SCN/1/VER/3|ls|97YBAAAAAAAAAAAAAAA*|ip|-1405615422|p|0|qm|0\final\
+                #
+                # Join game with friend:
+                #   (CLIENT) \status\5\sesskey\233209064\statstring\\locstring\JZoAAAAAAAAAAAAA-wA*\final\
+                #   (CLIENT) \bm\1\sesskey\233209064\t\217936895\msg\GPCM3vMAT.3/2371876423/58891\final\
+                #   (SERVER) \bm\1\f\217936895\msg\GPCM3vMAT.0/3254925484/27496\final\
+                #   (SERVER) \bm\100\f\217936895\msg\|s|6|ss|/SCM/2/SCN/2/VER/3|ls|97YBAAAAAAAAAAAAAAA*|ip|-1405615422|p|0|qm|0\final\
+                #   (CLIENT) \status\2\sesskey\233209064\statstring\\locstring\JZoAAAAAAAAAAAAA-wA*\final\
+                #   (SERVER) \bm\100\f\217936895\msg\|s|6|ss|/SCM/2/SCN/2/VER/3|ls|97YBAAAAAAAAAAAA-wA*|ip|-1405615422|p|0|qm|0\final\
+                #   (SERVER) \bm\100\f\217936895\msg\|s|6|ss|/SCM/2/SCN/1/VER/3|ls|97YBAAAAAAAAAAAA-wA*|ip|-1405615422|p|0|qm|0\final\
+                msg = ""
+
             elif data_parsed['__cmd__'] == "logout":
                 print "Session %s has logged off" % (data_parsed['sesskey'])
                 db.delete_session(data_parsed['sesskey'])

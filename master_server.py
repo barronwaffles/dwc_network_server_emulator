@@ -23,10 +23,11 @@ while 1:
     # - All server messages seem to always start with \xfe\xfe.
     # - The first byte from the client (or third byte from the server) is a command.
     # - Bytes 2 - 5 from the client is some kind of ID. This will have to be inspected later. I believe it's a
-    # session-like ID because the number changes between connections.
+    # session-like ID because the number changes between connections. Copying the client's ID might be enough.
     #
     # - Commands
     #   CLIENT:
+    #       0x01 - Unknown
     #       0x03 - Send client state?
     #       0x07 - Unknown, related to server's 0x06 (returns value sent from server)
     #       0x08 - Keep alive?
@@ -35,7 +36,9 @@ while 1:
     #       0x01 - Unknown
     #       0x06 - Unknown
     #       0x0a - Unknown
-    
+    #
+    #  - \xfd\xfc commands get passed directly between the other player(s)?
+
     if [ord(x) for x in recv_data[0:5]] == [0x09, 0x00, 0x00, 0x00, 0x00]:
         utils.print_log("Received request for '%s' from %s:%s... %s" % (
             get_game_id(recv_data), addr[0], addr[1], [elem.encode("hex") for elem in recv_data]))

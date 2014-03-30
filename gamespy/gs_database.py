@@ -92,7 +92,9 @@ class GamespyDatabase(object):
         if self.check_user_exists(userid) == 0:
             profileid = self.get_next_free_profileid()
 
-            pid = "11"  # Always 11??? Is this important? Not to be confused with dwc_pid. The three games I found it in (Tetris DS, Advance Wars - Days of Ruin, and Animal Crossing: Wild World) all use \pid\11.
+            pid = "11"  # Always 11??? Is this important? Not to be confused with dwc_pid.
+                        # The three games I found it in (Tetris DS, Advance Wars - Days of Ruin, and
+                        # Animal Crossing: Wild World) all use \pid\11.
             lon = "0.000000"  # Always 0.000000?
             lat = "0.000000"  # Always 0.000000?
             loc = ""  # Always blank?
@@ -166,50 +168,46 @@ class GamespyDatabase(object):
         c.close()
         return profile
 
-
-def generate_session_key(self, min_size):
-    session_key = utils.generate_random_number_str(min_size)
-
-    c = self.conn.cursor()
-    for r in c.execute("SELECT session FROM sessions WHERE session = ?", [session_key]):
+    def generate_session_key(self, min_size):
         session_key = utils.generate_random_number_str(min_size)
 
-    return session_key
+        c = self.conn.cursor()
+        for r in c.execute("SELECT session FROM sessions WHERE session = ?", [session_key]):
+            session_key = utils.generate_random_number_str(min_size)
 
+        return session_key
 
-def create_session(self, profileid):
-    if profileid != None and self.check_profile_exists(profileid) == False:
-        return None
+    def delete_session(self, profileid):
+        c = self.conn.cursor()
+        c.execute("DELETE FROM sessions WHERE profileid = ?", [profileid])
+        self.conn.commit()
 
-    # Remove any old sessions associated with this user id
-    self.delete_session(profileid)
+    def create_session(self, profileid):
+        if profileid != None and self.check_profile_exists(profileid) == False:
+            return None
 
-    # Create new session
-    session_key = self.generate_session_key(9)
+        # Remove any old sessions associated with this user id
+        self.delete_session(profileid)
 
-    c = self.conn.cursor()
-    c.execute("INSERT INTO sessions VALUES (?, ?)", [session_key, profileid])
-    self.conn.commit()
+        # Create new session
+        session_key = self.generate_session_key(9)
 
-    return session_key
+        c = self.conn.cursor()
+        c.execute("INSERT INTO sessions VALUES (?, ?)", [session_key, profileid])
+        self.conn.commit()
 
+        return session_key
 
-def delete_session(self, profileid):
-    c = self.conn.cursor()
-    c.execute("DELETE FROM sessions WHERE profileid = ?", [profileid])
-    self.conn.commit()
+    def get_session_list(self, profileid=None):
+        c = self.conn.cursor()
 
+        sessions = []
+        if profileid != None:
+            r = c.execute("SELECT * FROM sessions WHERE profileid = ?", [profileid])
+        else:
+            r = c.execute("SELECT * FROM sessions")
 
-def get_session_list(self, profileid=None):
-    c = self.conn.cursor()
+        for row in r:
+            sessions.append(self.get_dict(row))
 
-    sessions = []
-    if profileid != None:
-        r = c.execute("SELECT * FROM sessions WHERE profileid = ?", [profileid])
-    else:
-        r = c.execute("SELECT * FROM sessions")
-
-    for row in r:
-        sessions.append(self.get_dict(row))
-
-    return sessions
+        return sessions
