@@ -90,7 +90,7 @@ while 1:
                 msg = gs_query.create_gamespy_message(msg_d)
 
             elif data_parsed['__cmd__'] == "getprofile":
-                profile = db.get_profile_from_session_key(data_parsed.append(('sesskey')))
+                profile = db.get_profile_from_session_key(data_parsed['sesskey'])
 
                 msg_d = []
                 msg_d.append(('__cmd__', "pi"))

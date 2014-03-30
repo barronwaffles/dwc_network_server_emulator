@@ -64,6 +64,31 @@ while 1:
     #           8 random ASCII characters (?) followed by the public IP and port of the client as a hex string
     #
     #       0x06 - Unknown
+    #           First 4 bytes is some kind of id? I believe it's a unique identifier for the data being sent,
+    #           seeing how the server can send the same IP information many times in a row. If the IP information has
+    #           already been parsed then it doesn't waste time handling it.
+    #
+    #           After that is a "SBCM" section which is 0x14 bytes in total.
+    #           SBCM information gets parsed at 2141A0C in Tetris DS overlay 10.
+    #           Seems to contain IP address information.
+    #
+    #           The SBCM seems to contain a little information that must be parsed before.
+    #           After the SBCM:
+    #               \x03\x00\x00\x00 - Always the same?
+    #               \x01 - Found player?
+    #               \x04 - Unknown
+    #               (2 bytes) - Unknown. Port?
+    #               (4 bytes) - Player's IP
+    #               (4 bytes) - Unknown. Some other IP? Remote server IP?
+    #               \x00\x00\x00\x00 - Unknown but seems to get checked
+    #
+    #           Another SBCM, after a player has been found and attempting to start a game:
+    #               \x03\x00\x00\x00 - Always the same?
+    #               \x05 - Connecting to player?
+    #               \x00 - Unknown
+    #               (2 bytes) - Unknown. Port? Same as before.
+    #               (4 bytes) - Player's IP
+    #               (4 bytes) - Unknown. Some other IP? Remote server IP?
     #
     #       0x0a - Response to 0x01
     #           Gets sent after receiving 0x01 from the client. So, server 0x01 -> client 0x01 -> server 0x0a.
