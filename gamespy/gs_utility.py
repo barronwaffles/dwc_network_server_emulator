@@ -1,7 +1,6 @@
-from ctypes import c_uint
-import sys
 import base64
 import hashlib
+import other.utils as utils
 
 # GameSpy uses a slightly modified version of base64 which replaces +/= with []_
 def base64_encode(input):
@@ -64,4 +63,24 @@ def generate_proof(challenge, ac_challenge, secretkey, authtoken):
     md5_2.update(output)
 
     return md5_2.hexdigest()
-	
+
+# Code: Tetris DS @ 02057A14
+def get_friendcode_from_profileid(profileid, gameid):
+    friendcode = 0
+
+    # Combine the profileid and gameid into one buffer
+    buffer = [(profileid >> (8 * i)) & 0xff for i in range(4)]
+    buffer += [ord(c) for c in gameid]
+
+    crc = utils.calculate_crc8(buffer)
+
+    # The upper 32 bits is the crc8 of the combined buffer.
+    # The lower 32 bits of the friend code is the profileid.
+    friendcode = ((crc & 0x7f) << 32) | profileid
+
+    return friendcode
+
+def get_profileid_from_friendcode(friendcode):
+    # Get the lower 32 bits as the profile id
+    profileid = friendcode & 0xffffffff
+    return profileid

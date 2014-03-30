@@ -64,28 +64,6 @@ def base32_decode(str, reverse = False):
 
     return orig
 
-# Code: Tetris DS @ 02057A14
-def get_friendcode_from_profileid(profileid, gameid):
-    friendcode = 0
-
-    # Combine the profileid and gameid into one buffer
-    buffer = [(profileid >> (8 * i)) & 0xff for i in range(4)]
-    buffer += [ord(c) for c in gameid]
-
-    crc = calculate_crc8(buffer)
-
-    # The upper 32 bits is the crc8 of the combined buffer.
-    # The lower 32 bits of the friend code is the profileid.
-    friendcode = ((crc & 0x7f) << 32) | profileid
-
-    return friendcode
-
-def get_profileid_from_friendcode(friendcode):
-    # Get the lower 32 bits as the profile id
-    profileid = friendcode & 0xffffffff
-    return profileid
-
-
 # For server logging
 def print_log(text):
     print "[%s] %s" % (time.strftime("%c"), text)

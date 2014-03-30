@@ -45,8 +45,6 @@ while 1:
         commands = gs_query.parse_gamespy_message(data)
 
         for data_parsed in commands:
-            msg_d = []
-
             print data_parsed
 
             if data_parsed['__cmd__'] == "login":
@@ -79,6 +77,7 @@ while 1:
 
                 sesskey = db.create_session(profileid)
 
+                msg_d = []
                 msg_d.append(('__cmd__', "lc"))
                 msg_d.append(('__cmd_val__', "2"))
                 msg_d.append(('sesskey', sesskey))
@@ -91,9 +90,9 @@ while 1:
                 msg = gs_query.create_gamespy_message(msg_d)
 
             elif data_parsed['__cmd__'] == "getprofile":
-                msg_d = []
-
                 profile = db.get_profile_from_session_key(data_parsed.append(('sesskey')))
+
+                msg_d = []
                 msg_d.append(('__cmd__', "pi"))
                 msg_d.append(('__cmd_val__', ""))
                 msg_d.append(('profileid', profile['profileid']))
@@ -112,7 +111,11 @@ while 1:
 
             elif data_parsed['__cmd__'] == "updatepro":
                 # Handle properly later
-                # Assume that there will be other parameters besides lastname, so make it a loop or something along those lines later
+                # Assume that there will be other parameters besides lastname, so make it a loop or something along those lines later.
+                #
+                # Idea: Make user's actual profile data a dictionary, and serialize that and store it in the database
+                # instead of making each possible field a column in the table? Such a setup would make the the profile
+                # more robust.
                 db.update_profile(data_parsed['sesskey'], [("lastname", data_parsed['lastname'])])
 
             elif data_parsed['__cmd__'] == "status":
@@ -120,8 +123,7 @@ while 1:
                 msg = ""
 
             elif data_parsed['__cmd__'] == "ka":
-                # Unknown
-
+                # Keep alive
                 msg = ""
 
             elif data_parsed['__cmd__'] == "bm":
@@ -151,6 +153,19 @@ while 1:
                 #   (CLIENT) \status\2\sesskey\233209064\statstring\\locstring\JZoAAAAAAAAAAAAA-wA*\final\
                 #   (SERVER) \bm\100\f\217936895\msg\|s|6|ss|/SCM/2/SCN/2/VER/3|ls|97YBAAAAAAAAAAAA-wA*|ip|-1405615422|p|0|qm|0\final\
                 #   (SERVER) \bm\100\f\217936895\msg\|s|6|ss|/SCM/2/SCN/1/VER/3|ls|97YBAAAAAAAAAAAA-wA*|ip|-1405615422|p|0|qm|0\final\
+                #
+                # Notes:
+                #   \bm\1 = Message
+                #   \bm\100 = Status
+                #   Check out OpenSpy to find out more \bm request codes: https://github.com/sfcspanky/Openspy-Core/blob/playerspy/gp.h
+                #
+                # msg field:
+                #   s = status
+                #   ss = status string
+                #   ls = location string
+                #   ip = signed ip (convert back into hex, take each byte to build x.x.x.x)
+                #   p = port
+                #   qm = ? (According to OpenSpy, "quietflags". See above linked gp.h to get GP_SILENCE_* flags)
                 msg = ""
 
             elif data_parsed['__cmd__'] == "logout":

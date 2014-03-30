@@ -3,7 +3,6 @@ import hashlib
 import itertools
 import other.utils as utils
 
-
 class GamespyDatabase(object):
     def __init__(self, filename='gpcm.db'):
         self.conn = sqlite3.connect(filename)
@@ -35,7 +34,7 @@ class GamespyDatabase(object):
         c = self.conn.cursor()
         c.execute("SELECT max(profileid) FROM users")
 
-        r = c.fetchone()
+        r = self.get_dict(c.fetchone())
 
         profileid = 476639431  #100000000
         if r != None and r['max(profileid)'] != None:
