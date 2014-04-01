@@ -68,3 +68,39 @@ def base32_decode(str, reverse = False):
 def print_log(text):
     print "[%s] %s" % (time.strftime("%c"), text)
     print ""
+
+# Number routines
+# I'm not sure what the pythonic way to do this is, so I'm making the code explicit by giving myself functions to
+# convert the bytes to ints.
+def get_num_from_bytes(data, idx, bytes, bigEndian = False):
+    # Get only the bytes we want to work with
+    data = data[idx:idx+bytes]
+
+    if bigEndian == True:
+        data = data[::-1]
+
+    num = 0
+    i = 0
+    while i < bytes and i < len(data):
+        num |= (ord(data[i]) << (8 * i))
+        i += 1
+
+    return num
+
+# Instead of passing slices, pass the buffer and index so we can calculate the length automatically.
+def get_short(data, idx):
+    return get_num_from_bytes(data, idx, 2, False)
+
+def get_short_be(data, idx):
+    return get_num_from_bytes(data, idx, 2, True)
+
+def get_int(data, idx):
+    return get_num_from_bytes(data, idx, 4, False)
+
+def get_int_be(data, idx):
+    return get_num_from_bytes(data, idx, 4, True)
+
+def get_string(data, idx):
+    data = data[idx:]
+    end = data.index('\0')
+    return data[:end]
