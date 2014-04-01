@@ -36,9 +36,9 @@ class GamespyDatabase(object):
 
         r = self.get_dict(c.fetchone())
 
-        profileid = 476639431  #100000000
+        profileid = 476639431 #100000000 # TODO: Fix profile id generation
         if r != None and r['max(profileid)'] != None:
-            profileid = int(r[0]) + 1
+            profileid = int(r['max(profileid)']) + 1
 
         c.close()
 
@@ -69,6 +69,17 @@ class GamespyDatabase(object):
 
         c.close()
         return valid_profile
+
+    def get_profile_from_profileid(self, profileid):
+        profile = {}
+        if profileid != None:
+            c = self.conn.cursor()
+            c.execute("SELECT * FROM users WHERE profileid = ?", [profileid])
+
+            profile = self.get_dict(c.fetchone())
+
+        c.close()
+        return profile
 
     def perform_login(self, userid, password):
         c = self.conn.cursor()
@@ -134,7 +145,8 @@ class GamespyDatabase(object):
             # FIXME: Possible security issue due to embedding an unsanitized string directly into the statement.
             c = self.conn.cursor()
             for field in fields:
-                c.execute("UPDATE users SET %s = ? WHERE profileid = ?" % (field), [fields[field], profileid])
+                print "UPDATE users SET %s = %s WHERE profileid = %s" % (field[0], field[1], profileid)
+                c.execute("UPDATE users SET %s = ? WHERE profileid = ?" % (field[0]), [field[1], profileid])
 
             self.conn.commit()
 

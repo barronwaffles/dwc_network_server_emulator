@@ -90,13 +90,14 @@ while 1:
                 msg = gs_query.create_gamespy_message(msg_d)
 
             elif data_parsed['__cmd__'] == "getprofile":
-                profile = db.get_profile_from_session_key(data_parsed['sesskey'])
+                #profile = db.get_profile_from_session_key(data_parsed['sesskey'])
+                profile = db.get_profile_from_profileid(data_parsed['profileid'])
 
                 msg_d = []
                 msg_d.append(('__cmd__', "pi"))
                 msg_d.append(('__cmd_val__', ""))
                 msg_d.append(('profileid', profile['profileid']))
-                msg_d.append(('nick', profile['nick']))
+                msg_d.append(('nick', profile['uniquenick']))
                 msg_d.append(('userid', profile['userid']))
                 msg_d.append(('email', profile['email']))
                 msg_d.append(('sig', utils.generate_random_hex_str(32)))

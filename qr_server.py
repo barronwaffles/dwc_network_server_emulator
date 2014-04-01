@@ -177,8 +177,7 @@ while 1:
 
     elif recv_data[0] == '\x09': # Available
         # Availability check only sent to *.available.gs.nintendowifi.net
-        utils.print_log("Received availability request for '%s' from %s:%s... %s" % (
-            get_game_id(recv_data), addr[0], addr[1], [elem.encode("hex") for elem in recv_data]))
+        utils.print_log("Received availability request for '%s' from %s:%s..." % (get_game_id(recv_data), addr[0], addr[1]))
 
         s.sendto(bytearray([0xfe, 0xfd, recv_data[0], recv_data[1], recv_data[2], recv_data[3], recv_data[4]]), addr)
 
