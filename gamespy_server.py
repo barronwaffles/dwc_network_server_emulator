@@ -1,45 +1,50 @@
-# Server emulator for gpcm.gs.nintendowifi.net
-import socket
+from twisted.internet.protocol import Factory
+from twisted.internet.endpoints import serverFromString
+from twisted.protocols.basic import LineReceiver
+from twisted.internet import reactor
+
 import gamespy.gs_database as gs_database
 import gamespy.gs_query as gs_query
 import gamespy.gs_utility as gs_utils
 import other.utils as utils
 
-db = gs_database.GamespyDatabase()
+class PlayerSession(LineReceiver):
+    def __init__(self, sessions, addr):
+        self.sessions = sessions
+        self.setRawMode() # We're dealing with binary data so set to raw mode
+        self.db = gs_database.GamespyDatabase()
+        self.profileId = 0
+        self.address = addr
 
-address = ('0.0.0.0', 29900)
-backlog = 10
-size = 2048
+    def get_ip_as_int(self, address):
+        ipaddress = 0
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(address)
-s.listen(backlog)
+        if address != None:
+            for n in address.split('.'):
+                ipaddress = (ipaddress << 8) | int(n)
 
-utils.print_log("Server is now listening on %s:%s..." % (address[0], address[1]))
+        return ipaddress
 
-while 1:
-    client, address = s.accept()
+    def connectionMade(self):
+        # Create new session id
+        self.session = ""
+        self.challenge = utils.generate_random_str(8)
 
-    # TODO: Redo this part of the server so it'll handle multiple connections
-    utils.print_log("Received connection from %s:%s" % (address[0], address[1]))
+        msg_d = []
+        msg_d.append(('__cmd__', "lc"))
+        msg_d.append(('__cmd_val__', "1"))
+        msg_d.append(('challenge', self.challenge))
+        msg_d.append(('id', "1"))
+        msg = gs_query.create_gamespy_message(msg_d)
 
-    # Send request for login information
-    challenge = utils.generate_random_str(8)
+        utils.print_log("SENDING: '%s'..." % msg)
+        self.transport.write(bytes(msg))
 
-    msg_d = []
-    msg_d.append(('__cmd__', "lc"))
-    msg_d.append(('__cmd_val__', "1"))
-    msg_d.append(('challenge', challenge))
-    msg_d.append(('id', "1"))
-    msg = gs_query.create_gamespy_message(msg_d)
+    def connectionLost(self, reason):
+        if self.session in self.sessions:
+            del self.sessions[self.session]
 
-    utils.print_log("SENDING: '%s'..." % msg)
-    client.send(msg)
-
-    # Receive any command
-    accept_connection = True
-    while accept_connection:
-        data = client.recv(size).rstrip()
+    def rawDataReceived(self, data):
         utils.print_log("RESPONSE: %s" % data)
 
         commands = gs_query.parse_gamespy_message(data)
@@ -48,133 +53,194 @@ while 1:
             print data_parsed
 
             if data_parsed['__cmd__'] == "login":
-                authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'])
-                print authtoken_parsed
-
-                # get correct information
-                userid = authtoken_parsed['userid']
-                password = authtoken_parsed['passwd']
-                uniquenick = utils.base32_encode(int(userid)) + authtoken_parsed['gsbrcd']
-                email = uniquenick + "@nds"
-                nick = uniquenick
-
-                # Verify the client's response
-                valid_response = gs_utils.generate_response(challenge, authtoken_parsed['challenge'], data_parsed['challenge'], data_parsed['authtoken'])
-                if data_parsed['response'] != valid_response:
-                    utils.print_log("ERROR: Got invalid response. Got %s, expected %s" % (data_parsed['response'], valid_response))
-
-                proof = gs_utils.generate_proof(challenge, authtoken_parsed['challenge'], data_parsed['challenge'], data_parsed['authtoken'])
-
-                valid_user = db.check_user_exists(userid)
-                profileid = None
-                if valid_user == False:
-                    profileid = db.create_user(userid, password, email, uniquenick)
-                else:
-                    profileid = db.perform_login(userid, password)
-                    if profileid == None:
-                        # Handle case where the user is invalid
-                        print "Invalid password"
-
-                sesskey = db.create_session(profileid)
-
-                msg_d = []
-                msg_d.append(('__cmd__', "lc"))
-                msg_d.append(('__cmd_val__', "2"))
-                msg_d.append(('sesskey', sesskey))
-                msg_d.append(('proof', proof))
-                msg_d.append(('userid', userid))
-                msg_d.append(('profileid', db.get_profileid_from_session_key(sesskey)))
-                msg_d.append(('uniquenick', uniquenick))
-                msg_d.append(('lt', gs_utils.base64_encode(utils.generate_random_str(16)))) # Some kind of token... don't know it gets used or generated, but it doesn't seem to have any negative effects if it's not properly generated.
-                msg_d.append(('id', data_parsed['id']))
-                msg = gs_query.create_gamespy_message(msg_d)
-
-            elif data_parsed['__cmd__'] == "getprofile":
-                #profile = db.get_profile_from_session_key(data_parsed['sesskey'])
-                profile = db.get_profile_from_profileid(data_parsed['profileid'])
-
-                msg_d = []
-                msg_d.append(('__cmd__', "pi"))
-                msg_d.append(('__cmd_val__', ""))
-                msg_d.append(('profileid', profile['profileid']))
-                msg_d.append(('nick', profile['uniquenick']))
-                msg_d.append(('userid', profile['userid']))
-                msg_d.append(('email', profile['email']))
-                msg_d.append(('sig', utils.generate_random_hex_str(32)))
-                msg_d.append(('uniquenick', profile['uniquenick']))
-                msg_d.append(('pid', profile['pid']))
-                msg_d.append(('lastname', profile['lastname']))
-                msg_d.append(('lon', profile['lon']))
-                msg_d.append(('lat', profile['lat']))
-                msg_d.append(('loc', profile['loc']))
-                msg_d.append(('id', data_parsed['id']))
-                msg = gs_query.create_gamespy_message(msg_d)
-
-            elif data_parsed['__cmd__'] == "updatepro":
-                # Handle properly later
-                # Assume that there will be other parameters besides lastname, so make it a loop or something along those lines later.
-                #
-                # Idea: Make user's actual profile data a dictionary, and serialize that and store it in the database
-                # instead of making each possible field a column in the table? Such a setup would make the the profile
-                # more robust.
-                db.update_profile(data_parsed['sesskey'], [("lastname", data_parsed['lastname'])])
-
-            elif data_parsed['__cmd__'] == "status":
-                # Handle status update
-                msg = ""
-
-            elif data_parsed['__cmd__'] == "ka":
-                # Keep alive
-                msg = ""
-
-            elif data_parsed['__cmd__'] == "bm":
-                # Friends list-related
-                #
-                # Example of friend logging in:
-                #   \bm\100\f\217936895\msg\|s|1|ss||ls||ip|-1405615422|p|0|qm|0\final\
-                #   \bm\100\f\217936895\msg\|s|1|ss||ls|97YBAAAAAAAAAAAA-wA*|ip|-1405615422|p|0|qm|0\final\
-                #
-                # Example of friend hosting game:
-                #   \bm\100\f\217936895\msg\|s|1|ss||ls|97YBAAAAAAAAAAAAAAA*|ip|-1405615422|p|0|qm|0\final\
-                #   \bm\100\f\217936895\msg\|s|6|ss|/SCM/2/SCN/1/VER/3|ls|97YBAAAAAAAAAAAAAAA*|ip|-1405615422|p|0|qm|0\final\
-                #
-                # Example of friend closing game:
-                #   \bm\100\f\217936895\msg\|s|1|ss||ls|97YBAAAAAAAAAAAAAAA*|ip|-1405615422|p|0|qm|0\final\
-                #   \bm\100\f\217936895\msg\|s|1|ss||ls|97YBAAAAAAAAAAAA-wA*|ip|-1405615422|p|0|qm|0\final\
-                #
-                # Example of friend hosting game again:
-                #   \bm\100\f\217936895\msg\|s|1|ss||ls|97YBAAAAAAAAAAAAAAA*|ip|-1405615422|p|0|qm|0\final\
-                #   \bm\100\f\217936895\msg\|s|6|ss|/SCM/2/SCN/1/VER/3|ls|97YBAAAAAAAAAAAAAAA*|ip|-1405615422|p|0|qm|0\final\
-                #
-                # Join game with friend:
-                #   (CLIENT) \status\5\sesskey\233209064\statstring\\locstring\JZoAAAAAAAAAAAAA-wA*\final\
-                #   (CLIENT) \bm\1\sesskey\233209064\t\217936895\msg\GPCM3vMAT.3/2371876423/58891\final\
-                #   (SERVER) \bm\1\f\217936895\msg\GPCM3vMAT.0/3254925484/27496\final\
-                #   (SERVER) \bm\100\f\217936895\msg\|s|6|ss|/SCM/2/SCN/2/VER/3|ls|97YBAAAAAAAAAAAAAAA*|ip|-1405615422|p|0|qm|0\final\
-                #   (CLIENT) \status\2\sesskey\233209064\statstring\\locstring\JZoAAAAAAAAAAAAA-wA*\final\
-                #   (SERVER) \bm\100\f\217936895\msg\|s|6|ss|/SCM/2/SCN/2/VER/3|ls|97YBAAAAAAAAAAAA-wA*|ip|-1405615422|p|0|qm|0\final\
-                #   (SERVER) \bm\100\f\217936895\msg\|s|6|ss|/SCM/2/SCN/1/VER/3|ls|97YBAAAAAAAAAAAA-wA*|ip|-1405615422|p|0|qm|0\final\
-                #
-                # Notes:
-                #   \bm\1 = Message
-                #   \bm\100 = Status
-                #   Check out OpenSpy to find out more \bm request codes: https://github.com/sfcspanky/Openspy-Core/blob/playerspy/gp.h
-                #
-                # msg field:
-                #   s = status
-                #   ss = status string
-                #   ls = location string
-                #   ip = signed ip (convert back into hex, take each byte to build x.x.x.x)
-                #   p = port
-                #   qm = ? (According to OpenSpy, "quietflags". See above linked gp.h to get GP_SILENCE_* flags)
-                msg = ""
-
+                self.perform_login(data_parsed)
             elif data_parsed['__cmd__'] == "logout":
-                print "Session %s has logged off" % (data_parsed['sesskey'])
-                db.delete_session(data_parsed['sesskey'])
-                accept_connection = False
+                self.perform_logout(data_parsed)
+            elif data_parsed['__cmd__'] == "getprofile":
+                self.perform_getprofile(data_parsed)
+            elif data_parsed['__cmd__'] == "updatepro":
+                self.perform_updatepro(data_parsed)
+            elif data_parsed['__cmd__'] == "ka":
+                self.perform_ka(data_parsed)
+            elif data_parsed['__cmd__'] == "status":
+                self.perform_status(data_parsed)
+            elif data_parsed['__cmd__'] == "bm":
+                self.perform_bm(data_parsed)
+            elif data_parsed['__cmd__'] == "addbuddy":
+                self.perform_addbuddy(data_parsed)
+            elif data_parsed['__cmd__'] == "authadd":
+                self.perform_authadd(data_parsed)
 
-            utils.print_log("SENDING: %s" % msg)
-            client.send(msg)
+    def perform_login(self, data_parsed):
+        authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'])
+        print authtoken_parsed
 
-    client.close()
+        # get correct information
+        userid = authtoken_parsed['userid']
+        password = authtoken_parsed['passwd']
+        uniquenick = utils.base32_encode(int(userid)) + authtoken_parsed['gsbrcd']
+        email = uniquenick + "@nds"
+
+        # Verify the client's response
+        valid_response = gs_utils.generate_response(self.challenge, authtoken_parsed['challenge'], data_parsed['challenge'], data_parsed['authtoken'])
+        if data_parsed['response'] != valid_response:
+            utils.print_log("ERROR: Got invalid response. Got %s, expected %s" % (data_parsed['response'], valid_response))
+
+        proof = gs_utils.generate_proof(self.challenge, authtoken_parsed['challenge'], data_parsed['challenge'], data_parsed['authtoken'])
+
+        valid_user = self.db.check_user_exists(userid)
+        if valid_user == False:
+            profileid = self.db.create_user(userid, password, email, uniquenick)
+        else:
+            profileid = self.db.perform_login(userid, password)
+
+            if profileid == None:
+                 # Handle case where the user is invalid
+                print "Invalid password"
+
+        sesskey = self.db.create_session(profileid)
+
+        self.sessions[profileid] = self
+
+        msg_d = []
+        msg_d.append(('__cmd__', "lc"))
+        msg_d.append(('__cmd_val__', "2"))
+        msg_d.append(('sesskey', sesskey))
+        msg_d.append(('proof', proof))
+        msg_d.append(('userid', userid))
+        msg_d.append(('profileid', profileid))
+        msg_d.append(('uniquenick', uniquenick))
+        msg_d.append(('lt', gs_utils.base64_encode(utils.generate_random_str(16)))) # Some kind of token... don't know it gets used or generated, but it doesn't seem to have any negative effects if it's not properly generated.
+        msg_d.append(('id', data_parsed['id']))
+        msg = gs_query.create_gamespy_message(msg_d)
+
+        self.profileid = profileid
+
+        utils.print_log("SENDING: %s" % msg)
+        self.transport.write(bytes(msg))
+
+    def perform_logout(self, data_parsed):
+        print "Session %s has logged off" % (data_parsed['sesskey'])
+        self.db.delete_session(data_parsed['sesskey'])
+
+    def perform_getprofile(self, data_parsed):
+        #profile = self.db.get_profile_from_session_key(data_parsed['sesskey'])
+        profile = self.db.get_profile_from_profileid(data_parsed['profileid'])
+
+        msg_d = []
+        msg_d.append(('__cmd__', "pi"))
+        msg_d.append(('__cmd_val__', ""))
+        msg_d.append(('profileid', profile['profileid']))
+        msg_d.append(('nick', profile['uniquenick']))
+        msg_d.append(('userid', profile['userid']))
+        msg_d.append(('email', profile['email']))
+        msg_d.append(('sig', utils.generate_random_hex_str(32)))
+        msg_d.append(('uniquenick', profile['uniquenick']))
+        msg_d.append(('pid', profile['pid']))
+        msg_d.append(('lastname', profile['lastname']))
+        msg_d.append(('lon', profile['lon']))
+        msg_d.append(('lat', profile['lat']))
+        msg_d.append(('loc', profile['loc']))
+        msg_d.append(('id', data_parsed['id']))
+        msg = gs_query.create_gamespy_message(msg_d)
+
+        utils.print_log("SENDING: %s" % msg)
+        self.transport.write(bytes(msg))
+        
+
+    def perform_updatepro(self, data_parsed):
+        sesskey = data_parsed['sesskey']
+
+        # Remove any fields not related to what we should be updating.
+        data_parsed.pop('__cmd__')
+        data_parsed.pop('__cmd_val__')
+        data_parsed.pop('updatepro')
+        data_parsed.pop('sesskey')
+
+        # Create a list of fields to be updated.
+        fields = []
+        for f in data_parsed:
+            fields.append((f, data_parsed[f]))
+
+        self.db.update_profile(sesskey, fields)
+
+    def perform_ka(self, data_parsed):
+        # No op
+        return
+
+    def perform_status(self, data_parsed):
+        sesskey = data_parsed['sesskey']
+
+        #fields = []
+        #fields.append(("stat", data_parsed['statstring']))
+        #fields.append(("loc", data_parsed['locstring']))
+
+        #self.db.update_profile(sesskey, fields)
+
+        self.status = data_parsed['__cmd_val__']
+        self.statstring =  data_parsed['statstring']
+        self.locstring =  data_parsed['locstring']
+
+        self.send_status_to_friends()
+
+    def perform_bm(self, data_parsed):
+        dest_profileid = data_parsed['t']
+        dest_msg = data_parsed['msg']
+
+    def perform_addbuddy(self, data_parsed):
+        # Sample: \addbuddy\\sesskey\231601763\newprofileid\476756820\reason\\final\
+        self.db.add_buddy(self.profileid, data_parsed['newprofileid'])
+
+        # In the case that the user is already a buddy:
+        # \bm\2\f\217936895\msg\|signed|f259f26d3273f8bda23c7c5e4bd8c5aa\final\
+        # \error\\err\1539\errmsg\The profile requested is already a buddy.\final\
+        # Handle later?
+
+    def perform_authadd(self, data_parsed):
+        # Sample: \authadd\\sesskey\231587549\fromprofileid\217936895\sig\f259f26d3273f8bda23c7c5e4bd8c5aa\final\
+        self.db.auth_buddy(self.profileid, data_parsed['newprofileid'])
+
+        # After authorization, send the person who was authorized a message like so:
+        # \bm\1\f\476756820\msg\I have authorized your request to add me to your list\final\
+
+    def send_status_to_friends(self):
+        # TODO: Cache buddy list so we don't have to query the database every time
+        buddies = self.db.get_buddy_list(self.profileid)
+
+        status_msg = "|s|%s|ss|%s|ls|%s|ip|%d|p|0|qm|0" % (self.status, self.statstring, self.locstring, self.get_ip_as_int(self.address.host))
+
+        msg_d = []
+        msg_d.append(('__cmd__', "bm"))
+        msg_d.append(('__cmd_val__', "100"))
+        msg_d.append(('f', self.profileid))
+        msg_d.append(('msg', status_msg))
+        msg = gs_query.create_gamespy_message(msg_d)
+
+        for buddy in buddies:
+            if buddy['buddyProfileId'] in self.sessions:
+                self.sessions[buddy['buddyProfileId']].transport.write(bytes(msg))
+
+    def get_status_from_friends(self):
+        # This will be called when the player logs in. Grab the player's buddy list and check the current sessions to
+        # see if anyone is online. If they are online, make them send an update to the calling client.
+        return
+
+
+
+
+class PlayerFactory(Factory):
+    def __init__(self):
+        # Instead of storing the sessions in the database, it might make more sense to store them in the PlayerFactory.
+        self.sessions = {}
+        print "Now listening for connections..."
+
+    def buildProtocol(self, addr):
+        return PlayerSession(self.sessions, addr)
+
+
+#reactor.listenTCP(8007, ChatFactory())
+#reactor.run()
+endpoint = serverFromString(reactor, "tcp:29900")
+conn = endpoint.listen(PlayerFactory())
+reactor.run()
+
