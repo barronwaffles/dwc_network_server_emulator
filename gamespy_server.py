@@ -238,8 +238,6 @@ class PlayerFactory(Factory):
         return PlayerSession(self.sessions, addr)
 
 
-#reactor.listenTCP(8007, ChatFactory())
-#reactor.run()
 endpoint = serverFromString(reactor, "tcp:29900")
 conn = endpoint.listen(PlayerFactory())
 reactor.run()
