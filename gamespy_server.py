@@ -101,26 +101,32 @@ class PlayerSession(LineReceiver):
                  # Handle case where the user is invalid
                 print "Invalid password"
 
-        sesskey = self.db.create_session(profileid)
+        if profileid != None:
+            # Successfully logged in or created account, continue creating session.
+            sesskey = self.db.create_session(profileid)
 
-        self.sessions[profileid] = self
+            self.sessions[profileid] = self
 
-        msg_d = []
-        msg_d.append(('__cmd__', "lc"))
-        msg_d.append(('__cmd_val__', "2"))
-        msg_d.append(('sesskey', sesskey))
-        msg_d.append(('proof', proof))
-        msg_d.append(('userid', userid))
-        msg_d.append(('profileid', profileid))
-        msg_d.append(('uniquenick', uniquenick))
-        msg_d.append(('lt', gs_utils.base64_encode(utils.generate_random_str(16)))) # Some kind of token... don't know it gets used or generated, but it doesn't seem to have any negative effects if it's not properly generated.
-        msg_d.append(('id', data_parsed['id']))
-        msg = gs_query.create_gamespy_message(msg_d)
+            msg_d = []
+            msg_d.append(('__cmd__', "lc"))
+            msg_d.append(('__cmd_val__', "2"))
+            msg_d.append(('sesskey', sesskey))
+            msg_d.append(('proof', proof))
+            msg_d.append(('userid', userid))
+            msg_d.append(('profileid', profileid))
+            msg_d.append(('uniquenick', uniquenick))
+            msg_d.append(('lt', gs_utils.base64_encode(utils.generate_random_str(16)))) # Some kind of token... don't know it gets used or generated, but it doesn't seem to have any negative effects if it's not properly generated.
+            msg_d.append(('id', data_parsed['id']))
+            msg = gs_query.create_gamespy_message(msg_d)
 
-        self.profileid = profileid
+            self.profileid = profileid
 
-        utils.print_log("SENDING: %s" % msg)
-        self.transport.write(bytes(msg))
+            utils.print_log("SENDING: %s" % msg)
+            self.transport.write(bytes(msg))
+
+            # Send any friend statuses when the user logs in.
+            # This will allow the user to see if their friends are hosting a game as soon as they log in.
+            self.get_status_from_friends()
 
     def perform_logout(self, data_parsed):
         print "Session %s has logged off" % (data_parsed['sesskey'])
@@ -249,8 +255,20 @@ class PlayerSession(LineReceiver):
     def get_status_from_friends(self):
         # This will be called when the player logs in. Grab the player's buddy list and check the current sessions to
         # see if anyone is online. If they are online, make them send an update to the calling client.
-        return
+        buddies = self.db.get_buddy_list(self.profileid)
 
+        for buddy in buddies:
+            if buddy['buddyProfileId'] in self.sessions:
+                status_msg = "|s|%s|ss|%s|ls|%s|ip|%d|p|0|qm|0" % (self.sessions[buddy['buddyProfileId']].status, self.sessions[buddy['buddyProfileId']].statstring, self.sessions[buddy['buddyProfileId']].locstring, self.get_ip_as_int(self.sessions[buddy['buddyProfileId']].address.host))
+
+                msg_d = []
+                msg_d.append(('__cmd__', "bm"))
+                msg_d.append(('__cmd_val__', "100"))
+                msg_d.append(('f', buddy['buddyProfileId']))
+                msg_d.append(('msg', status_msg))
+                msg = gs_query.create_gamespy_message(msg_d)
+
+                self.transport.write(bytes(msg))
 
 
 
