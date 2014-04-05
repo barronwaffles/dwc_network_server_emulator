@@ -70,6 +70,9 @@ class PlayerSession(LineReceiver):
                 self.perform_addbuddy(data_parsed)
             elif data_parsed['__cmd__'] == "authadd":
                 self.perform_authadd(data_parsed)
+            else:
+                # Maybe write unknown commands to a separate file later so new data can be collected more easily?
+                utils.print_log("Found unknown command, don't know how to handle '%s'." % data_parsed['__cmd__'])
 
     def perform_login(self, data_parsed):
         authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'])
@@ -184,12 +187,35 @@ class PlayerSession(LineReceiver):
         self.send_status_to_friends()
 
     def perform_bm(self, data_parsed):
-        dest_profileid = data_parsed['t']
-        dest_msg = data_parsed['msg']
+        if data_parsed['__cmd_val__'] == "1": # Message to/from clients?
+            if "t" in data_parsed:
+                # Send message to the profile id in "t"
+                dest_profileid = int(data_parsed['t'])
+                dest_msg = data_parsed['msg']
+
+                msg_d = []
+                msg_d.append(('__cmd__', "bm"))
+                msg_d.append(('__cmd_val__', "1"))
+                msg_d.append(('f', self.profileid))
+                msg_d.append(('msg', dest_msg))
+                msg = gs_query.create_gamespy_message(msg_d)
+
+                utils.print_log("SENDING TO %s:%s: %s" % (self.sessions[dest_profileid].address.host, self.sessions[dest_profileid].address.port, msg))
+                self.sessions[dest_profileid].transport.write(bytes(msg))
+
 
     def perform_addbuddy(self, data_parsed):
         # Sample: \addbuddy\\sesskey\231601763\newprofileid\476756820\reason\\final\
-        self.db.add_buddy(self.profileid, data_parsed['newprofileid'])
+        buddies = self.db.get_buddy_list(self.profileid)
+
+        buddy_exists = False
+        for buddy in buddies:
+            if buddy['buddyProfileId'] == data_parsed['newprofileid']:
+                buddy_exists = True
+                break
+
+        if not buddy_exists:
+            self.db.add_buddy(self.profileid, data_parsed['newprofileid'])
 
         # In the case that the user is already a buddy:
         # \bm\2\f\217936895\msg\|signed|f259f26d3273f8bda23c7c5e4bd8c5aa\final\

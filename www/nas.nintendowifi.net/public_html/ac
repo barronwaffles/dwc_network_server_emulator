@@ -1,4 +1,6 @@
 <?php
+// Make sure to set "ForceType application/x-httpd-php" somewhere in Apache for this file (vhost configuration works well enough)
+
 // Return the same headers as the real server does for the sake of completeness.
 // They never get checked so they are entirely optional.
 header("NODE: wifiappw3");
@@ -62,7 +64,7 @@ foreach ($_POST as $key => $value)
 		$key == "passwd" ||
 		//$key == "bssid" ||
 		//$key == "apinfo" ||
-		//$key == "gamecd" ||
+		$key == "gamecd" ||
 		//$key == "makercd" ||
 		//$key == "unitcd" ||
 		//$key == "macadr" || 
@@ -90,7 +92,7 @@ foreach ($_GET as $key => $value)
 		$key == "passwd" ||
 		//$key == "bssid" ||
 		//$key == "apinfo" ||
-		//$key == "gamecd" ||
+		$key == "gamecd" ||
 		//$key == "makercd" ||
 		//$key == "unitcd" ||
 		//$key == "macadr" || 

@@ -1,46 +1,108 @@
 # I found an open source implemention of this exact server I'm trying to emulate here: https://github.com/sfcspanky/Openspy-Core/blob/master/serverbrowsing/
 # Use as reference later.
 
-# Tetris DS won't let you search for a match unless this server exists, so just create an empty server for now.
+from twisted.internet.protocol import Factory
+from twisted.internet.endpoints import serverFromString
+from twisted.protocols.basic import LineReceiver
+from twisted.internet import reactor
 
 import socket
+import ctypes
+
 import gamespy.gs_utility as gs_utils
 import other.utils as utils
-import time
+
+from multiprocessing.managers import BaseManager
 
 def get_game_id(data):
     game_id = data[5: -1]
     return game_id
 
-#address = ('127.0.0.1', 28910) # accessible to only the local computer
-address = ('0.0.0.0', 28910)  # accessible to outside connections (use this if you don't know what you're doing)
-backlog = 10
-size = 2048
+def get_server_list(game, filter, fields, max_count):
+    results = server_manager.find_servers(game, filter, fields, max_count)
+    return results
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(address)
-s.listen(backlog)
+class ServerListFlags:
+    UNSOLICITED_UDP_FLAG = 1
+    PRIVATE_IP_FLAG = 2
+    CONNECT_NEGOTIATE_FLAG = 4
+    ICMP_IP_FLAG = 8
+    NONSTANDARD_PORT_FLAG = 16
+    NONSTANDARD_PRIVATE_PORT_FLAG = 32
+    HAS_KEYS_FLAG = 64
+    HAS_FULL_RULES_FLAG = 128
 
-utils.print_log("Server is now listening on %s:%s..." % (address[0], address[1]))
+def generate_server_list_data(address, fields, server_info):
+    output = bytearray()
 
-while 1:
-    client, addr = s.accept()
+    # Write the address
+    output += bytearray([int(x) for x in address.host.split('.')])
 
-    utils.print_log("Received connection from %s:%s" % (address[0], address[1]))
+    # Write the port
+    output += utils.get_bytes_from_short_be(address.port)
 
-    receive_data = True
-    while receive_data:
-        utils.print_log("Waiting for data...")
+    if len(server_info) > 0:
+        # Write number of fields that will be returned.
+        key_count = len(server_info['requested'])
+        output += utils.get_bytes_from_short(key_count)
 
-        accept_connection = True
-        data = client.recv(size)
+        if key_count != len(fields):
+            # For some reason we didn't get all of the expected data.
+            print "key_count[%d] != len(fields)[%d]" % (key_count, len(fields))
+            print fields
+            return
 
-        # Didn't get a valid command.
-        # Player disconnected?
-        # Close connection
-        if not data:
-            break
+        flags_buffer = bytearray()
 
+        # Write the fields
+        for field in fields:
+            output += bytearray(field) + '\0\0'
+
+        # Start server loop here instead of including all of the fields and stuff again
+        flags = 0
+        if key_count > 0:
+            flags |= ServerListFlags.HAS_KEYS_FLAG
+
+        if "natneg" in server_info:
+            flags |= ServerListFlags.CONNECT_NEGOTIATE_FLAG
+
+        flags_buffer += utils.get_bytes_from_int(int(server_info['publicip']))
+
+        flags |= ServerListFlags.NONSTANDARD_PORT_FLAG
+        flags_buffer += utils.get_bytes_from_short_be(int(server_info['publicport']))
+
+        if "localip0" in server_info:
+            flags |= ServerListFlags.PRIVATE_IP_FLAG
+            flags_buffer += bytearray([int(x) for x in server_info['localip0'].split('.')])
+
+        if "localport" in server_info:
+            flags |= ServerListFlags.NONSTANDARD_PRIVATE_PORT_FLAG
+            flags_buffer += utils.get_bytes_from_short_be(int(server_info['localport']))
+
+        flags |= ServerListFlags.ICMP_IP_FLAG
+        flags_buffer += bytearray([int(x) for x in "0.0.0.0".split('.')])
+
+        output += bytearray([flags & 0xff])
+        output += flags_buffer
+
+        if (flags & ServerListFlags.HAS_KEYS_FLAG):
+            # Write data for associated fields
+            for field in fields:
+                output += '\xff' + bytearray(server_info['requested'][field]) + '\0'
+
+        output += '\0'
+        output += utils.get_bytes_from_int(-1)
+
+    return output
+
+class Session(LineReceiver):
+    def __init__(self, addr):
+        self.setRawMode() # We're dealing with binary data so set to raw mode
+        self.addr = addr
+        self.forward_to_client = False
+        self.forward_client = ()
+
+    def rawDataReceived(self, data):
         # First 2 bytes are the packet size.
         #
         # Third byte is the command byte.
@@ -53,8 +115,32 @@ while 1:
         #   0x05 - Player search request
         #
         # For Tetris DS, at the very least 0x00 and 0x02 need to be implemented.
+
+        if self.forward_to_client:
+            # Find session id of server
+            # Iterate through the list of servers sent to the client and match by IP and port.
+            # Is there a better way to determine this information?
+            ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in self.forward_client[0].split('.')]), 0)).value)
+            for server in self.server_list:
+                print "%s %s" % (ip, server['publicip'])
+                if server['publicip'] == ip and server['publicport'] == str(self.forward_client[1]):
+                    print server
+
+                    # Send command to server to get it to connect to natneg
+                    natneg_session = int(utils.generate_random_hex_str(8), 16) # Quick and lazy way to get a random 32bit integer. Replace with something else late.r
+
+                    output = bytearray([0xfe, 0xfd, 0x06])
+                    output += utils.get_bytes_from_int(server['__session__'])
+                    output += bytearray(utils.get_bytes_from_int(natneg_session))
+                    output += bytearray(data)
+
+                    client_s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    client_s.sendto(output, self.forward_client)
+                    utils.print_log("Forwarded data to %s:%s..." % (self.forward_client[0], self.forward_client[1]))
+            return
+
         if data[2] == '\x00': # Server list request
-            utils.print_log("Received server list request from %s:%s..." % (addr[0], addr[1]))
+            utils.print_log("Received server list request from %s:%s..." % (self.addr.host, self.addr.port))
 
             # This code is so... not python. The C programmer in me is coming out strong.
             # TODO: Rewrite this section later?
@@ -92,38 +178,82 @@ while 1:
             elif (options & ALTERNATE_SOURCE_IP):
                 source_ip = utils.get_int(data, idx)
 
-            print "%02x %02x %08x" % (list_version, encoding_version, game_version)
-            print "%s" % query_game
+            if '\\' in fields:
+                fields = [x for x in fields.split('\\') if x and not x.isspace()]
+
+            #print "%02x %02x %08x" % (list_version, encoding_version, game_version)
+            #print "%s" % query_game
             print "%s" % game_name
-            print "%s" % challenge
+            #print "%s" % challenge
             print "%s" % filter
             print "%s" % fields
 
-            print "%08x" % options
-            print "%d %08x" % (max_servers, source_ip)
+            #print "%08x" % options
+            #print "%d %08x" % (max_servers, source_ip)
 
-            # TODO: Handle query
+            # Get dictionary from master server list server.
+            self.server_list = get_server_list(query_game, filter, fields, max_servers)._getvalue()
+
+            # Generate encrypted server list and send to client.
+            print self.server_list
+            for server in self.server_list:
+                # Generate binary server list data
+                data = generate_server_list_data(self.addr, fields, server)
+
+                # Encrypt data
+                enc = gs_utils.EncTypeX()
+                data = enc.encrypt(secret_key_list[game_name], challenge, data)
+
+                # Send to client
+                self.transport.write(bytes(data))
+                utils.print_log("Sent server list message to %s:%s..." % (self.addr.host, self.addr.port))
+                break
+
 
         elif data[2] == '\x02': # Send message request
-            dest_addr = '.'.join(["%d" % x for x in addr[3:7]])
-            dest_port = utils.get_short_be(addr, 7) # What's the pythonic way to do this? unpack?
+            dest_addr = '.'.join(["%d" % ord(x) for x in data[3:7]])
+            dest_port = utils.get_short_be(data, 7) # What's the pythonic way to do this? unpack?
             dest = (dest_addr, dest_port)
 
-            # Wait for message data
-            msg_data = client.recv(size)
+            utils.print_log("Received send message request from %s:%s to %s:%d..." % (self.addr.host, self.addr.port, dest_addr, dest_port))
 
-            utils.print_log("Received send message request from %s:%s to %s:%d... %s" % (addr[0], addr[1], dest_addr, dest_port, msg_data))
-
-            # Create new connection to send to other user over UDP.
-            # Move this code somewhere else after testing has been finished.
-            user_s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            user_s.bind(dest)
-            user_s.sendto(msg_data, dest)
-
-            utils.print_log("Sent message to %s:%d... %s" % (dest_addr, dest_port, msg_data))
+            self.forward_to_client = True
+            self.forward_client = dest
 
         elif data[2] == '\x03': # Keep alive reply
-            utils.print_log("Received keep alive from %s:%s..." % (addr[0], addr[1]))
+            utils.print_log("Received keep alive from %s:%s..." % (self.addr.host, self.addr.port))
 
         else:
-            utils.print_log("Received unknown command (%02x) from %s:%s... %s" % (ord(data[2]), addr[0], addr[1], data))
+            utils.print_log("Received unknown command (%02x) from %s:%s... %s" % (ord(data[2]), self.addr.host, self.addr.port, data))
+
+
+class SessionFactory(Factory):
+    def __init__(self):
+        print "Now listening for connections..."
+
+    def buildProtocol(self, addr):
+        return Session(addr)
+
+
+
+
+
+# Initialize server list server connection
+class GamespyServerDatabase(BaseManager):
+    pass
+
+GamespyServerDatabase.register("get_server_list")
+GamespyServerDatabase.register("modify_server_list")
+GamespyServerDatabase.register("find_servers")
+
+manager_address = ("127.0.0.1", 27500)
+manager_password = ""
+
+server_manager = GamespyServerDatabase(address = manager_address, authkey= manager_password)
+server_manager.connect()
+
+secret_key_list = gs_utils.generate_secret_keys("gslist.cfg")
+
+endpoint = serverFromString(reactor, "tcp:28910")
+conn = endpoint.listen(SessionFactory())
+reactor.run()

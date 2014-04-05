@@ -1,5 +1,6 @@
 import random
 import time
+import sys
 
 def generate_random_str(len):
     return ''.join(random.choice("abcdefghjiklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890") for _ in range(len))
@@ -82,7 +83,10 @@ def get_num_from_bytes(data, idx, bytes, bigEndian = False):
     num = 0
     i = 0
     while i < bytes and i < len(data):
-        num |= (ord(data[i]) << (8 * i))
+        if type(data[i]) is int:
+            num |= (data[i] << (8 * i))
+        else:
+            num |= (ord(data[i]) << (8 * i))
         i += 1
 
     return num
@@ -103,4 +107,52 @@ def get_int_be(data, idx):
 def get_string(data, idx):
     data = data[idx:]
     end = data.index('\0')
-    return data[:end]
+    return str(data[:end])
+
+def get_bytes_from_num(num, size, bigEndian = False):
+    output = bytearray(size)
+
+    i = 0
+    while i < size:
+        output[i] = (num >> 8 * i) & 0xff
+
+        i += 1
+
+    if bigEndian:
+        output = output[::-1]
+
+    return output
+
+def get_bytes_from_short(num):
+    return get_bytes_from_num(num, 2, False)
+
+def get_bytes_from_short_be(num):
+    return get_bytes_from_num(num, 2, True)
+
+def get_bytes_from_int(num):
+    return get_bytes_from_num(num, 4, False)
+
+def get_bytes_from_int_be(num):
+    return get_bytes_from_num(num, 4, True)
+
+def print_hex(data, cols = 16):
+    for i in range(len(data) / cols + 1):
+        c = 0
+        for x in range(cols):
+            if (i * cols + x + 1) > len(data):
+                break
+
+            print "%02x" % data[i * cols + x],
+            c += 1
+
+        c = cols - c
+        sys.stdout.write(" " * (c * 3 + 1))
+        for x in range(cols):
+            if (i * cols + x + 1) > len(data):
+                break
+
+            if data[i * cols + x] < 0x21 or data[i * cols + x] >= 0x7f:
+                sys.stdout.write(".")
+            else:
+                sys.stdout.write("%c" % data[i * cols + x])
+        print ""
