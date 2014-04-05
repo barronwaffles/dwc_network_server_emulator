@@ -15,6 +15,7 @@ class PlayerSession(LineReceiver):
         self.db = gs_database.GamespyDatabase()
         self.profileId = 0
         self.address = addr
+        self.gameid = ""
 
     def get_ip_as_int(self, address):
         ipaddress = 0
@@ -119,6 +120,7 @@ class PlayerSession(LineReceiver):
             msg_d.append(('id', data_parsed['id']))
             msg = gs_query.create_gamespy_message(msg_d)
 
+            self.gameid = authtoken_parsed['gsbrcd'][0:4]
             self.profileid = profileid
 
             utils.print_log("SENDING: %s" % msg)
@@ -258,7 +260,7 @@ class PlayerSession(LineReceiver):
         buddies = self.db.get_buddy_list(self.profileid)
 
         for buddy in buddies:
-            if buddy['buddyProfileId'] in self.sessions:
+            if buddy['buddyProfileId'] in self.sessions and self.sessions[buddy['buddyProfileId']].gameid == self.gameid:
                 status_msg = "|s|%s|ss|%s|ls|%s|ip|%d|p|0|qm|0" % (self.sessions[buddy['buddyProfileId']].status, self.sessions[buddy['buddyProfileId']].statstring, self.sessions[buddy['buddyProfileId']].locstring, self.get_ip_as_int(self.sessions[buddy['buddyProfileId']].address.host))
 
                 msg_d = []

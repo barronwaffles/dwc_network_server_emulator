@@ -75,7 +75,7 @@ while 1:
         s.sendto(output, addr)
 
     if recv_data[7] == '\x06': # Was able to connect
-        client_id = "%02x" % ord(recv_data[14])
+        client_id = "%02x" % ord(recv_data[13])
 
         if gameid not in session_list:
             pass
