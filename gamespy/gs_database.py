@@ -19,7 +19,7 @@ class GamespyDatabase(object):
             # but I'm not good with databases and I'm not 100% positive that, for instance, that all
             # user id's will be ints, or all passwords will be ints, etc, despite not seeing any
             # evidence yet to say otherwise as far as Nintendo DS games go.
-            c.execute('''CREATE TABLE users (profileid INT, userid TEXT, password TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, lastname TEXT, stat TEXT)''')
+            c.execute('''CREATE TABLE users (profileid INT, userid TEXT, password TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, lastname TEXT, stat TEXT, partnerid TEXT)''')
             c.execute('''CREATE TABLE sessions (session TEXT, profileid INT)''')
             c.execute('''CREATE TABLE buddies (userProfileid INT, buddyProfileId INT, status INT)''')
             self.conn.commit()
@@ -111,6 +111,7 @@ class GamespyDatabase(object):
             loc = ""  # Always blank?
             lastname = ""
             stat = ""
+            partnerid = ""
 
             # Hash password before entering it into the database.
             # For now I'm using a very simple MD5 hash.
@@ -120,8 +121,8 @@ class GamespyDatabase(object):
             password = md5.hexdigest()
 
             c = self.conn.cursor()
-            c.execute("INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                      [profileid, str(userid), password, email, uniquenick, pid, lon, lat, loc, lastname, stat])
+            c.execute("INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                      [profileid, str(userid), password, email, uniquenick, pid, lon, lat, loc, lastname, stat, partnerid])
             c.close()
 
             self.conn.commit()
