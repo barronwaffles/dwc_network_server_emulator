@@ -14,6 +14,6 @@ The following games have been tested with varying results.
 
 Tetris DS (U) - Friends only games are playable. Worldwide matchmaking does not work.
 Jump Ultimate Stars (J) - Friends only games are playable. Worldwide matchmaking does not work. Voice untested.
-Phantasy Star Zero (U) - Connects to server, "Play Alone" option works. Friends can be added but cannot play with each other yet. The gsps.nitnendowifi.net server must be implemented.
+Phantasy Star Zero (U) - "Play Alone" and playing with friends works. Matchmaking does not work.
 
 Matchmaking as a whole right now has not been implemented so it will most likely not work in any game yet.

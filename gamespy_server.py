@@ -273,18 +273,61 @@ class PlayerSession(LineReceiver):
                 self.transport.write(bytes(msg))
 
 
+class PlayerSearch(LineReceiver):
+    def __init__(self, sessions, addr):
+        self.sessions = sessions
+        self.setRawMode()
+        self.db = gs_database.GamespyDatabase()
 
+    def connectionMade(self):
+		pass
+
+    def connectionLost(self, reason):
+		pass
+
+    def rawDataReceived(self, data):
+        utils.print_log("SEARCH RESPONSE: %s" % data)
+
+        commands = gs_query.parse_gamespy_message(data)
+
+        for data_parsed in commands:
+            print data_parsed
+
+            if data_parsed['__cmd__'] == "otherslist":
+                self.perform_otherslist(data_parsed)
+            else:
+                utils.print_log("Found unknown search command, don't know how to handle '%s'." % data_parsed['__cmd__'])
+				
+	def perform_otherslist(self, data_parsed):
+		# How do you handle opids? It doesn't seem *too* important so skip over it for now.
+		self.transport.write(bytes("\\otherslist\\\\oldone\\\\final\\"))
+		
+
+sessions = {}
 class PlayerFactory(Factory):
     def __init__(self):
         # Instead of storing the sessions in the database, it might make more sense to store them in the PlayerFactory.
-        self.sessions = {}
         print "Now listening for connections..."
 
     def buildProtocol(self, addr):
-        return PlayerSession(self.sessions, addr)
+        return PlayerSession(sessions, addr)
+
+
+class PlayerSearchFactory(Factory):
+    def __init__(self):
+        # Instead of storing the sessions in the database, it might make more sense to store them in the PlayerFactory.
+        self.sessions = {}
+        print "Now listening for player search connections..."
+
+    def buildProtocol(self, addr):
+        return PlayerSearch(sessions, addr)
 
 
 endpoint = serverFromString(reactor, "tcp:29900")
 conn = endpoint.listen(PlayerFactory())
+
+endpoint_search = serverFromString(reactor, "tcp:29901")
+conn_search = endpoint.listen(PlayerSearchFactory())
+
 reactor.run()
 

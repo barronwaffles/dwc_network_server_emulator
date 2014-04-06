@@ -51,6 +51,8 @@ function gen_random_str($len)
 // Debug log file
 $file = fopen("output.txt","a+");
 
+$action = "";
+
 $authkey = "";
 $str = "POST:\r\n";
 foreach ($_POST as $key => $value)
@@ -75,6 +77,11 @@ foreach ($_POST as $key => $value)
 		$key == "ingamesn")
 	{
 		$authkey .= $key . "\\" . frombase64($value) . "|";
+	}
+	
+	if($key == "action")
+	{
+		$action = frombase64($value);
 	}
 }
 $str .= "\r\n";
@@ -104,6 +111,11 @@ foreach ($_GET as $key => $value)
 	{
 		$authkey .= $key . "\\" . frombase64($value) . "|";
 	}
+	
+	if($key == "action")
+	{
+		$action = frombase64($value);
+	}
 }
 $str .= "\r\n";
 $str .= "\r\n";
@@ -117,19 +129,27 @@ $now = getdate();
 $time = sprintf("%04d%02d%02d%02d%02d%02d", $now['year'], $now['mon'], $now['mday'], $now['hours'], $now['minutes'], $now['seconds']);
 $time = base64_encode($time);
 $time = str_replace("=", "*", $time);
-
-$challenge_key = gen_random_str(8);
-$challenge = tobase64($challenge_key);
-$locator = tobase64("gamespy.com");
 $retry = tobase64("0");
-$returncd = tobase64("001");
 
-$authkey .= "challenge\\" . $challenge_key;
-
-// Encode the information we need to handle logins on the gamespy server.
-// This informaiton is not the same as the real server would return, but we don't need to maintain
-// interoperability with the real server, so we can ignore that detail.
-$token = tobase64("NDS" . base64_encode($authkey));
-
-echo "challenge=" . $challenge . "&locator=" . $locator . "&retry=" . $retry . "&returncd=" . $returncd . "&token=" . $token . "&datetime=" . $time;
+if($action == "login")
+{
+	$returncd = tobase64("001");
+	$challenge_key = gen_random_str(8);
+	$challenge = tobase64($challenge_key);
+	$locator = tobase64("gamespy.com");
+	
+	$authkey .= "challenge\\" . $challenge_key;
+	
+	// Encode the information we need to handle logins on the gamespy server.
+	// This informaiton is not the same as the real server would return, but we don't need to maintain
+	// interoperability with the real server, so we can ignore that detail.
+	$token = tobase64("NDS" . base64_encode($authkey));
+	
+	echo "challenge=" . $challenge . "&locator=" . $locator . "&retry=" . $retry . "&returncd=" . $returncd . "&token=" . $token . "&datetime=" . $time;
+}
+else if($action = "acctcreate")
+{
+	$returncd = tobase64("002");
+	echo "retry=" . $retry . "&returncd=" . $returncd . "&datetime=" . $time;
+}
 ?>
