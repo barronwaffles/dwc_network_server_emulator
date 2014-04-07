@@ -100,7 +100,7 @@ class GamespyDatabase(object):
         return profileid
 
     def create_user(self, userid, password, email, uniquenick, gsbrcd):
-        if self.check_user_exists(userid) == 0:
+        if self.check_user_exists(userid, gsbrcd) == 0:
             profileid = self.get_next_free_profileid()
 
             pid = "11"  # Always 11??? Is this important? Not to be confused with dwc_pid.

@@ -11,6 +11,7 @@ import other.utils as utils
 class PlayerSession(LineReceiver):
     def __init__(self, sessions, addr):
         self.sessions = sessions
+        self.leftover = ""
         self.setRawMode() # We're dealing with binary data so set to raw mode
         self.db = gs_database.GamespyDatabase()
         self.profileId = 0
@@ -48,7 +49,8 @@ class PlayerSession(LineReceiver):
     def rawDataReceived(self, data):
         utils.print_log("RESPONSE: %s" % data)
 
-        commands = gs_query.parse_gamespy_message(data)
+        data = self.leftover + data
+        commands, self.leftover = gs_query.parse_gamespy_message(data)
 
         for data_parsed in commands:
             print data_parsed
@@ -171,11 +173,17 @@ class PlayerSession(LineReceiver):
         sesskey = data_parsed['sesskey']
 
         # Remove any fields not related to what we should be updating.
-        data_parsed.pop('__cmd__')
-        data_parsed.pop('__cmd_val__')
-        data_parsed.pop('updatepro')
-        data_parsed.pop('partnerid')
-        data_parsed.pop('sesskey')
+        # To avoid any crashes, make sure the key is actually in the dictionary before removing it.
+        if "__cmd__" in data_parsed:
+            data_parsed.pop('__cmd__')
+        if "__cmd_val__" in data_parsed:
+            data_parsed.pop('__cmd_val__')
+        if "updatepro" in data_parsed:
+            data_parsed.pop('updatepro')
+        if "partnerid" in data_parsed:
+            data_parsed.pop('partnerid')
+        if "sesskey" in data_parsed:
+            data_parsed.pop('sesskey')
 
         # Create a list of fields to be updated.
         fields = []
@@ -287,6 +295,7 @@ class PlayerSearch(LineReceiver):
         self.sessions = sessions
         self.setRawMode()
         self.db = gs_database.GamespyDatabase()
+        self.leftover = ""
 
     def connectionMade(self):
         pass
@@ -297,7 +306,8 @@ class PlayerSearch(LineReceiver):
     def rawDataReceived(self, data):
         utils.print_log("SEARCH RESPONSE: %s" % data)
 
-        commands = gs_query.parse_gamespy_message(data)
+        data = self.leftover + data
+        commands, self.leftover = gs_query.parse_gamespy_message(data)
 
         for data_parsed in commands:
             print data_parsed

@@ -5,9 +5,9 @@ def parse_gamespy_message(message):
     messages = {}
     msg = message
 
-    while len(msg) > 0:
+    while len(msg) > 0 and "\\final\\" in msg:
         # Find the command
-
+        # Don't search for more commands if there isn't a \final\, save the left over for the next packet
         found_command = False
         while len(msg) > 0 and msg[0] == '\\':
             keyEnd = msg[1:].index('\\') + 1
@@ -37,7 +37,8 @@ def parse_gamespy_message(message):
         stack.append(messages)
         messages = {}
 
-    return stack
+    # Return msg so we can prepend any leftover commands to the next packet.
+    return stack, msg
 
 
 # Generate a list based on the input dictionary.
