@@ -82,7 +82,8 @@ class PlayerSession(LineReceiver):
         # get correct information
         userid = authtoken_parsed['userid']
         password = authtoken_parsed['passwd']
-        uniquenick = utils.base32_encode(int(userid)) + authtoken_parsed['gsbrcd']
+        gsbrcd = authtoken_parsed['gsbrcd']
+        uniquenick = utils.base32_encode(int(userid)) + gsbrcd
         email = uniquenick + "@nds"
 
         # Verify the client's response
@@ -92,11 +93,11 @@ class PlayerSession(LineReceiver):
 
         proof = gs_utils.generate_proof(self.challenge, authtoken_parsed['challenge'], data_parsed['challenge'], data_parsed['authtoken'])
 
-        valid_user = self.db.check_user_exists(userid)
+        valid_user = self.db.check_user_exists(userid, gsbrcd)
         if valid_user == False:
-            profileid = self.db.create_user(userid, password, email, uniquenick)
+            profileid = self.db.create_user(userid, password, email, uniquenick, gsbrcd)
         else:
-            profileid = self.db.perform_login(userid, password)
+            profileid = self.db.perform_login(userid, password, gsbrcd)
 
             if profileid == None:
                  # Handle case where the user is invalid
@@ -120,7 +121,14 @@ class PlayerSession(LineReceiver):
             msg_d.append(('id', data_parsed['id']))
             msg = gs_query.create_gamespy_message(msg_d)
 
-            self.gameid = authtoken_parsed['gsbrcd'][0:4]
+            # Take the first 4 letters of gsbrcd instead of gamecd because they should be consistent across game
+            # regions. For example, the US version of Metroid Prime Hunters has the gamecd "AMHE" and the first 4 letters
+            # of gsbrcd are "AMHE". However, the Japanese version of Metroid Prime Hunters has the gamecd "AMHJ" with
+            # the first 4 letters of bsbrcd as "AMHE". Tetris DS is the other way, with the first 4 letters as the
+            # Japanese version (ATRJ) while the gamecd is region specific (ATRE for US and ATRJ for JP).
+            # gameid is used to send all people on the player's friends list a status updates, so don't make it region
+            # specific.
+            self.gameid = gsbrcd[0:4]
             self.profileid = profileid
 
             utils.print_log("SENDING: %s" % msg)
@@ -157,7 +165,7 @@ class PlayerSession(LineReceiver):
 
         utils.print_log("SENDING: %s" % msg)
         self.transport.write(bytes(msg))
-        
+
 
     def perform_updatepro(self, data_parsed):
         sesskey = data_parsed['sesskey']
@@ -166,6 +174,7 @@ class PlayerSession(LineReceiver):
         data_parsed.pop('__cmd__')
         data_parsed.pop('__cmd_val__')
         data_parsed.pop('updatepro')
+        data_parsed.pop('partnerid')
         data_parsed.pop('sesskey')
 
         # Create a list of fields to be updated.
@@ -280,10 +289,10 @@ class PlayerSearch(LineReceiver):
         self.db = gs_database.GamespyDatabase()
 
     def connectionMade(self):
-		pass
+        pass
 
     def connectionLost(self, reason):
-		pass
+        pass
 
     def rawDataReceived(self, data):
         utils.print_log("SEARCH RESPONSE: %s" % data)
@@ -297,11 +306,11 @@ class PlayerSearch(LineReceiver):
                 self.perform_otherslist(data_parsed)
             else:
                 utils.print_log("Found unknown search command, don't know how to handle '%s'." % data_parsed['__cmd__'])
-				
-	def perform_otherslist(self, data_parsed):
-		# How do you handle opids? It doesn't seem *too* important so skip over it for now.
-		self.transport.write(bytes("\\otherslist\\\\oldone\\\\final\\"))
-		
+
+    def perform_otherslist(self, data_parsed):
+        # How do you handle opids? It doesn't seem *too* important so skip over it for now.
+        self.transport.write(bytes("\\otherslist\\\\oldone\\\\final\\"))
+
 
 sessions = {}
 class PlayerFactory(Factory):
