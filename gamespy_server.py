@@ -202,6 +202,10 @@ class PlayerSession(LineReceiver):
         msg_d.append(('sig', utils.generate_random_hex_str(32)))
         msg_d.append(('uniquenick', profile['uniquenick']))
         msg_d.append(('pid', profile['pid']))
+
+        if profile['firstname'] != "":
+            msg_d.append(('firstname', profile['firstname'])) # Wii gets a firstname
+
         msg_d.append(('lastname', profile['lastname']))
         msg_d.append(('lon', profile['lon']))
         msg_d.append(('lat', profile['lat']))
