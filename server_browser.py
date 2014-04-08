@@ -8,6 +8,8 @@ from twisted.internet import reactor
 
 import socket
 import ctypes
+import time
+from threading import Thread
 
 import gamespy.gs_utility as gs_utils
 import other.utils as utils
@@ -101,6 +103,12 @@ class Session(LineReceiver):
         self.addr = addr
         self.forward_to_client = False
         self.forward_client = ()
+        self.is_searching = False
+
+        # Amount of time (in seconds) we can search for a match before getting kicked off.
+        # Set to -1 to allow keep searching forever until a server appears.
+        #self.timeout = 60 * 10
+        self.timeout = -1
 
     def rawDataReceived(self, data):
         # First 2 bytes are the packet size.
@@ -191,23 +199,16 @@ class Session(LineReceiver):
             #print "%08x" % options
             #print "%d %08x" % (max_servers, source_ip)
 
-            # Get dictionary from master server list server.
-            self.server_list = get_server_list(query_game, filter, fields, max_servers)._getvalue()
+            if self.is_searching == False:
+                self.is_searching = True
 
-            # Generate encrypted server list and send to client.
-            print self.server_list
-            for server in self.server_list:
-                # Generate binary server list data
-                data = generate_server_list_data(self.addr, fields, server)
+                # I still want the connection to close properly when the client disconnects, so put the server search
+                # part into its own thread.
+                # The game will create a new connection for every search query, so don't worry about setting
+                # self.is_searching to False.
+                t = Thread(target = self.find_server, args=(query_game, filter, fields, max_servers, game_name, challenge))
+                t.start()
 
-                # Encrypt data
-                enc = gs_utils.EncTypeX()
-                data = enc.encrypt(secret_key_list[game_name], challenge, data)
-
-                # Send to client
-                self.transport.write(bytes(data))
-                utils.print_log("Sent server list message to %s:%s..." % (self.addr.host, self.addr.port))
-                break
 
 
         elif data[2] == '\x02': # Send message request
@@ -225,6 +226,37 @@ class Session(LineReceiver):
 
         else:
             utils.print_log("Received unknown command (%02x) from %s:%s... %s" % (ord(data[2]), self.addr.host, self.addr.port, data))
+
+    def find_server(self, query_game, filter, fields, max_servers, game_name, challenge):
+            # Get dictionary from master server list server.
+            # The game sends a search query only once so we must loop until something is found.
+            # Search for the specified amount of time, or if self.timeout is set to -1, until a match is found.
+            start = time.time()
+            while True:
+                self.server_list = get_server_list(query_game, filter, fields, max_servers)._getvalue()
+
+                if self.server_list != []:
+                    break
+
+                time.sleep(5) # Sleep 1 second
+
+                if self.timeout != -1 and time.time() - start > self.timeout:
+                    break
+
+            # Generate encrypted server list and send to client.
+            print self.server_list
+            for server in self.server_list:
+                # Generate binary server list data
+                data = generate_server_list_data(self.addr, fields, server)
+
+                # Encrypt data
+                enc = gs_utils.EncTypeX()
+                data = enc.encrypt(secret_key_list[game_name], challenge, data)
+
+                # Send to client
+                self.transport.write(bytes(data))
+                utils.print_log("Sent server list message to %s:%s..." % (self.addr.host, self.addr.port))
+                break
 
 
 class SessionFactory(Factory):

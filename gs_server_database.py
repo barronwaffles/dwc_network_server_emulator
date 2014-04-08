@@ -20,6 +20,7 @@
 
 from multiprocessing.managers import BaseManager
 from multiprocessing import freeze_support
+import other.utils as utils
 
 server_list = {}
 
@@ -264,7 +265,7 @@ def update_server_list(gameid, session, value):
 
     # Add new server
     value['__session__'] = session
-    print "Added %s to the server list for %s" % (gameid, value)
+    utils.print_log("Added %s to the server list for %s" % (value, gameid))
     server_list[gameid].append(value)
 
 def delete_server(gameid, session):
@@ -282,9 +283,6 @@ class GamespyServerDatabase(BaseManager):
 def start_server():
     address = ("127.0.0.1", 27500)
     password = ""
-
-    #server_list["tetrisds"] = []
-    #server_list["tetrisds"].append({'__session__': 0, 'key': "helloworld", 'value': "Hello, world!", 'extra': "Test"})
 
     GamespyServerDatabase.register("get_server_list", callable=lambda:server_list)
     GamespyServerDatabase.register("find_servers", callable=find_servers)
