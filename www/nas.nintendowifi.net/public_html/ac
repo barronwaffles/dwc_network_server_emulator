@@ -64,14 +64,14 @@ foreach ($_POST as $key => $value)
 		//$key == "sdkver" ||
 		$key == "userid" ||
 		$key == "passwd" ||
-		//$key == "bssid" ||
+		$key == "bssid" ||
 		//$key == "apinfo" ||
 		$key == "gamecd" ||
 		//$key == "makercd" ||
 		//$key == "unitcd" ||
 		//$key == "macadr" || 
 		//$key == "lang" ||
-		//$key == "birth" ||
+		$key == "birth" ||
 		//$key == "devtime" ||
 		$key == "devname" ||
 		$key == "ingamesn")
@@ -97,14 +97,14 @@ foreach ($_GET as $key => $value)
 		//$key == "sdkver" ||
 		$key == "userid" ||
 		$key == "passwd" ||
-		//$key == "bssid" ||
+		$key == "bssid" ||
 		//$key == "apinfo" ||
 		$key == "gamecd" ||
 		//$key == "makercd" ||
 		//$key == "unitcd" ||
 		//$key == "macadr" || 
 		//$key == "lang" ||
-		//$key == "birth" ||
+		$key == "birth" ||
 		//$key == "devtime" ||
 		$key == "devname" ||
 		$key == "ingamesn")

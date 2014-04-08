@@ -81,12 +81,55 @@ class PlayerSession(LineReceiver):
         authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'])
         print authtoken_parsed
 
+        # Track what console is connecting and save it in the database during user creation just in case we can use
+        # the information in the future.
+        console = 0 # 0 = NDS, 1 = Wii
+
         # get correct information
         userid = authtoken_parsed['userid']
-        password = authtoken_parsed['passwd']
+
+        # The Wii does not use passwd, so take another uniquely generated string as the password.
+        if "passwd" in authtoken_parsed:
+            password = authtoken_parsed['passwd']
+        else:
+            password = authtoken_parsed['gsbrcd']
+            console = 1
+
         gsbrcd = authtoken_parsed['gsbrcd']
         uniquenick = utils.base32_encode(int(userid)) + gsbrcd
-        email = uniquenick + "@nds"
+        email = uniquenick + "@nds" # The Wii also seems to use @nds.
+
+        # Wii: Serial number
+        if "csnum" in authtoken_parsed:
+            csnum = authtoken_parsed['csnum']
+            console = 1
+        else:
+            csnum = ""
+
+        # Wii: Friend code
+        if "cfc" in authtoken_parsed:
+            cfc = authtoken_parsed['cfc']
+            console = 1
+        else:
+            cfc = ""
+
+        # NDS: Wifi network's BSSID
+        if "bssid" in authtoken_parsed:
+            bssid = authtoken_parsed['bssid']
+        else:
+            bssid = ""
+
+        # NDS: Device name
+        if "devname" in authtoken_parsed:
+            devname = authtoken_parsed['devname']
+        else:
+            devname = ""
+
+        # NDS: User's birthday
+        if "birth" in authtoken_parsed:
+            birth = authtoken_parsed['birth']
+        else:
+            birth = ""
 
         # Verify the client's response
         valid_response = gs_utils.generate_response(self.challenge, authtoken_parsed['challenge'], data_parsed['challenge'], data_parsed['authtoken'])
@@ -97,7 +140,7 @@ class PlayerSession(LineReceiver):
 
         valid_user = self.db.check_user_exists(userid, gsbrcd)
         if valid_user == False:
-            profileid = self.db.create_user(userid, password, email, uniquenick, gsbrcd)
+            profileid = self.db.create_user(userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth)
         else:
             profileid = self.db.perform_login(userid, password, gsbrcd)
 
@@ -148,6 +191,7 @@ class PlayerSession(LineReceiver):
         #profile = self.db.get_profile_from_session_key(data_parsed['sesskey'])
         profile = self.db.get_profile_from_profileid(data_parsed['profileid'])
 
+        # Wii example: \pi\\profileid\474888031\nick\5pde5vhn1WR9E2g1t533\userid\442778352\email\5pde5vhn1WR9E2g1t533@nds\sig\b126556e5ee62d4da9629dfad0f6b2a8\uniquenick\5pde5vhn1WR9E2g1t533\pid\11\lon\0.000000\lat\0.000000\loc\\id\2\final\
         msg_d = []
         msg_d.append(('__cmd__', "pi"))
         msg_d.append(('__cmd_val__', ""))
@@ -170,6 +214,7 @@ class PlayerSession(LineReceiver):
 
 
     def perform_updatepro(self, data_parsed):
+        # Wii example: \updatepro\\sesskey\199714190\firstname\Wii:2555151656076614@WR9E\partnerid\11\final\
         sesskey = data_parsed['sesskey']
 
         # Remove any fields not related to what we should be updating.
@@ -334,7 +379,6 @@ class PlayerFactory(Factory):
 
 class PlayerSearchFactory(Factory):
     def __init__(self):
-        # Instead of storing the sessions in the database, it might make more sense to store them in the PlayerFactory.
         self.sessions = {}
         print "Now listening for player search connections..."
 
