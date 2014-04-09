@@ -69,6 +69,10 @@ def get_token(filter, i):
             i += 1
             token_type = TokenType.TOKEN
 
+        elif filter[i] == "&":
+            i += 1
+            token_type = TokenType.TOKEN
+
         elif filter[i] == "=":
             i += 1
             token_type = TokenType.TOKEN
@@ -121,14 +125,21 @@ def get_token(filter, i):
     else:
         token = filter[start:i]
 
+    if token_type == TokenType.NUMBER:
+        token = int(token)
+
     return token, i, token_type
 
-def match(filter, i, search):
+def match(filter, i, search, case_insensitive=False):
     start = i
     found_match = False
 
     # Get the next token
     token, i, _ = get_token(filter, i)
+
+    if case_insensitive == True:
+        token = token.lower()
+        search = search.lower()
 
     # If the token isn't the same as what we're searching for, don't move forward.
     if token != search:
@@ -139,80 +150,121 @@ def match(filter, i, search):
     return found_match, i
 
 def parse_filter(filter):
-    filters = []
-
+    ops = []
+    values = []
     i = 0
     found_match = True
+    filter_count = 0
+
     # Continue while there's a connecting "and".
     while found_match and i < len(filter):
         found_match_bracket, i = match(filter, i, "(")
 
-        left, i, _ = get_token(filter, i)
-        if i >= len(filter):
-            break
-
-        op, i, _ = get_token(filter, i)
-        if i >= len(filter):
-            break
-
-        right, i, token_type = get_token(filter, i)
-
         if found_match_bracket:
+            a, b, filter, f = parse_filter(filter[i:])
             found_closing_match_bracket, i = match(filter, i, ")")
+            found_match = found_closing_match_bracket
+            a.reverse()
+            b.reverse()
+            ops = a + ops
+            values = b + values
+            filter_count += f
+        else:
+            l, i, token_type = get_token(filter, i)
 
-        found_match, i = match(filter, i, "and")
+            if token_type == TokenType.FIELD and l.lower() == "and":
+                filter_count += 1
+                continue
 
-        filters.append({'op': op, 'left': left, 'right': right, 'type': token_type})
+            elif l == "(" or l == ")":
+                continue
 
-    return filters
+            if token_type == TokenType.TOKEN:
+                ops.append(l)
+            else:
+                values.append({'value': l, 'type': token_type})
+
+    return ops, values, filter[i:], filter_count
 
 def find_servers(gameid, filter, fields, max_count):
     servers = []
+
     if gameid in server_list:
-        filters = parse_filter(filter)
+        ops_parsed, values_parsed, _, filter_count = parse_filter(filter)
+
+        # In the case that there were no "AND" commands, check to make sure there was at least one other command
+        if len(ops_parsed) > 0:
+            filter_count += 1
 
         if max_count <= 0:
             max_count = 1
 
         # Generate a list of servers that match the given criteria.
         for server in server_list[gameid]:
+            ops = ops_parsed
+            values = values_parsed
+
             if len(servers) > max_count and max_count != -1:
                 break
 
             matched_filters = 0
+            while len(ops) > 0:
+                op = ops.pop()
+                r = None
+                l = None
 
-            for key in filters:
-                if key['left'] in server:
-                    # Found key, perform actual comparison
-                    right = key['right']
-                    type = key['type']
+                if len(values) != 0:
+                    r = values.pop()
+                if len(values) != 0:
+                    l = values.pop()
 
-                    # Only assume that a field will ever reference another field once, so nested references are not supported.
-                    if type == TokenType.FIELD and key['right'] in server:
-                        right = server[key['right']]
-
-                        # Reuse the get_token function to update the new token type of the field in the database.
-                        # Strings will return as fields but the distinction does not matter for the comparisons.
-                        _, _, type = get_token(right, 0)
-
-                    if key['op'] == "=" and server[key['left']] == right:
-                        matched_filters += 1
-                    elif key['op'] == "!=" and server[key['left']] != right:
-                        matched_filters += 1
-                    elif type == TokenType.NUMBER:
-                        # Only perform greater than/less than comparisons on integer types.
-                        if key['op'] == ">" and server[key['left']] > right:
-                            matched_filters += 1
-                        elif key['op'] == ">=" and server[key['left']] >= right:
-                            matched_filters += 1
-                        elif key['op'] == "<" and server[key['left']] < right:
-                            matched_filters += 1
-                        elif key['op'] == "<=" and server[key['left']] <= right:
-                            matched_filters += 1
-                else:
+                if r == None or l == None:
                     break
 
-            if matched_filters == len(filters):
+                lval = l['value']
+                rval = r['value']
+
+                if l['type'] == TokenType.FIELD and l['value'] in server:
+                    lval = server[l['value']]
+                    _, _, l['type'] = get_token(lval, 0)
+
+                if l['type'] == TokenType.NUMBER:
+                    lval = int(lval)
+
+                if r['type'] == TokenType.FIELD and r['value'] in server:
+                    rval = server[r['value']]
+                    _, _, r['type'] = get_token(rval, 0)
+
+                if r['type'] == TokenType.NUMBER:
+                    rval = int(rval)
+
+                match = False
+                if op == "=" and lval == rval:
+                    match = True
+                elif op == "!=" and lval != rval:
+                    match = True
+                elif op == "<" and lval < rval:
+                    match = True
+                elif op == ">" and lval > rval:
+                    match = True
+                elif op == ">=" and lval >= rval:
+                    match = True
+                elif op == "<=" and lval <= rval:
+                    match = True
+                elif op == "&":
+                    values.append({ 'value': int(lval & rval), 'type': TokenType.NUMBER})
+
+                if match == True:
+                    #print "Matched: %s %s %s" % (l['value'], op, r['value'])
+                    matched_filters += 1
+                elif op != "&": # & doesn't need to be matched, so don't display a message for it
+                    #print "Not matched: %s %s %s" % (l['value'], op, r['value'])
+                    pass
+
+            #print "Matched %d/%d" % (matched_filters, filter_count)
+
+            # Add the server if everything was matched
+            if matched_filters == filter_count:
                 # Create a result with only the fields requested
                 result = {}
 
@@ -276,6 +328,22 @@ def delete_server(gameid, session):
     # Remove all servers hosted by the given session id.
     server_list[gameid] = [x for x in server_list[gameid] if x['__session__'] != session]
 
+def find_server_by_address(ip, port, gameid = None):
+    if gameid == None:
+        # Search all servers
+        for gameid in server_list:
+            for server in server_list[gameid]:
+                print server
+                if server['publicip'] == ip and server['publicport'] == str(port):
+                    return server
+    else:
+        for server in server_list[gameid]:
+            print server
+            if server['publicip'] == ip and server['publicport'] == str(port):
+                return server
+
+    return None
+
 
 class GamespyServerDatabase(BaseManager):
     pass
@@ -286,6 +354,7 @@ def start_server():
 
     GamespyServerDatabase.register("get_server_list", callable=lambda:server_list)
     GamespyServerDatabase.register("find_servers", callable=find_servers)
+    GamespyServerDatabase.register("find_server_by_address", callable=find_server_by_address)
     GamespyServerDatabase.register("update_server_list", callable=update_server_list)
     GamespyServerDatabase.register("delete_server", callable=delete_server)
 

@@ -125,26 +125,37 @@ class Session(LineReceiver):
         # For Tetris DS, at the very least 0x00 and 0x02 need to be implemented.
 
         if self.forward_to_client:
+            self.forward_to_client = False
+
             # Find session id of server
             # Iterate through the list of servers sent to the client and match by IP and port.
             # Is there a better way to determine this information?
             ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in self.forward_client[0].split('.')]), 0)).value)
-            for server in self.server_list:
-                print "%s %s" % (ip, server['publicip'])
-                if server['publicip'] == ip and server['publicport'] == str(self.forward_client[1]):
-                    print server
+            print "Trying to send message to %s:%d..." % (self.forward_client[0], self.forward_client[1])
+            utils.print_hex(bytearray(data))
 
-                    # Send command to server to get it to connect to natneg
-                    natneg_session = int(utils.generate_random_hex_str(8), 16) # Quick and lazy way to get a random 32bit integer. Replace with something else late.r
+            # Get server based on ip/port
+            server = server_manager.find_server_by_address(ip, self.forward_client[1])._getvalue()
+            print self.server_list
 
-                    output = bytearray([0xfe, 0xfd, 0x06])
-                    output += utils.get_bytes_from_int(server['__session__'])
-                    output += bytearray(utils.get_bytes_from_int(natneg_session))
-                    output += bytearray(data)
+            if self.server_list == None:
+                pass
 
-                    client_s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    client_s.sendto(output, self.forward_client)
-                    utils.print_log("Forwarded data to %s:%s..." % (self.forward_client[0], self.forward_client[1]))
+            #print "%s %s" % (ip, server['publicip'])
+            if server['publicip'] == ip and server['publicport'] == str(self.forward_client[1]):
+                print server
+
+                # Send command to server to get it to connect to natneg
+                natneg_session = int(utils.generate_random_hex_str(8), 16) # Quick and lazy way to get a random 32bit integer. Replace with something else late.r
+
+                output = bytearray([0xfe, 0xfd, 0x06])
+                output += utils.get_bytes_from_int(server['__session__'])
+                output += bytearray(utils.get_bytes_from_int(natneg_session))
+                output += bytearray(data)
+
+                client_s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                client_s.sendto(output, self.forward_client)
+                utils.print_log("Forwarded data to %s:%s..." % (self.forward_client[0], self.forward_client[1]))
             return
 
         if data[2] == '\x00': # Server list request
@@ -232,13 +243,14 @@ class Session(LineReceiver):
             # The game sends a search query only once so we must loop until something is found.
             # Search for the specified amount of time, or if self.timeout is set to -1, until a match is found.
             start = time.time()
+            self.server_list = []
             while True:
                 self.server_list = get_server_list(query_game, filter, fields, max_servers)._getvalue()
 
                 if self.server_list != []:
                     break
 
-                time.sleep(5) # Sleep 1 second
+                time.sleep(1) # Sleep 1 second
 
                 if self.timeout != -1 and time.time() - start > self.timeout:
                     break
@@ -277,6 +289,7 @@ class GamespyServerDatabase(BaseManager):
 GamespyServerDatabase.register("get_server_list")
 GamespyServerDatabase.register("modify_server_list")
 GamespyServerDatabase.register("find_servers")
+GamespyServerDatabase.register("find_server_by_address")
 
 manager_address = ("127.0.0.1", 27500)
 manager_password = ""

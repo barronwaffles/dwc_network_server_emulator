@@ -68,14 +68,16 @@ while 1:
                 s.sendto(output, (session_list[gameid][session_id][client]['addr']))
 
                 print "Sent connection request to %s:%d..." % (session_list[gameid][session_id][client]['addr'][0], session_list[gameid][session_id][client]['addr'][1])
+                #session_list[gameid][session_id][client_id]['connected'] = True
 
         output = bytearray(recv_data[0:14])
         output += bytearray([0xff, 0xff, 0x6d, 0x16, 0xb5, 0x7d, 0xea ]) # Checked with Tetris DS, Mario Kart DS, and Metroid Prime Hunters, and this seems to be the standard response to 0x00
         output[7] = 0x01 # Initialization response
         s.sendto(output, addr)
 
-    if recv_data[7] == '\x06': # Was able to connect
+    elif recv_data[7] == '\x06': # Was able to connect
         client_id = "%02x" % ord(recv_data[13])
+        utils.print_log("Received connected command from %s:%s..." % (addr[0], addr[1]))
 
         if gameid not in session_list:
             pass
@@ -85,6 +87,9 @@ while 1:
             pass
 
         session_list[gameid][session_id][client_id]['connected'] = True
+
+    else: # Was able to connect
+        utils.print_log("Received unknown command %02x from %s:%s..." % (ord(recv_data[7]), addr[0], addr[1]))
 
 
 
