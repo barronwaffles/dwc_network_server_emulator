@@ -2,6 +2,7 @@ import sqlite3
 import hashlib
 import itertools
 import other.utils as utils
+import time
 
 class GamespyDatabase(object):
     def __init__(self, filename='gpcm.db'):
@@ -21,7 +22,7 @@ class GamespyDatabase(object):
             # evidence yet to say otherwise as far as Nintendo DS games go.
             c.execute('''CREATE TABLE users (profileid INT, userid TEXT, password TEXT, gsbrcd TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, firstname TEXT, lastname TEXT, stat TEXT, partnerid TEXT, console INT, csnum TEXT, cfc TEXT, bssid TEXT, devname TEXT, birth TEXT, sig TEXT)''')
             c.execute('''CREATE TABLE sessions (session TEXT, profileid INT)''')
-            c.execute('''CREATE TABLE buddies (userProfileid INT, buddyProfileId INT, status INT)''')
+            c.execute('''CREATE TABLE buddies (userProfileId INT, buddyProfileId INT, time INT, status INT, notified INT)''')
             self.conn.commit()
 
     def get_dict(self, row):
@@ -32,6 +33,7 @@ class GamespyDatabase(object):
 
     # User functions
     def get_next_free_profileid(self):
+        # TODO: Make profile ids start at 1 for each game?
         c = self.conn.cursor()
         c.execute("SELECT max(profileid) FROM users")
 
@@ -152,9 +154,7 @@ class GamespyDatabase(object):
             for field in fields:
                 print "UPDATE users SET %s = %s WHERE profileid = %s" % (field[0], field[1], profileid)
                 c.execute("UPDATE users SET %s = ? WHERE profileid = ?" % (field[0]), [field[1], profileid])
-
-            self.conn.commit()
-
+                self.conn.commit()
 
     # Session functions
     # TODO: Cache session keys so we don't have to query the database every time we get a profile id.
@@ -231,13 +231,24 @@ class GamespyDatabase(object):
     # Buddy functions
     def add_buddy(self, userProfileId, buddyProfileId):
         c = self.conn.cursor()
-        c.execute("INSERT INTO buddies VALUES (?, ?, ?)", [userProfileId, buddyProfileId, 0]) # 0 will mean not authorized
+        now = int(time.time())
+        c.execute("INSERT INTO buddies VALUES (?, ?, ?, ?, ?)", [userProfileId, buddyProfileId, now, 0, 0]) # 0 will mean not authorized
         self.conn.commit()
 
     def auth_buddy(self, userProfileId, buddyProfileId):
         c = self.conn.cursor()
         c.execute("UPDATE buddies SET status = ? WHERE userProfileId = ? AND buddyProfileId = ?", [1, userProfileId, buddyProfileId]) # 1 will mean authorized
         self.conn.commit()
+
+    def get_buddy(self, userProfileId, buddyProfileId):
+        profile = {}
+        if userProfileId != None and buddyProfileId != None:
+            c = self.conn.cursor()
+            c.execute("SELECT * FROM buddies WHERE userProfileId = ? AND buddyProfileId = ?", [userProfileId, buddyProfileId])
+            profile = self.get_dict(c.fetchone())
+
+        c.close()
+        return profile
 
     def delete_buddy(self, userProfileId, buddyProfileId):
         c = self.conn.cursor()
@@ -252,3 +263,26 @@ class GamespyDatabase(object):
             users.append(self.get_dict(row))
 
         return users
+
+    def get_pending_buddy_requests(self, userProfileId):
+        c = self.conn.cursor()
+
+        users = []
+        for row in c.execute("SELECT * FROM buddies WHERE buddyProfileId = ? AND status = 0", [userProfileId]):
+            users.append(self.get_dict(row))
+
+        return users
+
+    def buddy_need_auth_message(self, userProfileId):
+        c = self.conn.cursor()
+
+        users = []
+        for row in c.execute("SELECT * FROM buddies WHERE buddyProfileId = ? AND status = 1 AND notified = 0", [userProfileId]):
+            users.append(self.get_dict(row))
+
+        return users
+
+    def buddy_sent_auth_message(self, userProfileId, buddyProfileId):
+        c = self.conn.cursor()
+        c.execute("UPDATE buddies SET notified = ? WHERE userProfileId = ? AND buddyProfileId = ?", [1, userProfileId, buddyProfileId]) # 1 will mean that the player has been sent the "
+        self.conn.commit()

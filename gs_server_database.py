@@ -317,8 +317,10 @@ def update_server_list(gameid, session, value):
 
     # Add new server
     value['__session__'] = session
+
     utils.print_log("Added %s to the server list for %s" % (value, gameid))
     server_list[gameid].append(value)
+    print "%s servers: %d" % (gameid, len(server_list[gameid]))
 
 def delete_server(gameid, session):
     if not gameid in server_list:
@@ -326,8 +328,10 @@ def delete_server(gameid, session):
         return
 
     # Remove all servers hosted by the given session id.
-    print "Deleting all %s servers where session = %d" % (gameid, session)
+    count = len(server_list[gameid])
     server_list[gameid] = [x for x in server_list[gameid] if x['__session__'] != session]
+    count -= len(server_list[gameid])
+    print "Deleted %d %s servers where session = %d" % (count, gameid, session)
 
 def find_server_by_address(ip, port, gameid = None):
     if gameid == None:

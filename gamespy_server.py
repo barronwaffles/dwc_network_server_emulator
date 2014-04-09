@@ -71,6 +71,8 @@ class PlayerSession(LineReceiver):
                 self.perform_bm(data_parsed)
             elif data_parsed['__cmd__'] == "addbuddy":
                 self.perform_addbuddy(data_parsed)
+            elif data_parsed['__cmd__'] == "delbuddy":
+                self.perform_delbuddy(data_parsed)
             elif data_parsed['__cmd__'] == "authadd":
                 self.perform_authadd(data_parsed)
             else:
@@ -260,7 +262,13 @@ class PlayerSession(LineReceiver):
         self.statstring =  data_parsed['statstring']
         self.locstring =  data_parsed['locstring']
 
+        # Send authorization requests to client
+        self.get_buddy_requests()
+        # Send authorizationed message to client
+        self.get_buddy_authorized()
+
         self.send_status_to_friends()
+
 
     def perform_bm(self, data_parsed):
         if data_parsed['__cmd_val__'] == "1": # Message to/from clients?
@@ -281,29 +289,33 @@ class PlayerSession(LineReceiver):
 
 
     def perform_addbuddy(self, data_parsed):
+        if int(data_parsed['newprofileid']) == self.profileid:
+            print "Can't add self as friend"
+            return
+
         # Sample: \addbuddy\\sesskey\231601763\newprofileid\476756820\reason\\final\
         buddies = self.db.get_buddy_list(self.profileid)
 
         buddy_exists = False
         for buddy in buddies:
-            if buddy['buddyProfileId'] == data_parsed['newprofileid']:
+            if buddy['buddyProfileId'] == int(data_parsed['newprofileid']):
                 buddy_exists = True
                 break
 
-        if not buddy_exists:
-            self.db.add_buddy(self.profileid, data_parsed['newprofileid'])
+        if buddy_exists == False:
+            self.db.add_buddy(self.profileid, int(data_parsed['newprofileid']))
 
-        # In the case that the user is already a buddy:
-        # \bm\2\f\217936895\msg\|signed|f259f26d3273f8bda23c7c5e4bd8c5aa\final\
-        # \error\\err\1539\errmsg\The profile requested is already a buddy.\final\
-        # Handle later?
+
+    def perform_delbuddy(self, data_parsed):
+        # Sample: \delbuddy\\sesskey\61913621\delprofileid\1\final\
+        self.db.delete_buddy(self.profileid, int(data_parsed['delprofileid']))
 
     def perform_authadd(self, data_parsed):
         # Sample: \authadd\\sesskey\231587549\fromprofileid\217936895\sig\f259f26d3273f8bda23c7c5e4bd8c5aa\final\
-        self.db.auth_buddy(self.profileid, data_parsed['newprofileid'])
+        # Authorize the other person's friend request.
+        self.db.auth_buddy(int(data_parsed['fromprofileid']), self.profileid)
 
-        # After authorization, send the person who was authorized a message like so:
-        # \bm\1\f\476756820\msg\I have authorized your request to add me to your list\final\
+        self.get_buddy_authorized()
 
     def send_status_to_friends(self):
         # TODO: Cache buddy list so we don't have to query the database every time
@@ -328,17 +340,58 @@ class PlayerSession(LineReceiver):
         buddies = self.db.get_buddy_list(self.profileid)
 
         for buddy in buddies:
+            print buddy
+
+            if buddy['status'] != 1:
+                continue
+
             if buddy['buddyProfileId'] in self.sessions and self.sessions[buddy['buddyProfileId']].gameid == self.gameid:
                 status_msg = "|s|%s|ss|%s|ls|%s|ip|%d|p|0|qm|0" % (self.sessions[buddy['buddyProfileId']].status, self.sessions[buddy['buddyProfileId']].statstring, self.sessions[buddy['buddyProfileId']].locstring, self.get_ip_as_int(self.sessions[buddy['buddyProfileId']].address.host))
+            else:
+                status_msg = "|s|0|ss|Offline"
 
-                msg_d = []
-                msg_d.append(('__cmd__', "bm"))
-                msg_d.append(('__cmd_val__', "100"))
-                msg_d.append(('f', buddy['buddyProfileId']))
-                msg_d.append(('msg', status_msg))
-                msg = gs_query.create_gamespy_message(msg_d)
+            msg_d = []
+            msg_d.append(('__cmd__', "bm"))
+            msg_d.append(('__cmd_val__', "100"))
+            msg_d.append(('f', buddy['buddyProfileId']))
+            msg_d.append(('msg', status_msg))
+            msg = gs_query.create_gamespy_message(msg_d)
 
-                self.transport.write(bytes(msg))
+            self.transport.write(bytes(msg))
+
+    def get_buddy_authorized(self):
+        buddies = self.db.buddy_need_auth_message(self.profileid)
+
+        for buddy in buddies:
+            msg_d = []
+            msg_d.append(('__cmd__', "bm"))
+            msg_d.append(('__cmd_val__', "1"))
+            msg_d.append(('f', buddy['userProfileId']))
+            msg_d.append(('msg', "I have authorized your request to add me to your list"))
+            msg = gs_query.create_gamespy_message(msg_d)
+
+            self.transport.write(bytes(msg))
+            self.db.buddy_sent_auth_message(buddy['userProfileId'], buddy['buddyProfileId'])
+
+    def get_buddy_requests(self):
+        # Get list people who have added the user but haven't been accepted yet.
+        buddies = self.db.get_pending_buddy_requests(self.profileid)
+
+        profile = self.db.get_profile_from_profileid(self.profileid)
+        msg = "\r\n\r\n"
+        if "sig" in profile:
+            msg += "|signed|" + profile['sig']
+
+        for buddy in buddies:
+            msg_d = []
+            msg_d.append(('__cmd__', "bm"))
+            msg_d.append(('__cmd_val__', "2"))
+            msg_d.append(('f', buddy['userProfileId']))
+            msg_d.append(('date', buddy['time']))
+            msg_d.append(('msg', msg))
+            msg = gs_query.create_gamespy_message(msg_d)
+
+            self.transport.write(bytes(msg))
 
 
 class PlayerSearch(LineReceiver):
