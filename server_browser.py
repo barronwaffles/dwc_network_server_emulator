@@ -209,7 +209,7 @@ class Session(LineReceiver):
                 self.transport.write(bytes(output))
                 print "Responding with own IP and port..."
                 utils.print_hex(output)
-            elif:
+            else:
                 self.find_server(query_game, filter, fields, max_servers, game_name, challenge)
 
 
@@ -234,38 +234,36 @@ class Session(LineReceiver):
             utils.print_hex(data)
 
     def find_server(self, query_game, filter, fields, max_servers, game_name, challenge):
-            # Get dictionary from master server list server.
-            print "Searching for server matching '%s' with the fields '%s'" % (filter, fields)
+        # Get dictionary from master server list server.
+        print "Searching for server matching '%s' with the fields '%s'" % (filter, fields)
 
-            start = time.time()
-            self.server_list = get_server_list(query_game, filter, fields, max_servers)._getvalue()
+        self.server_list = get_server_list(query_game, filter, fields, max_servers)._getvalue()
 
-            print "Found server(s):"
-            print self.server_list
+        print "Found server(s):"
+        print self.server_list
 
-            if self.server_list == []:
-                self.server_list.append({})
+        if self.server_list == []:
+            self.server_list.append({})
 
-            for _server in self.server_list:
-                server = _server
-                if len(server) > 0 and len(fields) > 0 and server['requested'] == {}:
-                    # If the requested fields weren't found then don't return a server.
-                    # This fixes a bug with Mario Kart DS.
-                    print "Requested was empty"
-                    server = {}
+        for _server in self.server_list:
+            server = _server
+            if len(server) > 0 and len(fields) > 0 and server['requested'] == {}:
+                # If the requested fields weren't found then don't return a server.
+                # This fixes a bug with Mario Kart DS.
+                print "Requested was empty"
+                server = {}
 
-                # Generate binary server list data
-                data = generate_server_list_data(self.addr, fields, server)
-                utils.print_hex(data)
+            # Generate binary server list data
+            data = generate_server_list_data(self.addr, fields, server)
+            utils.print_hex(data)
 
-                # Encrypt data
-                enc = gs_utils.EncTypeX()
-                data = enc.encrypt(secret_key_list[game_name], challenge, data)
+            # Encrypt data
+            enc = gs_utils.EncTypeX()
+            data = enc.encrypt(secret_key_list[game_name], challenge, data)
 
-                # Send to client
-                self.transport.write(bytes(data))
-                utils.print_log("Sent server list message to %s:%s..." % (self.addr.host, self.addr.port))
-            break
+            # Send to client
+            self.transport.write(bytes(data))
+            utils.print_log("Sent server list message to %s:%s..." % (self.addr.host, self.addr.port))
 
 
 

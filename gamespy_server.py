@@ -206,7 +206,9 @@ class PlayerSession(LineReceiver):
         if profile['firstname'] != "":
             msg_d.append(('firstname', profile['firstname'])) # Wii gets a firstname
 
-        msg_d.append(('lastname', profile['lastname']))
+        if profile['lastname'] != "":
+			msg_d.append(('lastname', profile['lastname']))
+			
         msg_d.append(('lon', profile['lon']))
         msg_d.append(('lat', profile['lat']))
         msg_d.append(('loc', profile['loc']))
