@@ -47,13 +47,13 @@ while 1:
 
         session_list[gameid][session_id][client_id]['addr'] = addr
         clients = len(session_list[gameid][session_id])
-        if client_id in session_list[gameid][session_id]:
-            clients -= 1
+        #if client_id in session_list[gameid][session_id]:
+        #    clients -= 1
 
         if clients > 0:
             # Someone else is waiting to connect, send message
             for client in session_list[gameid][session_id]:
-                if session_list[gameid][session_id][client]['connected'] == True:
+                if session_list[gameid][session_id][client]['connected'] == True or client == client_id:
                     continue
 
                 output = bytearray(recv_data[0:12])
@@ -68,6 +68,8 @@ while 1:
                 s.sendto(output, (session_list[gameid][session_id][client]['addr']))
 
                 print "Sent connection request to %s:%d..." % (session_list[gameid][session_id][client]['addr'][0], session_list[gameid][session_id][client]['addr'][1])
+                utils.print_hex(output)
+                print ""
                 #session_list[gameid][session_id][client_id]['connected'] = True
 
         output = bytearray(recv_data[0:14])
@@ -86,7 +88,16 @@ while 1:
         if client_id not in session_list[gameid][session_id]:
             pass
 
-        session_list[gameid][session_id][client_id]['connected'] = True
+        #session_list[gameid][session_id][client_id]['connected'] = True
+
+    elif recv_data[7] == '\x0d':
+        client_id = "%02x" % ord(recv_data[13])
+        utils.print_log("Received report command from %s:%s..." % (addr[0], addr[1]))
+
+        utils.print_hex(bytearray(recv_data))
+
+        output[7] = 0x0e # Report response
+        s.sendto(output, addr)
 
     else: # Was able to connect
         utils.print_log("Received unknown command %02x from %s:%s..." % (ord(recv_data[7]), addr[0], addr[1]))

@@ -43,16 +43,16 @@ def generate_server_list_data(address, fields, server_info):
     # Write the port
     output += utils.get_bytes_from_short_be(address.port)
 
-    if len(server_info) > 0:
+    #if len(server_info) > 0:
+    if True:
         # Write number of fields that will be returned.
-        key_count = len(server_info['requested'])
+        key_count = len(fields)
         output += utils.get_bytes_from_short(key_count)
 
         if key_count != len(fields):
             # For some reason we didn't get all of the expected data.
             print "key_count[%d] != len(fields)[%d]" % (key_count, len(fields))
             print fields
-            return
 
         flags_buffer = bytearray()
 
@@ -62,35 +62,35 @@ def generate_server_list_data(address, fields, server_info):
 
         # Start server loop here instead of including all of the fields and stuff again
         flags = 0
-        if key_count > 0:
+        if len(server_info) != 0:
             flags |= ServerListFlags.HAS_KEYS_FLAG
 
-        if "natneg" in server_info:
-            flags |= ServerListFlags.CONNECT_NEGOTIATE_FLAG
+            if "natneg" in server_info:
+                flags |= ServerListFlags.CONNECT_NEGOTIATE_FLAG
 
-        flags_buffer += utils.get_bytes_from_int(int(server_info['publicip']))
+            flags_buffer += utils.get_bytes_from_int(int(server_info['publicip']))
 
-        flags |= ServerListFlags.NONSTANDARD_PORT_FLAG
-        flags_buffer += utils.get_bytes_from_short_be(int(server_info['publicport']))
+            flags |= ServerListFlags.NONSTANDARD_PORT_FLAG
+            flags_buffer += utils.get_bytes_from_short_be(int(server_info['publicport']))
 
-        if "localip0" in server_info:
-            flags |= ServerListFlags.PRIVATE_IP_FLAG
-            flags_buffer += bytearray([int(x) for x in server_info['localip0'].split('.')])
+            if "localip0" in server_info:
+                flags |= ServerListFlags.PRIVATE_IP_FLAG
+                flags_buffer += bytearray([int(x) for x in server_info['localip0'].split('.')])
 
-        if "localport" in server_info:
-            flags |= ServerListFlags.NONSTANDARD_PRIVATE_PORT_FLAG
-            flags_buffer += utils.get_bytes_from_short_be(int(server_info['localport']))
+            if "localport" in server_info:
+                flags |= ServerListFlags.NONSTANDARD_PRIVATE_PORT_FLAG
+                flags_buffer += utils.get_bytes_from_short_be(int(server_info['localport']))
 
-        flags |= ServerListFlags.ICMP_IP_FLAG
-        flags_buffer += bytearray([int(x) for x in "0.0.0.0".split('.')])
+            flags |= ServerListFlags.ICMP_IP_FLAG
+            flags_buffer += bytearray([int(x) for x in "0.0.0.0".split('.')])
 
-        output += bytearray([flags & 0xff])
-        output += flags_buffer
+            output += bytearray([flags & 0xff])
+            output += flags_buffer
 
-        if (flags & ServerListFlags.HAS_KEYS_FLAG):
-            # Write data for associated fields
-            for field in fields:
-                output += '\xff' + bytearray(server_info['requested'][field]) + '\0'
+            if (flags & ServerListFlags.HAS_KEYS_FLAG):
+                # Write data for associated fields
+                for field in fields:
+                    output += '\xff' + bytearray(server_info['requested'][field]) + '\0'
 
         output += '\0'
         output += utils.get_bytes_from_int(-1)
@@ -103,12 +103,6 @@ class Session(LineReceiver):
         self.addr = addr
         self.forward_to_client = False
         self.forward_client = ()
-        self.is_searching = False
-
-        # Amount of time (in seconds) we can search for a match before getting kicked off.
-        # Set to -1 to allow keep searching forever until a server appears.
-        #self.timeout = 60 * 10
-        self.timeout = -1
 
     def rawDataReceived(self, data):
         # First 2 bytes are the packet size.
@@ -136,15 +130,13 @@ class Session(LineReceiver):
 
             # Get server based on ip/port
             server = server_manager.find_server_by_address(ip, self.forward_client[1])._getvalue()
-            print self.server_list
+            print server
 
-            if self.server_list == None:
+            if server == None:
                 pass
 
             #print "%s %s" % (ip, server['publicip'])
             if server['publicip'] == ip and server['publicport'] == str(self.forward_client[1]):
-                print server
-
                 # Send command to server to get it to connect to natneg
                 natneg_session = int(utils.generate_random_hex_str(8), 16) # Quick and lazy way to get a random 32bit integer. Replace with something else late.r
 
@@ -210,15 +202,15 @@ class Session(LineReceiver):
             #print "%08x" % options
             #print "%d %08x" % (max_servers, source_ip)
 
-            if self.is_searching == False:
-                self.is_searching = True
-
-                # I still want the connection to close properly when the client disconnects, so put the server search
-                # part into its own thread.
-                # The game will create a new connection for every search query, so don't worry about setting
-                # self.is_searching to False.
-                t = Thread(target = self.find_server, args=(query_game, filter, fields, max_servers, game_name, challenge))
-                t.start()
+            # Requesting ip and port of client, not server
+            if filter == "" or fields == "":
+                output = bytearray([int(x) for x in self.addr.host.split('.')])
+                output += utils.get_bytes_from_short_be(self.addr.port)
+                self.transport.write(bytes(output))
+                print "Responding with own IP and port..."
+                utils.print_hex(output)
+            elif:
+                self.find_server(query_game, filter, fields, max_servers, game_name, challenge)
 
 
 
@@ -228,6 +220,7 @@ class Session(LineReceiver):
             dest = (dest_addr, dest_port)
 
             utils.print_log("Received send message request from %s:%s to %s:%d..." % (self.addr.host, self.addr.port, dest_addr, dest_port))
+            utils.print_hex(bytearray(data))
 
             self.forward_to_client = True
             self.forward_client = dest
@@ -236,30 +229,34 @@ class Session(LineReceiver):
             utils.print_log("Received keep alive from %s:%s..." % (self.addr.host, self.addr.port))
 
         else:
-            utils.print_log("Received unknown command (%02x) from %s:%s... %s" % (ord(data[2]), self.addr.host, self.addr.port, data))
+            utils.print_log("Received unknown command (%02x) from %s:%s..." % (ord(data[2]), self.addr.host, self.addr.port))
+            utils.print_hex(bytearray(data))
+            utils.print_hex(data)
 
     def find_server(self, query_game, filter, fields, max_servers, game_name, challenge):
             # Get dictionary from master server list server.
-            # The game sends a search query only once so we must loop until something is found.
-            # Search for the specified amount of time, or if self.timeout is set to -1, until a match is found.
+            print "Searching for server matching '%s' with the fields '%s'" % (filter, fields)
+
             start = time.time()
-            self.server_list = []
-            while True:
-                self.server_list = get_server_list(query_game, filter, fields, max_servers)._getvalue()
+            self.server_list = get_server_list(query_game, filter, fields, max_servers)._getvalue()
 
-                if self.server_list != []:
-                    break
-
-                time.sleep(1) # Sleep 1 second
-
-                if self.timeout != -1 and time.time() - start > self.timeout:
-                    break
-
-            # Generate encrypted server list and send to client.
+            print "Found server(s):"
             print self.server_list
-            for server in self.server_list:
+
+            if self.server_list == []:
+                self.server_list.append({})
+
+            for _server in self.server_list:
+                server = _server
+                if len(server) > 0 and len(fields) > 0 and server['requested'] == {}:
+                    # If the requested fields weren't found then don't return a server.
+                    # This fixes a bug with Mario Kart DS.
+                    print "Requested was empty"
+                    server = {}
+
                 # Generate binary server list data
                 data = generate_server_list_data(self.addr, fields, server)
+                utils.print_hex(data)
 
                 # Encrypt data
                 enc = gs_utils.EncTypeX()
@@ -268,7 +265,8 @@ class Session(LineReceiver):
                 # Send to client
                 self.transport.write(bytes(data))
                 utils.print_log("Sent server list message to %s:%s..." % (self.addr.host, self.addr.port))
-                break
+            break
+
 
 
 class SessionFactory(Factory):

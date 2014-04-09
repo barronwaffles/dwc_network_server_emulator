@@ -326,6 +326,7 @@ def delete_server(gameid, session):
         return
 
     # Remove all servers hosted by the given session id.
+    print "Deleting all %s servers where session = %d" % (gameid, session)
     server_list[gameid] = [x for x in server_list[gameid] if x['__session__'] != session]
 
 def find_server_by_address(ip, port, gameid = None):
