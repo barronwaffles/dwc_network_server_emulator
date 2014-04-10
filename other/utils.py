@@ -1,6 +1,7 @@
 import random
 import time
 import sys
+import logging
 
 def generate_random_str(len):
     return ''.join(random.choice("abcdefghjiklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890") for _ in range(len))
@@ -65,10 +66,6 @@ def base32_decode(str, reverse = False):
 
     return orig
 
-# For server logging
-def print_log(text):
-    print "[%s] %s" % (time.strftime("%c"), text)
-    print ""
 
 # Number routines
 # I'm not sure what the pythonic way to do this is, so I'm making the code explicit by giving myself functions to
@@ -135,24 +132,58 @@ def get_bytes_from_int(num):
 def get_bytes_from_int_be(num):
     return get_bytes_from_num(num, 4, True)
 
+
+# For server logging
+def create_logger(loggername, filename = None, level = logging.DEBUG):
+    logging.addLevelName(-1, "TRACE")
+
+    format= "[%(asctime)s | " + loggername + "] %(message)s"
+    date_format = "%Y-%m-%d %H:%M:%S"
+
+    #logging.basicConfig(format=format, datefmt=date_format)
+    logger = logging.getLogger(loggername)
+    logger.setLevel(level)
+
+    # Only needed when logging.basicConfig isn't set.
+    console_logger = logging.StreamHandler()
+    console_logger.setFormatter(logging.Formatter(format, datefmt=date_format))
+    logger.addHandler(console_logger)
+
+    if filename != None:
+        file_logger = logging.FileHandler(filename)
+        file_logger.setFormatter(logging.Formatter(format, datefmt=date_format))
+        logger.addHandler(file_logger)
+
+    return logger
+
 def print_hex(data, cols = 16):
+    print pretty_print_hex(data, cols)
+
+def pretty_print_hex(orig_data, cols = 16):
+    data = bytearray(orig_data)
+    output = "\n"
+
     for i in range(len(data) / cols + 1):
+        output += "%08x | " % (i * 16)
+
         c = 0
         for x in range(cols):
             if (i * cols + x + 1) > len(data):
                 break
 
-            print "%02x" % data[i * cols + x],
+            output += "%02x " % data[i * cols + x]
             c += 1
 
         c = cols - c
-        sys.stdout.write(" " * (c * 3 + 1))
+        output += " " * (c * 3 + 1)
         for x in range(cols):
             if (i * cols + x + 1) > len(data):
                 break
 
             if data[i * cols + x] < 0x21 or data[i * cols + x] >= 0x7f:
-                sys.stdout.write(".")
+                output += "."
             else:
-                sys.stdout.write("%c" % data[i * cols + x])
-        print ""
+                output += "%c" % data[i * cols + x]
+        output += "\n"
+
+    return output

@@ -142,7 +142,7 @@ class GamespyDatabase(object):
 
         return users
 
-    def update_profile(self, session_key, fields):
+    def update_profile(self, session_key, field):
         profileid = self.get_profileid_from_session_key(session_key)
 
         if profileid != -1:
@@ -151,10 +151,9 @@ class GamespyDatabase(object):
             # TODO: Optimize this so it's done all in one update.
             # FIXME: Possible security issue due to embedding an unsanitized string directly into the statement.
             c = self.conn.cursor()
-            for field in fields:
-                print "UPDATE users SET %s = %s WHERE profileid = %s" % (field[0], field[1], profileid)
-                c.execute("UPDATE users SET %s = ? WHERE profileid = ?" % (field[0]), [field[1], profileid])
-                self.conn.commit()
+            print "UPDATE users SET %s = %s WHERE profileid = %s" % (field[0], field[1], profileid)
+            c.execute("UPDATE users SET %s = ? WHERE profileid = ?" % (field[0]), [field[1], profileid])
+            self.conn.commit()
 
     # Session functions
     # TODO: Cache session keys so we don't have to query the database every time we get a profile id.

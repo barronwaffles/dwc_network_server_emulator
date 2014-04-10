@@ -1,22 +1,66 @@
+import logging
+import time
+
 from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import serverFromString
 from twisted.protocols.basic import LineReceiver
 from twisted.internet import reactor
+from twisted.internet.error import ReactorAlreadyRunning
 
 import gamespy.gs_database as gs_database
 import gamespy.gs_query as gs_query
 import gamespy.gs_utility as gs_utils
 import other.utils as utils
 
+
+logger = utils.create_logger("GameSpyProfileServer", "gamespy_profile_server.log", -1)
+class GameSpyProfileServer(object):
+    def __init__(self):
+        pass
+
+    def start(self):
+        endpoint = serverFromString(reactor, "tcp:29900")
+        conn = endpoint.listen(PlayerFactory())
+
+        try:
+            if reactor.running == False:
+                reactor.run(installSignalHandlers=0)
+        except ReactorAlreadyRunning:
+            pass
+
+class PlayerFactory(Factory):
+    def __init__(self):
+        # Instead of storing the sessions in the database, it might make more sense to store them in the PlayerFactory.
+        logger.log(logging.INFO, "Now listening for connections...")
+        self.sessions = {}
+
+    def buildProtocol(self, address):
+        return PlayerSession(self.sessions, address)
+
 class PlayerSession(LineReceiver):
-    def __init__(self, sessions, addr):
-        self.sessions = sessions
-        self.leftover = ""
+    def __init__(self, sessions, address):
         self.setRawMode() # We're dealing with binary data so set to raw mode
+
         self.db = gs_database.GamespyDatabase()
+
+        self.sessions = sessions
+        self.address = address
+        self.remaining_message = "" # Stores any unparsable/incomplete commands until the next rawDataReceived
+
         self.profileId = 0
-        self.address = addr
         self.gameid = ""
+
+    def log(self, level, message):
+        if self.profileId == 0:
+            if self.gameid == "":
+                logger.log(level, "[%s:%d] %s", self.address.host, self.address.port,message)
+            else:
+                logger.log(level, "[%s:%d | %s] %s", self.address.host, self.address.port, self.gameid, message)
+        else:
+            if self.gameid == "":
+                logger.log(level, "[%s:%d | %d] %s", self.address.host, self.address.port, self.profileId, message)
+            else:
+                logger.log(level, "[%s:%d | %d | %s] %s", self.address.host, self.address.port, self.profileId, self.gameid, message)
 
     def get_ip_as_int(self, address):
         ipaddress = 0
@@ -28,10 +72,15 @@ class PlayerSession(LineReceiver):
         return ipaddress
 
     def connectionMade(self):
+        self.log(logging.DEBUG, "Received connection from %s:%d" % (self.address.host, self.address.port))
+
         # Create new session id
         self.session = ""
+
+        # Generate a random challenge string
         self.challenge = utils.generate_random_str(8)
 
+        # The first command sent to the client is always a login challenge containing the server challenge key.
         msg_d = []
         msg_d.append(('__cmd__', "lc"))
         msg_d.append(('__cmd_val__', "1"))
@@ -39,21 +88,27 @@ class PlayerSession(LineReceiver):
         msg_d.append(('id', "1"))
         msg = gs_query.create_gamespy_message(msg_d)
 
-        utils.print_log("SENDING: '%s'..." % msg)
+        self.log(logging.DEBUG, "SENDING: '%s'..." % msg)
         self.transport.write(bytes(msg))
 
     def connectionLost(self, reason):
+        self.log(logging.DEBUG, "Client disconnected")
+
         if self.session in self.sessions:
             del self.sessions[self.session]
+            self.log(logging.DEBUG, "Deleted session %d" % self.sessions)
 
     def rawDataReceived(self, data):
-        utils.print_log("RESPONSE: %s" % data)
+        self.log(logging.DEBUG, "RESPONSE: '%s'..." % data)
 
-        data = self.leftover + data
-        commands, self.leftover = gs_query.parse_gamespy_message(data)
+        # In the case where command string is too big to fit into one read, any parts that could not be successfully
+        # parsed are stored in the variable remaining_message. On the next rawDataReceived command, the remaining
+        # message and the data are combined to create a full command.
+        data = self.remaining_message + data
+        commands, self.remaining_message = gs_query.parse_gamespy_message(data)
 
         for data_parsed in commands:
-            print data_parsed
+            self.log(-1, data_parsed)
 
             if data_parsed['__cmd__'] == "login":
                 self.perform_login(data_parsed)
@@ -77,7 +132,7 @@ class PlayerSession(LineReceiver):
                 self.perform_authadd(data_parsed)
             else:
                 # Maybe write unknown commands to a separate file later so new data can be collected more easily?
-                utils.print_log("Found unknown command, don't know how to handle '%s'." % data_parsed['__cmd__'])
+                self.log(logging.DEBUG, "Found unknown command, don't know how to handle '%s'." % data_parsed['__cmd__'])
 
     def perform_login(self, data_parsed):
         authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'])
@@ -136,7 +191,7 @@ class PlayerSession(LineReceiver):
         # Verify the client's response
         valid_response = gs_utils.generate_response(self.challenge, authtoken_parsed['challenge'], data_parsed['challenge'], data_parsed['authtoken'])
         if data_parsed['response'] != valid_response:
-            utils.print_log("ERROR: Got invalid response. Got %s, expected %s" % (data_parsed['response'], valid_response))
+            self.log(logging.DEBUG, "ERROR: Got invalid response. Got %s, expected %s" % (data_parsed['response'], valid_response))
 
         proof = gs_utils.generate_proof(self.challenge, authtoken_parsed['challenge'], data_parsed['challenge'], data_parsed['authtoken'])
 
@@ -178,7 +233,7 @@ class PlayerSession(LineReceiver):
             self.gameid = gsbrcd[0:4]
             self.profileid = profileid
 
-            utils.print_log("SENDING: %s" % msg)
+            self.log(logging.DEBUG, "SENDING: %s" % msg)
             self.transport.write(bytes(msg))
 
             # Send any friend statuses when the user logs in.
@@ -210,14 +265,14 @@ class PlayerSession(LineReceiver):
 
         if profile['lastname'] != "":
             msg_d.append(('lastname', profile['lastname']))
-            
+
         msg_d.append(('lon', profile['lon']))
         msg_d.append(('lat', profile['lat']))
         msg_d.append(('loc', profile['loc']))
         msg_d.append(('id', data_parsed['id']))
         msg = gs_query.create_gamespy_message(msg_d)
 
-        utils.print_log("SENDING: %s" % msg)
+        self.log(logging.DEBUG, "SENDING: %s" % msg)
         self.transport.write(bytes(msg))
 
 
@@ -239,11 +294,9 @@ class PlayerSession(LineReceiver):
             data_parsed.pop('sesskey')
 
         # Create a list of fields to be updated.
-        fields = []
         for f in data_parsed:
-            fields.append((f, data_parsed[f]))
+            self.db.update_profile(sesskey, (f, data_parsed[f]))
 
-        self.db.update_profile(sesskey, fields)
 
     def perform_ka(self, data_parsed):
         # No op
@@ -284,7 +337,7 @@ class PlayerSession(LineReceiver):
                 msg_d.append(('msg', dest_msg))
                 msg = gs_query.create_gamespy_message(msg_d)
 
-                utils.print_log("SENDING TO %s:%s: %s" % (self.sessions[dest_profileid].address.host, self.sessions[dest_profileid].address.port, msg))
+                self.log(logging.DEBUG, "SENDING TO %s:%s: %s" % (self.sessions[dest_profileid].address.host, self.sessions[dest_profileid].address.port, msg))
                 self.sessions[dest_profileid].transport.write(bytes(msg))
 
 
@@ -394,87 +447,8 @@ class PlayerSession(LineReceiver):
             self.transport.write(bytes(msg))
 
 
-class PlayerSearch(LineReceiver):
-    def __init__(self, sessions, addr):
-        self.sessions = sessions
-        self.setRawMode()
-        self.db = gs_database.GamespyDatabase()
-        self.leftover = ""
-
-    def connectionMade(self):
-        pass
-
-    def connectionLost(self, reason):
-        pass
-
-    def rawDataReceived(self, data):
-        utils.print_log("SEARCH RESPONSE: %s" % data)
-
-        data = self.leftover + data
-        commands, self.leftover = gs_query.parse_gamespy_message(data)
-
-        for data_parsed in commands:
-            print data_parsed
-
-            if data_parsed['__cmd__'] == "otherslist":
-                self.perform_otherslist(data_parsed)
-            else:
-                utils.print_log("Found unknown search command, don't know how to handle '%s'." % data_parsed['__cmd__'])
-
-    def perform_otherslist(self, data_parsed):
-        # Reference: http://wiki.tockdom.com/wiki/MKWii_Network_Protocol/Server/gpsp.gs.nintendowifi.net
-        # Example from: filtered-mkw-log-2014-01-01-ct1310.eth
-        # \otherslist\\o\146376154\uniquenick\2m0isbjmvRMCJ2i5321j\o\192817284\uniquenick\1jhggtmghRMCJ2jrsh23\o\302594991\uniquenick\7dkjp51v5RMCJ2nr3vs9\o\368031897\uniquenick\1v7p3qmkpRMCJ1o8f56p\o\447214276\uniquenick\7dkt0p6gtRMCJ2ljh72h\o\449615791\uniquenick\4puvrm1g4RMCJ00ho3v1\o\460250854\uniquenick\4rik5l1u1RMCJ0tc3fii\o\456284963\uniquenick\1unitvi86RMCJ1b10u02\o\453830866\uniquenick\7de3q52dbRMCJ2877ss2\o\450197498\uniquenick\3qtutr1ikRMCJ38gem1n\o\444241868\uniquenick\67tp53bs9RMCJ1abs7ej\o\420030955\uniquenick\5blesqia3RMCJ322bbd6\o\394609454\uniquenick\0hddp7mq2RMCJ30uv7r7\o\369478991\uniquenick\59de9c2bhRMCJ0re0fii\o\362755626\uniquenick\5tte2lif7RMCJ0cscgtg\o\350951571\uniquenick\7aeummjlaRMCJ3li4ls2\o\350740680\uniquenick\484uiqhr4RMCJ18opoj0\o\349855648\uniquenick\5blesqia3RMCJ1c245dn\o\324078642\uniquenick\62go5gpt0RMCJ0v0uhc9\o\304111337\uniquenick\4lcg6ampvRMCJ1gjre51\o\301273266\uniquenick\1dhdpjhn8RMCJ2da6f9h\o\193178453\uniquenick\3pcgu0299RMCJ3nhu50f\o\187210028\uniquenick\3tau15a9lRMCJ2ar247h\o\461622261\uniquenick\59epddrnkRMCJ1t2ge7l\oldone\\final\
-
-        msg_d = []
-        msg_d.append(('__cmd__', "otherslist"))
-        msg_d.append(('__cmd_val__', ""))
-
-        if "numopids" in data_parsed and "opids" in data_parsed:
-            numopids = int(data_parsed['numopids'])
-            opids = data_parsed['opids'].split('|')
-
-            if len(opids) != numopids:
-                print "Unexpected number of opids, got %d, expected %d." % (len(opids), numopids)
-
-            # Return all uniquenicks despite any unexpected/missing opids
-            for opid in opids:
-                profile = self.db.get_profile_from_profileid(opid)
-
-                if profile != None:
-                    msg_d.append(('o', opid))
-                    msg_d.append(('uniquenick', profile['uniquenick']))
-
-        msg_d.append(('oldone', ""))
-        msg = gs_query.create_gamespy_message(msg_d)
-
-        self.transport.write(bytes(msg))
 
 
-sessions = {}
-class PlayerFactory(Factory):
-    def __init__(self):
-        # Instead of storing the sessions in the database, it might make more sense to store them in the PlayerFactory.
-        print "Now listening for connections..."
-
-    def buildProtocol(self, addr):
-        return PlayerSession(sessions, addr)
-
-
-class PlayerSearchFactory(Factory):
-    def __init__(self):
-        self.sessions = {}
-        print "Now listening for player search connections..."
-
-    def buildProtocol(self, addr):
-        return PlayerSearch(sessions, addr)
-
-
-endpoint = serverFromString(reactor, "tcp:29900")
-conn = endpoint.listen(PlayerFactory())
-
-endpoint_search = serverFromString(reactor, "tcp:29901")
-conn_search = endpoint.listen(PlayerSearchFactory())
-
-reactor.run()
-
+if __name__ == "__main__":
+    gsps = GameSpyProfileServer()
+    gsps.start()
