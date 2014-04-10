@@ -5,10 +5,12 @@ A Nintendo DS (and possibly Wii) server emulator.
 
   
 Requirements:  
-Python 2.7  
-Twisted  
-zope.interface (Twisted dependency)  
-pywin32 (Twisted dependency)  
+- Python 2.7  
+- Twisted  
+- zope.interface (Twisted dependency)  
+- pywin32 (Twisted dependency)  
+- Apache (or your favorite httpd)  
+- PHP5  
   
   
 Open source projects referenced during the creation of this project:  
