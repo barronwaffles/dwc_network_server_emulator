@@ -17,12 +17,14 @@ logger_name = "GameSpyPlayerSearchServer"
 logger_filename = "gamespy_player_search_server.log"
 logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
+address = ("0.0.0.0", 29901)
+
 class GameSpyPlayerSearchServer(object):
     def __init__(self):
         pass
 
     def start(self):
-        endpoint_search = serverFromString(reactor, "tcp:29901")
+        endpoint_search = serverFromString(reactor, "tcp:%d:interface=%s" % (address[1], address[0]))
         conn_search = endpoint_search.listen(PlayerSearchFactory())
 
         try:
@@ -34,7 +36,7 @@ class GameSpyPlayerSearchServer(object):
 
 class PlayerSearchFactory(Factory):
     def __init__(self):
-        logger.log(logging.INFO, "Now listening for player search connections...")
+        logger.log(logging.INFO, "Now listening for player search connections on %s:%d...", address[0], address[1])
 
     def buildProtocol(self, address):
         return PlayerSearch(address)
@@ -82,7 +84,7 @@ class PlayerSearch(LineReceiver):
             opids = data_parsed['opids'].split('|')
 
             if len(opids) != numopids:
-                print "Unexpected number of opids, got %d, expected %d." % (len(opids), numopids)
+                self.log(logging.ERROR, "Unexpected number of opids, got %d, expected %d." % (len(opids), numopids))
 
             # Return all uniquenicks despite any unexpected/missing opids
             for opid in opids:

@@ -26,7 +26,7 @@ class GameSpyNatNegServer(object):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.bind(address)
 
-        logger.log(logging.DEBUG, "Server is now listening on %s:%s..." % (address[0], address[1]))
+        logger.log(logging.INFO, "Server is now listening on %s:%s..." % (address[0], address[1]))
 
         while 1:
             recv_data, addr = s.recvfrom(2048)

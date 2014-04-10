@@ -41,12 +41,13 @@ GameSpyServerDatabase.register("modify_server_list")
 GameSpyServerDatabase.register("find_servers")
 GameSpyServerDatabase.register("find_server_by_address")
 
+address = ("0.0.0.0", 28910)
 class GameSpyServerBrowserServer(object):
     def __init__(self):
         pass
 
     def start(self):
-        endpoint = serverFromString(reactor, "tcp:28910")
+        endpoint = serverFromString(reactor, "tcp:%d:interface=%s" % (address[1], address[0]))
         conn = endpoint.listen(SessionFactory())
 
         try:
@@ -59,7 +60,7 @@ class GameSpyServerBrowserServer(object):
 
 class SessionFactory(Factory):
     def __init__(self):
-        logger.log(logging.DEBUG, "Now listening for connections...")
+        logger.log(logging.INFO, "Now listening for connections on %s:%d...", address[0], address[1])
         self.secret_key_list = gs_utils.generate_secret_keys("gslist.cfg")
 
     def buildProtocol(self, address):

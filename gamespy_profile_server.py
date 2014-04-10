@@ -20,12 +20,13 @@ logger_name = "GameSpyProfileServer"
 logger_filename = "gamespy_profile_server.log"
 logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
+address = ("0.0.0.0", 29900)
 class GameSpyProfileServer(object):
     def __init__(self):
         pass
 
     def start(self):
-        endpoint = serverFromString(reactor, "tcp:29900")
+        endpoint = serverFromString(reactor, "tcp:%d:interface=%s" % (address[1], address[0]))
         conn = endpoint.listen(PlayerFactory())
 
         try:
@@ -37,7 +38,7 @@ class GameSpyProfileServer(object):
 class PlayerFactory(Factory):
     def __init__(self):
         # Instead of storing the sessions in the database, it might make more sense to store them in the PlayerFactory.
-        logger.log(logging.INFO, "Now listening for connections...")
+        logger.log(logging.INFO, "Now listening for connections on %s:%d...", address[0], address[1])
         self.sessions = {}
 
     def buildProtocol(self, address):
@@ -78,7 +79,7 @@ class PlayerSession(LineReceiver):
         return ipaddress
 
     def connectionMade(self):
-        self.log(logging.DEBUG, "Received connection from %s:%d" % (self.address.host, self.address.port))
+        self.log(logging.INFO, "Received connection from %s:%d" % (self.address.host, self.address.port))
 
         # Create new session id
         self.session = ""
@@ -98,11 +99,11 @@ class PlayerSession(LineReceiver):
         self.transport.write(bytes(msg))
 
     def connectionLost(self, reason):
-        self.log(logging.DEBUG, "Client disconnected")
+        self.log(logging.INFO, "Client disconnected")
 
         if self.session in self.sessions:
             del self.sessions[self.session]
-            self.log(logging.DEBUG, "Deleted session %d" % self.sessions)
+            self.log(logging.INFO, "Deleted session %d" % self.sessions)
 
     def rawDataReceived(self, data):
         self.log(logging.DEBUG, "RESPONSE: '%s'..." % data)
@@ -138,7 +139,7 @@ class PlayerSession(LineReceiver):
                 self.perform_authadd(data_parsed)
             else:
                 # Maybe write unknown commands to a separate file later so new data can be collected more easily?
-                self.log(logging.DEBUG, "Found unknown command, don't know how to handle '%s'." % data_parsed['__cmd__'])
+                self.log(logging.ERROR, "Found unknown command, don't know how to handle '%s'." % data_parsed['__cmd__'])
 
     def perform_login(self, data_parsed):
         authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'])
@@ -197,7 +198,7 @@ class PlayerSession(LineReceiver):
         # Verify the client's response
         valid_response = gs_utils.generate_response(self.challenge, authtoken_parsed['challenge'], data_parsed['challenge'], data_parsed['authtoken'])
         if data_parsed['response'] != valid_response:
-            self.log(logging.DEBUG, "ERROR: Got invalid response. Got %s, expected %s" % (data_parsed['response'], valid_response))
+            self.log(logging.ERROR, "ERROR: Got invalid response. Got %s, expected %s" % (data_parsed['response'], valid_response))
 
         proof = gs_utils.generate_proof(self.challenge, authtoken_parsed['challenge'], data_parsed['challenge'], data_parsed['authtoken'])
 
@@ -209,7 +210,7 @@ class PlayerSession(LineReceiver):
 
             if profileid == None:
                  # Handle case where the user is invalid
-                print "Invalid password"
+                self.log(logging.ERROR, "Invalid password")
 
         if profileid != None:
             # Successfully logged in or created account, continue creating session.
@@ -247,7 +248,7 @@ class PlayerSession(LineReceiver):
             self.get_status_from_friends()
 
     def perform_logout(self, data_parsed):
-        print "Session %s has logged off" % (data_parsed['sesskey'])
+        self.log(logging.INFO, "Session %s has logged off" % (data_parsed['sesskey']))
         self.db.delete_session(data_parsed['sesskey'])
 
     def perform_getprofile(self, data_parsed):
@@ -256,6 +257,8 @@ class PlayerSession(LineReceiver):
         self.profileid = int(profile['profileid'])
 
         # Wii example: \pi\\profileid\474888031\nick\5pde5vhn1WR9E2g1t533\userid\442778352\email\5pde5vhn1WR9E2g1t533@nds\sig\b126556e5ee62d4da9629dfad0f6b2a8\uniquenick\5pde5vhn1WR9E2g1t533\pid\11\lon\0.000000\lat\0.000000\loc\\id\2\final\
+        sig = utils.generate_random_hex_str(32)
+
         msg_d = []
         msg_d.append(('__cmd__', "pi"))
         msg_d.append(('__cmd_val__', ""))
@@ -263,7 +266,7 @@ class PlayerSession(LineReceiver):
         msg_d.append(('nick', profile['uniquenick']))
         msg_d.append(('userid', profile['userid']))
         msg_d.append(('email', profile['email']))
-        msg_d.append(('sig', profile['sig']))
+        msg_d.append(('sig', sig))
         msg_d.append(('uniquenick', profile['uniquenick']))
         msg_d.append(('pid', profile['pid']))
 
@@ -437,9 +440,9 @@ class PlayerSession(LineReceiver):
         buddies = self.db.get_pending_buddy_requests(self.profileid)
 
         profile = self.db.get_profile_from_profileid(self.profileid)
+        sig = utils.generate_random_hex_str(32)
         msg = "\r\n\r\n"
-        if "sig" in profile:
-            msg += "|signed|" + profile['sig']
+        msg += "|signed|" + sig
 
         for buddy in buddies:
             msg_d = []

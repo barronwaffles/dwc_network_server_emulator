@@ -55,7 +55,7 @@ class GameSpyQRServer(object):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(address)
 
-        logger.log(logging.DEBUG, "Server is now listening on %s:%s..." % (address[0], address[1]))
+        logger.log(logging.INFO, "Server is now listening on %s:%s..." % (address[0], address[1]))
 
         self.wait_loop()
 
@@ -225,16 +225,16 @@ class GameSpyQRServer(object):
 
 
             elif recv_data[0] == '\x04': # Add Error
-                self.log(logging.DEBUG, address, "NOT IMPLEMENTED! Received add error from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
+                self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received add error from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
 
             elif recv_data[0] == '\x05': # Echo Response
-                self.log(logging.DEBUG, address, "NOT IMPLEMENTED! Received echo response from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
+                self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received echo response from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
 
             elif recv_data[0] == '\x06': # Client Message
-                self.log(logging.DEBUG, address, "NOT IMPLEMENTED! Received echo from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
+                self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received echo from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
 
             elif recv_data[0] == '\x07': # Client Message Ack
-                self.log(logging.DEBUG, address, "NOT IMPLEMENTED! Received client message ack from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
+                self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received client message ack from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
 
             elif recv_data[0] == '\x08': # Keep Alive
                 self.log(logging.DEBUG, address, "Received keep alive from %s:%s..." % (address[0], address[1]))
@@ -246,8 +246,8 @@ class GameSpyQRServer(object):
 
             elif recv_data[0] == '\x0a': # Client Registered
                 # Only sent to client, never received?
-                self.log(logging.DEBUG, address, "NOT IMPLEMENTED! Received client registered from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
+                self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received client registered from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
 
             else:
-                self.log(logging.DEBUG, address, "Unknown request from %s:%s:" % (address[0], address[1]))
+                self.log(logging.ERROR, address, "Unknown request from %s:%s:" % (address[0], address[1]))
                 self.log(logging.DEBUG, address, utils.pretty_print_hex(recv_data))
