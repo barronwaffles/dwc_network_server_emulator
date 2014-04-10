@@ -31,7 +31,12 @@ class TokenType:
     NUMBER = 3
     TOKEN = 4
 
-logger = utils.create_logger("GamespyBackendServer", "gamespy_backend_server.log", -1)
+# Logger settings
+logger_output_to_console = True
+logger_output_to_file = True
+logger_name = "GamespyBackendServer"
+logger_filename = "gamespy_backend_server.log"
+logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
 class GameSpyServerDatabase(BaseManager):
     pass

@@ -134,7 +134,7 @@ def get_bytes_from_int_be(num):
 
 
 # For server logging
-def create_logger(loggername, filename = None, level = logging.DEBUG):
+def create_logger(loggername, filename, level, log_to_console, log_to_file):
     logging.addLevelName(-1, "TRACE")
 
     format= "[%(asctime)s | " + loggername + "] %(message)s"
@@ -145,11 +145,12 @@ def create_logger(loggername, filename = None, level = logging.DEBUG):
     logger.setLevel(level)
 
     # Only needed when logging.basicConfig isn't set.
-    console_logger = logging.StreamHandler()
-    console_logger.setFormatter(logging.Formatter(format, datefmt=date_format))
-    logger.addHandler(console_logger)
+    if log_to_console == True:
+        console_logger = logging.StreamHandler()
+        console_logger.setFormatter(logging.Formatter(format, datefmt=date_format))
+        logger.addHandler(console_logger)
 
-    if filename != None:
+    if log_to_file == True and filename != "":
         file_logger = logging.FileHandler(filename)
         file_logger.setFormatter(logging.Formatter(format, datefmt=date_format))
         logger.addHandler(file_logger)

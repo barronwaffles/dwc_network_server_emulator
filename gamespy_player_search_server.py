@@ -10,7 +10,13 @@ import gamespy.gs_database as gs_database
 import gamespy.gs_query as gs_query
 import other.utils as utils
 
-logger = utils.create_logger("GameSpyPlayerSearchServer", "gamespy_player_search_server.log", -1)
+# Logger settings
+logger_output_to_console = True
+logger_output_to_file = True
+logger_name = "GameSpyPlayerSearchServer"
+logger_filename = "gamespy_player_search_server.log"
+logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+
 class GameSpyPlayerSearchServer(object):
     def __init__(self):
         pass

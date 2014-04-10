@@ -7,7 +7,13 @@ import struct
 import gamespy.gs_utility as gs_utils
 import other.utils as utils
 
-logger = utils.create_logger("GameSpyNatNegServer", "gamespy_natneg_server.log", -1)
+# Logger settings
+logger_output_to_console = True
+logger_output_to_file = True
+logger_name = "GameSpyNatNegServer"
+logger_filename = "gamespy_natneg_server.log"
+logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+
 class GameSpyNatNegServer(object):
     def __init__(self):
         self.session_list = {}

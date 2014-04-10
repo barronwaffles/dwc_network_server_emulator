@@ -13,7 +13,13 @@ import gamespy.gs_utility as gs_utils
 import other.utils as utils
 
 
-logger = utils.create_logger("GameSpyProfileServer", "gamespy_profile_server.log", -1)
+# Logger settings
+logger_output_to_console = True
+logger_output_to_file = True
+logger_name = "GameSpyProfileServer"
+logger_filename = "gamespy_profile_server.log"
+logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+
 class GameSpyProfileServer(object):
     def __init__(self):
         pass

@@ -26,7 +26,12 @@ class ServerListFlags:
     HAS_KEYS_FLAG = 64
     HAS_FULL_RULES_FLAG = 128
 
-logger = utils.create_logger("GameSpyServerBrowserServer", "gamespy_server_browser_server.log", -1)
+# Logger settings
+logger_output_to_console = True
+logger_output_to_file = True
+logger_name = "GameSpyServerBrowserServer"
+logger_filename = "gamespy_server_browser_server.log"
+logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
 class GameSpyServerDatabase(BaseManager):
     pass
