@@ -188,12 +188,12 @@ class GamespyDatabase(object):
         # Start replacing each field one by one.
         # TODO: Optimize this so it's done all in one update.
         # FIXME: Possible security issue due to embedding an unsanitized string directly into the statement.
-        q = "UPDATE users SET %s = %s WHERE profileid = %s"
-        q2 = q % (field[0], field[1], profileid)
+        q = "UPDATE users SET %s = ? WHERE profileid = ?"
+        q2 = q.replace("?", "%s") % (field[0], field[1], profileid)
         logger.log(-1, q2)
 
         c = self.conn.cursor()
-        c.execute(q % (field[0]), [field[1], profileid])
+        c.execute(q % field[0], [field[1], profileid])
         self.conn.commit()
 
     # Session functions
