@@ -47,20 +47,20 @@ class PlayerSession(LineReceiver):
         self.address = address
         self.remaining_message = "" # Stores any unparsable/incomplete commands until the next rawDataReceived
 
-        self.profileId = 0
+        self.profileid = 0
         self.gameid = ""
 
     def log(self, level, message):
-        if self.profileId == 0:
+        if self.profileid == 0:
             if self.gameid == "":
                 logger.log(level, "[%s:%d] %s", self.address.host, self.address.port,message)
             else:
                 logger.log(level, "[%s:%d | %s] %s", self.address.host, self.address.port, self.gameid, message)
         else:
             if self.gameid == "":
-                logger.log(level, "[%s:%d | %d] %s", self.address.host, self.address.port, self.profileId, message)
+                logger.log(level, "[%s:%d | %d] %s", self.address.host, self.address.port, self.profileid, message)
             else:
-                logger.log(level, "[%s:%d | %d | %s] %s", self.address.host, self.address.port, self.profileId, self.gameid, message)
+                logger.log(level, "[%s:%d | %d | %s] %s", self.address.host, self.address.port, self.profileid, self.gameid, message)
 
     def get_ip_as_int(self, address):
         ipaddress = 0
@@ -247,6 +247,7 @@ class PlayerSession(LineReceiver):
     def perform_getprofile(self, data_parsed):
         #profile = self.db.get_profile_from_session_key(data_parsed['sesskey'])
         profile = self.db.get_profile_from_profileid(data_parsed['profileid'])
+        self.profileid = int(profile['profileid'])
 
         # Wii example: \pi\\profileid\474888031\nick\5pde5vhn1WR9E2g1t533\userid\442778352\email\5pde5vhn1WR9E2g1t533@nds\sig\b126556e5ee62d4da9629dfad0f6b2a8\uniquenick\5pde5vhn1WR9E2g1t533\pid\11\lon\0.000000\lat\0.000000\loc\\id\2\final\
         msg_d = []
@@ -278,7 +279,6 @@ class PlayerSession(LineReceiver):
 
     def perform_updatepro(self, data_parsed):
         # Wii example: \updatepro\\sesskey\199714190\firstname\Wii:2555151656076614@WR9E\partnerid\11\final\
-        sesskey = data_parsed['sesskey']
 
         # Remove any fields not related to what we should be updating.
         # To avoid any crashes, make sure the key is actually in the dictionary before removing it.
@@ -295,7 +295,7 @@ class PlayerSession(LineReceiver):
 
         # Create a list of fields to be updated.
         for f in data_parsed:
-            self.db.update_profile(sesskey, (f, data_parsed[f]))
+            self.db.update_profile(self.profileid, (f, data_parsed[f]))
 
 
     def perform_ka(self, data_parsed):
