@@ -238,7 +238,7 @@ class PlayerSession(LineReceiver):
             # gameid is used to send all people on the player's friends list a status updates, so don't make it region
             # specific.
             self.gameid = gsbrcd[0:4]
-            self.profileid = profileid
+            self.profileid = int(profileid)
 
             self.log(logging.DEBUG, "SENDING: %s" % msg)
             self.transport.write(bytes(msg))
@@ -254,7 +254,6 @@ class PlayerSession(LineReceiver):
     def perform_getprofile(self, data_parsed):
         #profile = self.db.get_profile_from_session_key(data_parsed['sesskey'])
         profile = self.db.get_profile_from_profileid(data_parsed['profileid'])
-        self.profileid = int(profile['profileid'])
 
         # Wii example: \pi\\profileid\474888031\nick\5pde5vhn1WR9E2g1t533\userid\442778352\email\5pde5vhn1WR9E2g1t533@nds\sig\b126556e5ee62d4da9629dfad0f6b2a8\uniquenick\5pde5vhn1WR9E2g1t533\pid\11\lon\0.000000\lat\0.000000\loc\\id\2\final\
         sig = utils.generate_random_hex_str(32)
@@ -351,8 +350,9 @@ class PlayerSession(LineReceiver):
 
 
     def perform_addbuddy(self, data_parsed):
-        if int(data_parsed['newprofileid']) == self.profileid:
-            print "Can't add self as friend"
+        newprofileid = int(data_parsed['newprofileid'])
+        if newprofileid == self.profileid:
+            logger.log(logging.DEBUG, "Can't add self as friend: %d == %d", newprofileid, self.profileid)
             return
 
         # Sample: \addbuddy\\sesskey\231601763\newprofileid\476756820\reason\\final\
@@ -360,12 +360,12 @@ class PlayerSession(LineReceiver):
 
         buddy_exists = False
         for buddy in buddies:
-            if buddy['buddyProfileId'] == int(data_parsed['newprofileid']):
+            if buddy['buddyProfileId'] == newprofileid:
                 buddy_exists = True
                 break
 
         if buddy_exists == False:
-            self.db.add_buddy(self.profileid, int(data_parsed['newprofileid']))
+            self.db.add_buddy(self.profileid, newprofileid)
 
 
     def perform_delbuddy(self, data_parsed):
