@@ -1,6 +1,4 @@
 import random
-import time
-import sys
 import logging
 
 def generate_random_str(len):

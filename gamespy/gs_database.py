@@ -111,8 +111,8 @@ class GamespyDatabase(object):
             c.execute(q, [profileid])
 
             profile = self.get_dict(c.fetchone())
+            c.close()
 
-        c.close()
         return profile
 
     def perform_login(self, userid, password, gsbrcd):
@@ -228,8 +228,8 @@ class GamespyDatabase(object):
             c.execute(q, [session_key])
 
             profile = self.get_dict(c.fetchone())
+            c.close()
 
-        c.close()
         return profile
 
     def generate_session_key(self, min_size):
@@ -297,12 +297,13 @@ class GamespyDatabase(object):
 
     # Buddy functions
     def add_buddy(self, userProfileId, buddyProfileId):
+        now = int(time.time())
+
         q = "INSERT INTO buddies VALUES (?, ?, ?, ?, ?)"
         q2 = q.replace("?", "%s") % (userProfileId, buddyProfileId, now, 0, 0)
         logger.log(-1, q2)
 
         c = self.conn.cursor()
-        now = int(time.time())
         c.execute(q, [userProfileId, buddyProfileId, now, 0, 0]) # 0 will mean not authorized
         self.conn.commit()
 
@@ -325,8 +326,8 @@ class GamespyDatabase(object):
             c = self.conn.cursor()
             c.execute(q, [userProfileId, buddyProfileId])
             profile = self.get_dict(c.fetchone())
+            c.close()
 
-        c.close()
         return profile
 
     def delete_buddy(self, userProfileId, buddyProfileId):
