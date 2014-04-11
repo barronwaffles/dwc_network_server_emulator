@@ -74,6 +74,7 @@ class Session(LineReceiver):
         self.forward_to_client = False
         self.forward_client = ()
         self.secret_key_list = secret_key_list # Don't waste time parsing every session, so just accept it from the parent
+        self.console = 0
 
         manager_address = ("127.0.0.1", 27500)
         manager_password = ""
@@ -101,18 +102,22 @@ class Session(LineReceiver):
             # Find session id of server
             # Iterate through the list of servers sent to the client and match by IP and port.
             # Is there a better way to determine this information?
-            ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in self.forward_client[0].split('.')]), 0)).value)
+            if self.console != 0:
+                ip = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in self.forward_client[0].split('.')]), 0)).value) # Wii
+            else:
+                ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in self.forward_client[0].split('.')]), 0)).value) # DS
+
             logger.log(logging.DEBUG, "Trying to send message to %s:%d..." % (self.forward_client[0], self.forward_client[1]))
             logger.log(logging.DEBUG, utils.pretty_print_hex(bytearray(data)))
 
             # Get server based on ip/port
             server = self.server_manager.find_server_by_address(ip, self.forward_client[1])._getvalue()
-            logger.log(logging.DEBUG, server)
+            logger.log(logging.DEBUG, "find_server_by_address returned: %s" % server)
 
             if server == None:
                 pass
 
-            #print "%s %s" % (ip, server['publicip'])
+            logger.log(logging.DEBUG, "%s %s" % (ip, server['publicip']))
             if server['publicip'] == ip and server['publicport'] == str(self.forward_client[1]):
                 # Send command to server to get it to connect to natneg
                 natneg_session = int(utils.generate_random_hex_str(8), 16) # Quick and lazy way to get a random 32bit integer. Replace with something else late.r
@@ -254,7 +259,10 @@ class Session(LineReceiver):
                 if "natneg" in server_info:
                     flags |= ServerListFlags.CONNECT_NEGOTIATE_FLAG
 
-                flags_buffer += utils.get_bytes_from_int(int(server_info['publicip']))
+                if self.console != 0:
+                    flags_buffer += utils.get_bytes_from_int_be(int(server_info['publicip'])) # Wii
+                else:
+                    flags_buffer += utils.get_bytes_from_int(int(server_info['publicip'])) # DS
 
                 flags |= ServerListFlags.NONSTANDARD_PORT_FLAG
                 flags_buffer += utils.get_bytes_from_short_be(int(server_info['publicport']))
@@ -302,6 +310,9 @@ class Session(LineReceiver):
                 # This fixes a bug with Mario Kart DS.
                 #print "Requested was empty"
                 server = {}
+
+            if "__console__" in server:
+                self.console = int(server['__console__'])
 
             # Generate binary server list data
             data = self.generate_server_list_data(self.address, fields, server)

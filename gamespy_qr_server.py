@@ -5,6 +5,7 @@ import logging
 import socket
 import struct
 import gamespy.gs_utility as gs_utils
+import gamespy.gs_database as gs_database
 import other.utils as utils
 
 from multiprocessing.managers import BaseManager
@@ -27,6 +28,8 @@ class GameSpyQRServer(object):
             self.secretkey = "" # Parse gslist.cfg later
             self.sent_challenge = False
             self.address = address
+            self.console = 0
+            self.playerid= 0
 
     def __init__(self):
         self.sessions = {}
@@ -35,6 +38,8 @@ class GameSpyQRServer(object):
         # The dictionary key will be the game's ID, and the value will be the secret key.
         self.secret_key_list = gs_utils.generate_secret_keys("gslist.cfg")
         #self.log(logging.DEBUG, address, "Generated list of secret game keys...")
+
+        self.db = gs_database.GamespyDatabase()
 
         GameSpyServerDatabase.register("update_server_list")
         GameSpyServerDatabase.register("delete_server")
@@ -193,6 +198,17 @@ class GameSpyQRServer(object):
                     self.sessions[session_id].secretkey = self.secret_key_list[k['gamename']]
                     #print "Got secret key %s for %s" % (self.sessions[session_id].secretkey, k['gamename'])
 
+                if self.sessions[session_id].playerid == 0 and "dwc_pid" in k:
+                    # Get the player's id and then query the profile to figure out what console they are on.
+                    # The endianness of some server data depends on the endianness of the console, so we must be able
+                    # to account for that.
+                    self.sessions[session_id].playerid = int(k['dwc_pid'])
+                    profile = self.db.get_profile_from_profileid(self.sessions[session_id].playerid)
+
+                    if "console" in profile:
+                        self.sessions[session_id].console = profile['console']
+
+
                 if self.sessions[session_id].sent_challenge == False:
                     addr_hex =  ''.join(["%02X" % int(x) for x in address[0].split('.')])
                     port_hex = "%04X" % int(address[1])
@@ -218,7 +234,7 @@ class GameSpyQRServer(object):
                             # dwc_mtype = 3 is used when looking for a friends only game (possibly other uses too).
 
                             # Some memory could be saved by clearing out any unwanted fields from k before sending.
-                            self.server_manager.update_server_list(k['gamename'] , session_id, k)
+                            self.server_manager.update_server_list(k['gamename'] , session_id, k, self.sessions[session_id].console)
                     elif k['statechanged'] == "2": # Close server
                         self.server_manager.delete_server(k['gamename'] , session_id)
                         #self.sessions.pop(session_id)

@@ -20,7 +20,7 @@ class GameSpyNatNegServer(object):
         self.secret_key_list = gs_utils.generate_secret_keys("gslist.cfg")
 
     def start(self):
-        # Start QR server
+        # Start natneg server
         address = ('0.0.0.0', 27901)  # accessible to outside connections (use this if you don't know what you're doing)
 
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -32,6 +32,7 @@ class GameSpyNatNegServer(object):
             recv_data, addr = s.recvfrom(2048)
 
             logger.log(logging.DEBUG, "Connection from %s:%d..." % (addr[0], addr[1]))
+            logger.log(logging.DEBUG, utils.pretty_print_hex(recv_data))
 
             # Make sure it's a legal packet
             if recv_data[0:6] != bytearray([0xfd, 0xfc, 0x1e, 0x66, 0x6a, 0xb2]):
@@ -44,6 +45,12 @@ class GameSpyNatNegServer(object):
             if recv_data[7] == '\x00':
                 logger.log(logging.DEBUG, "Received initialization from %s:%s..." % (addr[0], addr[1]))
 
+                output = bytearray(recv_data[0:14])
+                output += bytearray([0xff, 0xff, 0x6d, 0x16, 0xb5, 0x7d, 0xea ]) # Checked with Tetris DS, Mario Kart DS, and Metroid Prime Hunters, and this seems to be the standard response to 0x00
+                output[7] = 0x01 # Initialization response
+                s.sendto(output, addr)
+
+                # Try to connect to the server
                 gameid = utils.get_string(recv_data, 0x16)
                 client_id = "%02x" % ord(recv_data[13])
 
@@ -56,8 +63,6 @@ class GameSpyNatNegServer(object):
 
                 self.session_list[gameid][session_id][client_id]['addr'] = addr
                 clients = len(self.session_list[gameid][session_id])
-                #if client_id in session_list[gameid][session_id]:
-                #    clients -= 1
 
                 if clients > 0:
                     # Someone else is waiting to connect, send message
@@ -81,11 +86,6 @@ class GameSpyNatNegServer(object):
                         logger.log(logging.DEBUG, "")
                         #session_list[gameid][session_id][client_id]['connected'] = True
 
-                output = bytearray(recv_data[0:14])
-                output += bytearray([0xff, 0xff, 0x6d, 0x16, 0xb5, 0x7d, 0xea ]) # Checked with Tetris DS, Mario Kart DS, and Metroid Prime Hunters, and this seems to be the standard response to 0x00
-                output[7] = 0x01 # Initialization response
-                s.sendto(output, addr)
-
             elif recv_data[7] == '\x06': # Was able to connect
                 client_id = "%02x" % ord(recv_data[13])
                 logger.log(logging.DEBUG, "Received connected command from %s:%s..." % (addr[0], addr[1]))
@@ -97,15 +97,15 @@ class GameSpyNatNegServer(object):
                 if client_id not in self.session_list[gameid][session_id]:
                     pass
 
-                #session_list[gameid][session_id][client_id]['connected'] = True
+                #self.session_list[gameid][session_id][client_id]['connected'] = True
 
             elif recv_data[7] == '\x0d':
                 client_id = "%02x" % ord(recv_data[13])
                 logger.log(logging.DEBUG, "Received report command from %s:%s..." % (addr[0], addr[1]))
                 logger.log(logging.DEBUG, utils.pretty_print_hex(recv_data))
 
-                output[7] = 0x0e # Report response
-                s.sendto(output, addr)
+                recv_data[7] = 0x0e # Report response
+                s.sendto(recv_data, addr)
 
             else: # Was able to connect
                 logger.log(logging.DEBUG, "Received unknown command %02x from %s:%s..." % (ord(recv_data[7]), addr[0], addr[1]))

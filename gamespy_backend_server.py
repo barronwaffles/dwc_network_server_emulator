@@ -55,6 +55,9 @@ class GameSpyBackendServer(object):
         address = ("127.0.0.1", 27500)
         password = ""
 
+        #self.server_list['mariokartwii'] = []
+        #self.server_list['mariokartwii'].append({'__session__': 1113766873, 'eb': '5000', 'ev': '5000', 'publicport': '61784', 'localip1': '190.190.190.190', 'gamename': 'mariokartwii', 'maxplayers': '11', 'dwc_mtype': '0', 'publicip': '167772642', 'dwc_mver': '90', 'rk': 'vs_123', 'natneg': '1', 'dwc_groupid': '0', 'localip0': '10.0.1.226', 'dwc_pid': '1', 'localport': '61784', 'statechanged': '1', 'dwc_suspend': '1', 'dwc_eval': '1', 'numplayers': '0', 'dwc_hoststate': '0', 'p': '0'})
+
         logger.log(logging.INFO, "Started server on %s:%d..." % (address[0], address[1]))
 
         manager = GameSpyServerDatabase(address = address, authkey = password)
@@ -293,13 +296,13 @@ class GameSpyBackendServer(object):
                         values.append({ 'value': int(lval & rval), 'type': TokenType.NUMBER})
 
                     if match == True:
-                        #print "Matched: %s %s %s" % (l['value'], op, r['value'])
+                        print "Matched: %s %s %s" % (l['value'], op, r['value'])
                         matched_filters += 1
                     elif op != "&": # & doesn't need to be matched, so don't display a message for it
-                        #print "Not matched: %s %s %s" % (l['value'], op, r['value'])
+                        print "Not matched: %s %s %s" % (l['value'], op, r['value'])
                         pass
 
-                #print "Matched %d/%d" % (matched_filters, filter_count)
+                print "Matched %d/%d" % (matched_filters, filter_count)
 
                 # Add the server if everything was matched
                 if matched_filters == filter_count:
@@ -344,7 +347,7 @@ class GameSpyBackendServer(object):
 
         return servers
 
-    def update_server_list(self, gameid, session, value):
+    def update_server_list(self, gameid, session, value, console):
         # Make sure the user isn't hosting multiple servers or there isn't some left over server information that
         # never got handled properly (game crashed, etc).
         self.delete_server(gameid, session)
@@ -355,6 +358,7 @@ class GameSpyBackendServer(object):
 
         # Add new server
         value['__session__'] = session
+        value['__console__'] = console
 
         logger.log(logging.DEBUG, "Added %s to the server list for %s" % (value, gameid))
         self.server_list[gameid].append(value)
