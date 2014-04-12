@@ -160,6 +160,7 @@ class PlayerSession(LineReceiver):
             console = 1
 
         gsbrcd = authtoken_parsed['gsbrcd']
+        gameid = gsbrcd[:4]
         uniquenick = utils.base32_encode(int(userid)) + gsbrcd
         email = uniquenick + "@nds" # The Wii also seems to use @nds.
 
@@ -204,7 +205,7 @@ class PlayerSession(LineReceiver):
 
         valid_user = self.db.check_user_exists(userid, gsbrcd)
         if valid_user == False:
-            profileid = self.db.create_user(userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth)
+            profileid = self.db.create_user(userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth, gameid)
         else:
             profileid = self.db.perform_login(userid, password, gsbrcd)
 

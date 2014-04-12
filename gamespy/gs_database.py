@@ -28,7 +28,7 @@ class GamespyDatabase(object):
             # but I'm not good with databases and I'm not 100% positive that, for instance, that all
             # user id's will be ints, or all passwords will be ints, etc, despite not seeing any
             # evidence yet to say otherwise as far as Nintendo DS games go.
-            q = "CREATE TABLE users (profileid INT, userid TEXT, password TEXT, gsbrcd TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, firstname TEXT, lastname TEXT, stat TEXT, partnerid TEXT, console INT, csnum TEXT, cfc TEXT, bssid TEXT, devname TEXT, birth TEXT, sig TEXT)"
+            q = "CREATE TABLE users (profileid INT, userid TEXT, password TEXT, gsbrcd TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, firstname TEXT, lastname TEXT, stat TEXT, partnerid TEXT, console INT, csnum TEXT, cfc TEXT, bssid TEXT, devname TEXT, birth TEXT, gameid TEXT)"
             logger.log(-1, q)
             c.execute(q)
 
@@ -36,7 +36,7 @@ class GamespyDatabase(object):
             logger.log(-1, q)
             c.execute(q)
 
-            q = "CREATE TABLE buddies (userProfileId INT, buddyProfileId INT, time INT, status INT, notified INT)"
+            q = "CREATE TABLE buddies (userProfileId INT, buddyProfileId INT, time INT, status INT, notified INT, gameid TEXT)"
             logger.log(-1, q)
             c.execute(q)
             self.conn.commit()
@@ -136,7 +136,7 @@ class GamespyDatabase(object):
         c.close()
         return profileid
 
-    def create_user(self, userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth):
+    def create_user(self, userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth, gameid):
         if self.check_user_exists(userid, gsbrcd) == 0:
             profileid = self.get_next_free_profileid()
 
@@ -145,12 +145,11 @@ class GamespyDatabase(object):
                         # Animal Crossing: Wild World) all use \pid\11.
             lon = "0.000000"  # Always 0.000000?
             lat = "0.000000"  # Always 0.000000?
-            loc = ""  # Always blank?
+            loc = ""
             firstname = ""
             lastname = ""
             stat = ""
             partnerid = ""
-            sig = utils.generate_random_hex_str(32)
 
             # Hash password before entering it into the database.
             # For now I'm using a very simple MD5 hash.
@@ -160,11 +159,40 @@ class GamespyDatabase(object):
             password = md5.hexdigest()
 
             q = "INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-            q2 = q.replace("?", "%s") % (profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, sig)
+            q2 = q.replace("?", "%s") % (profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid)
             logger.log(-1, q2)
 
             c = self.conn.cursor()
-            c.execute(q, [profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, sig])
+            c.execute(q, [profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid])
+            c.close()
+
+            self.conn.commit()
+
+            return profileid
+
+    def import_user(self, profileid, uniquenick, firstname, lastname, email, gsbrcd, gameid, console):
+        if self.check_profile_exists(profileid) == 0:
+            pid = "11"
+            lon = "0.000000"
+            lat = "0.000000"
+            loc = ""
+            stat = ""
+            partnerid = ""
+            password = ""
+            userid = ""
+
+            csnum = ""
+            cfc = ""
+            bssid = ""
+            devname = ""
+            birth = ""
+
+            q = "INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            q2 = q.replace("?", "%s") % (profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid)
+            logger.log(-1, q2)
+
+            c = self.conn.cursor()
+            c.execute(q, [profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid])
             c.close()
 
             self.conn.commit()
@@ -299,8 +327,8 @@ class GamespyDatabase(object):
     def add_buddy(self, userProfileId, buddyProfileId):
         now = int(time.time())
 
-        q = "INSERT INTO buddies VALUES (?, ?, ?, ?, ?)"
-        q2 = q.replace("?", "%s") % (userProfileId, buddyProfileId, now, 0, 0)
+        q = "INSERT INTO buddies VALUES (?, ?, ?, ?, ?, ?)"
+        q2 = q.replace("?", "%s") % (userProfileId, buddyProfileId, now, 0, 0, "")
         logger.log(-1, q2)
 
         c = self.conn.cursor()
