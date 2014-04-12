@@ -223,3 +223,11 @@ pip-log.txt
 gpcm.db
 .idea/dictionaries/Nagato.xml
 .idea/modules.xml
+
+
+# Other
+*.exe
+tools/data/*
+*.db
+*.db-journal
+test*.py
