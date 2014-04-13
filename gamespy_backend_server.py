@@ -19,6 +19,8 @@
 # server_browser will send a request with the game name followed by optional search parameters to get a list of servers.
 
 import logging
+import time
+import ast
 
 from multiprocessing.managers import BaseManager
 from multiprocessing import freeze_support
@@ -61,31 +63,16 @@ class GameSpyBackendServer(object):
         server = manager.get_server()
         server.serve_forever()
 
-    def get_token(self, filters, i):
+    def get_token(self, filters):
         # Complex example from Dungeon Explorer: Warriors of Ancient Arts
         # dwc_mver = 3 and dwc_pid != 474890913 and maxplayers = 2 and numplayers < 2 and dwc_mtype = 0 and dwc_mresv != dwc_pid and (MatchType='english')
         #
         # Even more complex example from Phantasy Star Zero:
         # dwc_mver = 3 and dwc_pid != 4 and maxplayers = 3 and numplayers < 3 and dwc_mtype = 0 and dwc_mresv != dwc_pid and (((20=auth)AND((1&mskdif)=mskdif)AND((14&mskstg)=mskstg)))
         #
-        # Digging into a few DS games, and these hardcoded search queries seem to be consistent between them:
-        # %s = %d and %s != %u and maxplayers = %d and numplayers < %d and %s = %d and %s != %s
-        # %s and (%s)
-        # %s = %u
-        #
-        # It does not look like OR commands are (at least by default) supported, so for now they won't be implemented.
-        #
-        # Things that have been implemented:
-        #   - and operator (assuming all commands are linked by ANDs)
-        #   - integer comparisons
-        #   - string literals comparisons
-        #   - comparison between two fields
-        #   - comparison operators (<, >, =, !=, <=, >=)
-        #   - bitwise and operator (&)
-        #
-        # Things that won't be supported for now unless required:
-        #   - or operator
-        #   - grouping of operators, e.g.: (x or y) and (y or z)
+        # Example with OR from Mario Kart Wii:
+        # dwc_mver = 90 and dwc_pid != 1 and maxplayers = 11 and numplayers < 11 and dwc_mtype = 0 and dwc_hoststate = 2 and dwc_suspend = 0 and (rk = 'vs_123' and (ev > 4263 or ev <= 5763) and p = 0)
+        i = 0
         start = i
         special_chars = "_"
 
@@ -97,7 +84,11 @@ class GameSpyBackendServer(object):
             start += 1
 
         if i < len(filters):
-            if filters[i] == "(" or filters[i] == ")":
+            if filters[i] == "(":
+                i += 1
+                token_type = TokenType.TOKEN
+
+            elif filters[i] == ")":
                 i += 1
                 token_type = TokenType.TOKEN
 
@@ -113,7 +104,7 @@ class GameSpyBackendServer(object):
                 i += 1
                 token_type = TokenType.TOKEN
 
-                if i + 1 < len(filters) and filters[i+1] == "=":
+                if i < len(filters) and filters[i] == "=":
                     # >= or <=
                     i += 1
 
@@ -143,207 +134,217 @@ class GameSpyBackendServer(object):
                 if i < len(filters) and filters[i] == "\"":
                     i += 1 # Skip quotation mark
 
+            elif i + 1 < len(filters) and filters[i] == '-' and filters[i + 1].isdigit():
+                # Negative number
+                token_type = TokenType.NUMBER
+                i += 1
+                while i < len(filters) and filters[i].isdigit():
+                    i += 1
             elif filters[i].isalnum() or filters[i] in special_chars:
                 # Whole numbers or words
                 if filters[i].isdigit():
                     token_type = TokenType.NUMBER
-                if filters[i].isalpha():
+                elif filters[i].isalpha():
                     token_type = TokenType.FIELD
 
                 while i < len(filters) and (filters[i].isalnum() or filters[i] in special_chars) and filters[i] not in "!=>< ":
                     i += 1
 
-        if token_type == TokenType.STRING:
-            token = filters[start + 1:i - 1]
-        else:
-            token = filters[start:i]
-
-        if token_type == TokenType.NUMBER:
-            token = int(token)
+        token = filters[start:i]
+        if token_type == TokenType.FIELD and (token.lower() == "and" or token.lower() == "or"):
+            token = token.lower()
 
         return token, i, token_type
 
-    def match(self, filters, i, search, case_insensitive=False):
-        start = i
-        found_match = False
+    def translate_expression(self, filters):
+        output = []
+        variables = []
 
-        # Get the next token
-        token, i, _ = self.get_token(filters, i)
+        while len(filters) > 0:
+            token, i, token_type = self.get_token(filters)
+            filters = filters[i:]
 
-        if case_insensitive == True:
-            token = token.lower()
-            search = search.lower()
+            if token_type == TokenType.TOKEN:
+                # Python uses == instead of = for comparisons, so replace it with the proper token for compilation.
+                if token == "=":
+                    token = "=="
 
-        # If the token isn't the same as what we're searching for, don't move forward.
-        if token != search:
-            i = start
-        else:
-            found_match = True
+            elif token_type == TokenType.FIELD:
+                # Each server has its own variables so handle it later.
+                variables.append(len(output))
 
-        return found_match, i
+            output.append(token)
 
-    def parse_filter(self, filters):
-        ops = []
-        values = []
-        i = 0
-        found_match = True
-        filter_count = 0
+        return output, variables
 
-        # Continue while there's a connecting "and".
-        while found_match and i < len(filters):
-            found_match_bracket, i = self.match(filters, i, "(")
+    def validate_ast(self, node, num_literal_only):
+        # This function tries to verify that the expression is a valid expression before it gets evaluated.
+        # Anything besides the whitelisted things below are strictly forbidden:
+        # - String literals
+        # - Number literals
+        # - Binary operators (CAN ONLY BE PERFORMED ON TWO NUMBER LITERALS)
+        # - Comparisons (cannot use 'in', 'not in', 'is', 'is not' operators)
+        #
+        # Anything such as variables or arrays or function calls are NOT VALID.
+        # Never run the expression received from the client before running this function on the expression first.
+        #print type(node)
 
-            if found_match_bracket:
-                a, b, filters, f = self.parse_filter(filters[i:])
-                found_closing_match_bracket, i = self.match(filters, i, ")")
-                found_match = found_closing_match_bracket
-                a.reverse()
-                b.reverse()
-                ops = a + ops
-                values = b + values
-                filter_count += f
+        # Only allow literals, comparisons, and math operations
+        valid_node = False
+        if isinstance(node, ast.Num):
+            valid_node = True
 
-            else:
-                l, i, token_type = self.get_token(filters, i)
+        elif isinstance(node, ast.Str):
+            if num_literal_only == False:
+                valid_node = True
 
-                if token_type == TokenType.FIELD and l.lower() == "and":
-                    filter_count += 1
-                    continue
+        elif isinstance(node, ast.BoolOp):
+            for value in node.values:
+                valid_node = self.validate_ast(value, num_literal_only)
 
-                elif l == "(" or l == ")":
-                    continue
-
-                if token_type == TokenType.TOKEN:
-                    ops.append(l)
-                else:
-                    values.append({'value': l, 'type': token_type})
-
-        return ops, values, filters[i:], filter_count
-
-    def find_servers(self, gameid, filters, fields, max_count):
-        servers = []
-
-        if gameid in self.server_list:
-            ops_parsed, values_parsed, _, filter_count = self.parse_filter(filters)
-
-            # In the case that there were no "AND" commands, check to make sure there was at least one other command
-            if len(ops_parsed) > 0:
-                filter_count += 1
-
-            if max_count <= 0:
-                max_count = 1
-
-            # Generate a list of servers that match the given criteria.
-            for server in self.server_list[gameid]:
-                ops = ops_parsed
-                values = values_parsed
-
-                if len(servers) > max_count and max_count != -1:
+                if valid_node == False:
                     break
 
-                matched_filters = 0
-                while len(ops) > 0:
-                    op = ops.pop()
-                    r = None
-                    l = None
+        elif isinstance(node, ast.BinOp):
+            valid_node = self.validate_ast(node.left, True)
 
-                    if len(values) != 0:
-                        r = values.pop()
-                    if len(values) != 0:
-                        l = values.pop()
+            if valid_node == True:
+                valid_node = self.validate_ast(node.right, True)
 
-                    if r == None or l == None:
-                        break
+        elif isinstance(node, ast.UnaryOp):
+            valid_node = self.validate_ast(node.operand, num_literal_only)
 
-                    lval = l['value']
-                    rval = r['value']
+        elif isinstance(node, ast.Expr):
+            valid_node = self.validate_ast(node.value, num_literal_only)
 
-                    # If the left value is a field name and it's in the server variables, get its value.
-                    if l['type'] == TokenType.FIELD and l['value'] in server:
-                        lval = server[l['value']]
-                        _, _, l['type'] = self.get_token(lval, 0)
+        elif isinstance(node, ast.Compare):
+            valid_node = self.validate_ast(node.left, num_literal_only)
 
-                    # If the value is a number then convert it to an integer for proper integer comparison.
-                    if l['type'] == TokenType.NUMBER:
-                        lval = int(lval)
+            for op in node.ops:
+                #print type(op)
 
-                    # If the right value is a field name and it's in the server variables, get its value.
-                    if r['type'] == TokenType.FIELD and r['value'] in server:
-                        rval = server[r['value']]
-                        _, _, r['type'] = self.get_token(rval, 0)
+                # Restrict "is", "is not", "in", and "not in" python comparison operators.
+                # These are python-specific and the games have no way of knowing what they are, so there's no reason
+                # to keep them around.
+                if isinstance(op, ast.Is) or isinstance(op, ast.IsNot) or isinstance(op, ast.In) or isinstance(op, ast.NotIn):
+                    valid_node = False
+                    break
 
-                    # If the value is a number then convert it to an integer for proper integer comparison.
-                    if r['type'] == TokenType.NUMBER:
-                        rval = int(rval)
+            if valid_node == True:
+                for expr in node.comparators:
+                    valid_node = self.validate_ast(expr, num_literal_only)
 
-                    match = False
-                    if op == "=" and lval == rval:
-                        match = True
-                    elif op == "!=" and lval != rval:
-                        match = True
-                    elif op == "<" and lval < rval:
-                        match = True
-                    elif op == ">" and lval > rval:
-                        match = True
-                    elif op == ">=" and lval >= rval:
-                        match = True
-                    elif op == "<=" and lval <= rval:
-                        match = True
-                    elif op == "&":
-                        values.append({ 'value': int(lval & rval), 'type': TokenType.NUMBER})
+        elif isinstance(node, ast.Call):
+            valid_node = False
 
-                    if match == True:
-                        print "Matched: %s %s %s" % (l['value'], op, r['value'])
-                        matched_filters += 1
-                    elif op != "&": # & doesn't need to be matched, so don't display a message for it
-                        print "Not matched: %s %s %s" % (l['value'], op, r['value'])
-                        pass
-
-                print "Matched %d/%d" % (matched_filters, filter_count)
-
-                # Add the server if everything was matched
-                if matched_filters == filter_count:
-                    # Create a result with only the fields requested
-                    result = {}
-
-                    if 'localip0' in server:
-                        # localip1, localip2, ... are possible, but are they ever used?
-                        # Small chance this might cause an issue later.
-                        result['localip0'] = server['localip0']
-
-                    if 'localport' in server:
-                        result['localport'] = server['localport']
-
-                    if 'localport' in server:
-                        result['localport'] = server['localport']
-
-                    if 'natneg' in server:
-                        result['natneg'] = server['natneg']
-
-                    if 'publicip' in server:
-                        result['publicip'] = server['publicip']
-
-                    if 'publicport' in server:
-                        result['publicport'] = server['publicport']
-
-                    if '__session__' in server:
-                        result['__session__'] = server['__session__']
-
-                    if '__console__' in server:
-                        result['__console__'] = server['__console__']
-
-                    requested = {}
-                    for field in fields:
-                        if not field in result:
-                            if field in server:
-                                requested[field] = server[field]
-                            else:
-                                # Return a dummy value. What's the normal behavior of the real server in this case?
-                                requested[field] = ""
+        return valid_node
 
 
-                    result['requested'] = requested
-                    servers.append(result)
+    def find_servers(self, gameid, filters, fields, max_count):
+        matched_servers = []
+
+        # How does it handle 0?
+        if max_count == 0:
+            return []
+
+        if gameid not in self.server_list:
+            return []
+
+        start = time.time()
+
+        for server in self.server_list[gameid]:
+            translated, variables = self.translate_expression(filters)
+
+            for idx in variables:
+                token = translated[idx]
+
+                if token in server:
+                    token = server[token]
+                    _, _, token_type = self.get_token(token)
+
+                    if token_type == TokenType.FIELD:
+                        # At this point, any field should be a string.
+                        # This does not support stuff like:
+                        # dwc_test = 'test', dwc_test2 = dwc_test, dwc_test3 = dwc_test2
+                        token = '"' + token + '"'
+
+                    translated[idx] = token
+
+            q = ' '.join(translated)
+
+            # Always run validate_ast over the entire AST before evaluating anything. eval() is dangerous to use on
+            # unsanitized inputs. The validate_ast function has a fairly strict whitelist so it should be safe in what
+            # it accepts as valid.
+            m = ast.parse(q, "<string>", "exec")
+            valid_filter = True
+            for node in m.body:
+                valid_filter = self.validate_ast(node, False)
+
+            if valid_filter == False:
+                # Return only anything matched up until this point.
+                return matched_servers
+
+            # Use Python to evaluate the query. This method may take a little time but it shouldn't be all that
+            # big of a difference, I think. It takes about 0.0004 seconds per server to determine whether or not it's a
+            # match on my computer. Usually there's a low max_servers set when the game searches for servers, so assuming
+            # something like the game is asking for 6 servers, it would take about 0.0024 seconds total. These times
+            # will obviously be different per computer. It's not ideal, but it shouldn't be a huge bottleneck.
+            # A possible way to speed it up is to make validate_ast also evaluate the expressions at the same time as it
+            # validates it.
+            result = eval(q)
+
+            if result == True:
+                matched_servers.append(server)
+
+                if len(matched_servers) >= max_count:
+                    break
+
+        servers = []
+        for server in matched_servers:
+            # Create a result with only the fields requested
+            result = {}
+
+            # Return all localips
+            i = 0
+            while 'localip' + str(i) in server:
+                result['localip' + str(i)] = server['localip' + str(i)]
+                i += 1
+
+            if 'localport' in server:
+                result['localport'] = server['localport']
+
+            if 'localport' in server:
+                result['localport'] = server['localport']
+
+            if 'natneg' in server:
+                result['natneg'] = server['natneg']
+
+            if 'publicip' in server:
+                result['publicip'] = server['publicip']
+
+            if 'publicport' in server:
+                result['publicport'] = server['publicport']
+
+            if '__session__' in server:
+                result['__session__'] = server['__session__']
+
+            if '__console__' in server:
+                result['__console__'] = server['__console__']
+
+            requested = {}
+            for field in fields:
+                if not field in result:
+                    if field in server:
+                        requested[field] = server[field]
+                    else:
+                        # Return a dummy value. What's the normal behavior of the real server in this case?
+                        requested[field] = ""
+
+
+            result['requested'] = requested
+            servers.append(result)
+
+        logger.log(logging.DEBUG, "Matched %d servers in %s seconds" % (len(servers), (time.time() - start)))
 
         return servers
 
