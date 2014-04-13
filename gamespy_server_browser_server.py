@@ -63,18 +63,22 @@ class SessionFactory(Factory):
         logger.log(logging.INFO, "Now listening for connections on %s:%d...", address[0], address[1])
         self.secret_key_list = gs_utils.generate_secret_keys("gslist.cfg")
 
+        # TODO: Prune server cache at some point
+        self.server_cache = {}
+
     def buildProtocol(self, address):
-        return Session(address, self.secret_key_list)
+        return Session(address, self.secret_key_list, self.server_cache)
 
 
 class Session(LineReceiver):
-    def __init__(self, address, secret_key_list):
+    def __init__(self, address, secret_key_list, server_cache):
         self.setRawMode() # We're dealing with binary data so set to raw mode
         self.address = address
         self.forward_to_client = False
         self.forward_client = ()
         self.secret_key_list = secret_key_list # Don't waste time parsing every session, so just accept it from the parent
         self.console = 0
+        self.server_cache = server_cache
 
         manager_address = ("127.0.0.1", 27500)
         manager_password = ""
@@ -107,15 +111,23 @@ class Session(LineReceiver):
             else:
                 ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in self.forward_client[0].split('.')]), 0)).value) # DS
 
+            publicip = str(ip)
+
             logger.log(logging.DEBUG, "Trying to send message to %s:%d..." % (self.forward_client[0], self.forward_client[1]))
             logger.log(logging.DEBUG, utils.pretty_print_hex(bytearray(data)))
 
             # Get server based on ip/port
-            server = self.server_manager.find_server_by_address(ip, self.forward_client[1])._getvalue()
+            server = None
+            print self.server_cache
+            print "Searching for: %s %s" % (publicip + str(self.forward_client[1]), self.forward_client[0])
+            if (str(ip) + str(self.forward_client[1])) in self.server_cache:
+                server = self.server_cache[publicip + str(self.forward_client[1])]
+                #self.server_cache.pop((publicip + str(self.forward_client[1])))
+
             logger.log(logging.DEBUG, "find_server_by_address returned: %s" % server)
 
             if server == None:
-                pass
+                return
 
             logger.log(logging.DEBUG, "%s %s" % (ip, server['publicip']))
             if server['publicip'] == ip and server['publicport'] == str(self.forward_client[1]):
@@ -325,3 +337,6 @@ class Session(LineReceiver):
             # Send to client
             self.transport.write(bytes(data))
             logger.log(logging.DEBUG, "Sent server list message to %s:%s..." % (self.address.host, self.address.port))
+
+            if "publicip" in server and "publicport" in server:
+                self.server_cache[str(server['publicip']) + str(server['publicport'])] = server
