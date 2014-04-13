@@ -332,7 +332,7 @@ class GamespyDatabase(object):
         logger.log(-1, q2)
 
         c = self.conn.cursor()
-        c.execute(q, [userProfileId, buddyProfileId, now, 0, 0]) # 0 will mean not authorized
+        c.execute(q, [userProfileId, buddyProfileId, now, 0, 0, ""]) # 0 will mean not authorized
         self.conn.commit()
 
     def auth_buddy(self, userProfileId, buddyProfileId):
