@@ -99,32 +99,24 @@ class Session(LineReceiver):
         #   0x05 - Player search request
         #
         # For Tetris DS, at the very least 0x00 and 0x02 need to be implemented.
-
         if self.forward_to_client:
             self.forward_to_client = False
 
             # Find session id of server
             # Iterate through the list of servers sent to the client and match by IP and port.
             # Is there a better way to determine this information?
-            if self.console != 0:
-                ip = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in self.forward_client[0].split('.')]), 0)).value) # Wii
-            else:
-                ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in self.forward_client[0].split('.')]), 0)).value) # DS
 
-            publicip = str(ip)
+            server, ip = self.find_server_in_cache(self.forward_client[0], self.forward_client[1], self.console)
 
+            if server == None:
+                if self.console == 0:
+                    server, ip = self.find_server_in_cache(self.forward_client[0], self.forward_client[1], 1) # Try Wii
+                elif self.console == 1:
+                    server, ip = self.find_server_in_cache(self.forward_client[0], self.forward_client[1], 0) # Try DS
+
+            logger.log(logging.DEBUG, "find_server_in_cache returned: %s" % server)
             logger.log(logging.DEBUG, "Trying to send message to %s:%d..." % (self.forward_client[0], self.forward_client[1]))
             logger.log(logging.DEBUG, utils.pretty_print_hex(bytearray(data)))
-
-            # Get server based on ip/port
-            server = None
-            print self.server_cache
-            print "Searching for: %s %s" % (publicip + str(self.forward_client[1]), self.forward_client[0])
-            if (str(ip) + str(self.forward_client[1])) in self.server_cache:
-                server = self.server_cache[publicip + str(self.forward_client[1])]
-                #self.server_cache.pop((publicip + str(self.forward_client[1])))
-
-            logger.log(logging.DEBUG, "find_server_by_address returned: %s" % server)
 
             if server == None:
                 return
@@ -340,3 +332,21 @@ class Session(LineReceiver):
 
             if "publicip" in server and "publicport" in server:
                 self.server_cache[str(server['publicip']) + str(server['publicport'])] = server
+
+    def find_server_in_cache(self, addr, port, console):
+        if console != 0:
+            ip = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in addr.split('.')]), 0)).value) # Wii
+        else:
+            ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in addr.split('.')]), 0)).value) # DS
+
+        logger.log(logging.DEBUG, "IP: %s, Console: %d" % (ip, console))
+
+        # Get server based on ip/port
+        server = None
+        logger.log(logging.DEBUG, self.server_cache)
+        logger.log(logging.DEBUG, "Searching for: %s %s" % (ip + str(port), addr))
+        if (str(ip) + str(port)) in self.server_cache:
+            server = self.server_cache[ip + str(port)]
+            #self.server_cache.pop((publicip + str(self.forward_client[1])))
+
+        return server, ip
