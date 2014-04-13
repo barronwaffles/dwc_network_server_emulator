@@ -29,7 +29,7 @@ class GameSpyQRServer(object):
             self.sent_challenge = False
             self.address = address
             self.console = 0
-            self.playerid= 0
+            self.playerid = 0
 
     def __init__(self):
         self.sessions = {}

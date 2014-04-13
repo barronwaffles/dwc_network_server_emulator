@@ -104,7 +104,8 @@ class GameSpyNatNegServer(object):
                 logger.log(logging.DEBUG, "Received report command from %s:%s..." % (addr[0], addr[1]))
                 logger.log(logging.DEBUG, utils.pretty_print_hex(recv_data))
 
-                recv_data[7] = 0x0e # Report response
+                output = bytearray(recv_data)
+                output[7] = 0x0e # Report response
                 s.sendto(recv_data, addr)
 
             else: # Was able to connect
