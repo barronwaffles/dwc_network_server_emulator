@@ -47,7 +47,7 @@ class PlayerSearch(LineReceiver):
         self.setRawMode()
         self.db = gs_database.GamespyDatabase()
 
-        self,address = address
+        self.address = address
         self.leftover = ""
 
     def connectionMade(self):
@@ -57,7 +57,7 @@ class PlayerSearch(LineReceiver):
         pass
 
     def rawDataReceived(self, data):
-        self.log(logging.DEBUG, "SEARCH RESPONSE: %s" % data)
+        logger.log(logging.DEBUG, "SEARCH RESPONSE: %s" % data)
 
         data = self.leftover + data
         commands, self.leftover = gs_query.parse_gamespy_message(data)
@@ -68,7 +68,7 @@ class PlayerSearch(LineReceiver):
             if data_parsed['__cmd__'] == "otherslist":
                 self.perform_otherslist(data_parsed)
             else:
-                self.log(logging.DEBUG, "Found unknown search command, don't know how to handle '%s'." % data_parsed['__cmd__'])
+                logger.log(logging.DEBUG, "Found unknown search command, don't know how to handle '%s'." % data_parsed['__cmd__'])
 
     def perform_otherslist(self, data_parsed):
         # Reference: http://wiki.tockdom.com/wiki/MKWii_Network_Protocol/Server/gpsp.gs.nintendowifi.net
@@ -82,17 +82,19 @@ class PlayerSearch(LineReceiver):
         if "numopids" in data_parsed and "opids" in data_parsed:
             numopids = int(data_parsed['numopids'])
             opids = data_parsed['opids'].split('|')
-
-            if len(opids) != numopids:
-                self.log(logging.ERROR, "Unexpected number of opids, got %d, expected %d." % (len(opids), numopids))
+            if (len(opids) != numopids) and (not int(opids[0]) == 0):
+                logger.log(logging.ERROR, "Unexpected number of opids, got %d, expected %d." % (len(opids), numopids))
 
             # Return all uniquenicks despite any unexpected/missing opids
             for opid in opids:
                 profile = self.db.get_profile_from_profileid(opid)
 
+                msg_d.append(('o', opid))
                 if profile != None:
-                    msg_d.append(('o', opid))
                     msg_d.append(('uniquenick', profile['uniquenick']))
+
+                else:
+                    msg_d.append(('uniquenick', ''))
 
         msg_d.append(('oldone', ""))
         msg = gs_query.create_gamespy_message(msg_d)
@@ -102,3 +104,4 @@ class PlayerSearch(LineReceiver):
 if __name__ == "__main__":
     gsps = GameSpyPlayerSearchServer()
     gsps.start()
+
