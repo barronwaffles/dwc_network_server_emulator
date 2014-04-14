@@ -64,18 +64,28 @@ class GameSpyNatNegServer(object):
                 self.session_list[gameid][session_id][client_id]['addr'] = addr
                 clients = len(self.session_list[gameid][session_id])
 
-                if clients > 0:
-                    # Someone else is waiting to connect, send message
+                if self.session_list[gameid][session_id][client_id]['connected'] == False:
                     for client in self.session_list[gameid][session_id]:
-                        if self.session_list[gameid][session_id][client]['connected'] == True or client == client_id:
+                        if client == client_id:
                             continue
 
+                        # Send to requesting client
                         output = bytearray(recv_data[0:12])
-                        if client == client_id:
-                            output += bytearray(recv_data[15:15+4+2]) # IP Address and port
-                        else:
-                            output += bytearray([int(x) for x in addr[0].split('.')])
-                            output += utils.get_bytes_from_short_be(addr[1])
+                        output += bytearray([int(x) for x in self.session_list[gameid][session_id][client]['addr'][0].split('.')])
+                        output += utils.get_bytes_from_short_be(self.session_list[gameid][session_id][client]['addr'][1])
+
+                        output += bytearray([0x42, 0x00]) # Unknown, always seems to be \x42\x00
+                        output[7] = 0x05
+                        s.sendto(output, (self.session_list[gameid][session_id][client_id]['addr']))
+
+                        logger.log(logging.DEBUG, "Sent connection request to %s:%d..." % (self.session_list[gameid][session_id][client_id]['addr'][0], self.session_list[gameid][session_id][client_id]['addr'][1]))
+                        logger.log(logging.DEBUG, utils.pretty_print_hex(output))
+                        logger.log(logging.DEBUG, "")
+
+                        # Send to other client
+                        output = bytearray(recv_data[0:12])
+                        output += bytearray([int(x) for x in self.session_list[gameid][session_id][client_id]['addr'][0].split('.')])
+                        output += utils.get_bytes_from_short_be(self.session_list[gameid][session_id][client_id]['addr'][1])
 
                         output += bytearray([0x42, 0x00]) # Unknown, always seems to be \x42\x00
                         output[7] = 0x05
@@ -84,7 +94,6 @@ class GameSpyNatNegServer(object):
                         logger.log(logging.DEBUG, "Sent connection request to %s:%d..." % (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
                         logger.log(logging.DEBUG, utils.pretty_print_hex(output))
                         logger.log(logging.DEBUG, "")
-                        #session_list[gameid][session_id][client_id]['connected'] = True
 
             elif recv_data[7] == '\x06': # Was able to connect
                 client_id = "%02x" % ord(recv_data[13])
@@ -97,7 +106,7 @@ class GameSpyNatNegServer(object):
                 if client_id not in self.session_list[gameid][session_id]:
                     pass
 
-                #self.session_list[gameid][session_id][client_id]['connected'] = True
+                self.session_list[gameid][session_id][client_id]['connected'] = True
 
             elif recv_data[7] == '\x0d':
                 client_id = "%02x" % ord(recv_data[13])
