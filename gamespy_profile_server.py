@@ -57,6 +57,13 @@ class PlayerSession(LineReceiver):
         self.profileid = 0
         self.gameid = ""
 
+        self.buddies = []
+        self.blocked = []
+
+        self.status = ""
+        self.statstring = ""
+        self.locstring = ""
+
     def log(self, level, message):
         if self.profileid == 0:
             if self.gameid == "":
@@ -143,7 +150,7 @@ class PlayerSession(LineReceiver):
 
     def perform_login(self, data_parsed):
         authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'])
-        print authtoken_parsed
+        #print authtoken_parsed
 
         # Track what console is connecting and save it in the database during user creation just in case we can use
         # the information in the future.
@@ -244,9 +251,16 @@ class PlayerSession(LineReceiver):
             self.log(logging.DEBUG, "SENDING: %s" % msg)
             self.transport.write(bytes(msg))
 
+            self.buddies = self.db.get_buddy_list(self.profileid)
+            self.blocked = self.db.get_blocked_list(self.profileid)
+
+            # Get pending messages.
+            self.get_pending_messages()
+
             # Send any friend statuses when the user logs in.
             # This will allow the user to see if their friends are hosting a game as soon as they log in.
             self.get_status_from_friends()
+            self.send_status_to_friends()
 
     def perform_logout(self, data_parsed):
         self.log(logging.INFO, "Session %s has logged off" % (data_parsed['sesskey']))
@@ -326,6 +340,7 @@ class PlayerSession(LineReceiver):
 
         # Send authorization requests to client
         self.get_buddy_requests()
+
         # Send authorizationed message to client
         self.get_buddy_authorized()
 
@@ -333,11 +348,40 @@ class PlayerSession(LineReceiver):
 
 
     def perform_bm(self, data_parsed):
-        if data_parsed['__cmd_val__'] == "1": # Message to/from clients?
+        if data_parsed['__cmd_val__'] == "1" or data_parsed['__cmd_val__'] == "5" or data_parsed['__cmd_val__'] == "102" or data_parsed['__cmd_val__'] == "103": # Message to/from clients?
             if "t" in data_parsed:
                 # Send message to the profile id in "t"
                 dest_profileid = int(data_parsed['t'])
+                dest_profile_buddies = self.db.get_buddy_list(dest_profileid)
                 dest_msg = data_parsed['msg']
+
+                not_buddies = False
+
+                # Check if the user is buddies with the target user before sending message.
+                if not_buddies:
+                    for buddy in self.buddies:
+                        if buddy['userProfileId'] == dest_profileid:
+                            not_buddies = True
+                            break
+
+                if not_buddies:
+                    for buddy in dest_profile_buddies:
+                        if buddy['userProfileId'] == self.profile:
+                            not_buddies = True
+                            break
+
+                # Send error to user if they tried to send a message to someone who isn't a buddy.
+                if not_buddies:
+                    msg_d = []
+                    msg_d.append(('__cmd__', "error"))
+                    msg_d.append(('__cmd_val__', ""))
+                    msg_d.append(('err', 2305))
+                    msg_d.append(('errmsg', "The profile the message was to be sent to is not a buddy."))
+                    msg_d.append(('id', 1))
+                    msg = gs_query.create_gamespy_message(msg_d)
+                    logger.log(logging.DEBUG, "Trying to send message to someone who isn't a buddy: %s" % msg)
+                    self.transport.write(msg)
+                    return
 
                 msg_d = []
                 msg_d.append(('__cmd__', "bm"))
@@ -346,8 +390,23 @@ class PlayerSession(LineReceiver):
                 msg_d.append(('msg', dest_msg))
                 msg = gs_query.create_gamespy_message(msg_d)
 
-                self.log(logging.DEBUG, "SENDING TO %s:%s: %s" % (self.sessions[dest_profileid].address.host, self.sessions[dest_profileid].address.port, msg))
-                self.sessions[dest_profileid].transport.write(bytes(msg))
+                if dest_profileid in self.sessions:
+                    self.log(logging.DEBUG, "SENDING TO %s:%s: %s" % (self.sessions[dest_profileid].address.host, self.sessions[dest_profileid].address.port, msg))
+                    self.sessions[dest_profileid].transport.write(bytes(msg))
+                else:
+                    if data_parsed['__cmd_val__'] == "1":
+                        self.log(logging.DEBUG, "Saving message to %d: %s" % (dest_profileid, msg))
+                        self.db.save_pending_message(self.profileid, dest_profileid, msg)
+                    else:
+                        msg_d = []
+                        msg_d.append(('__cmd__', "error"))
+                        msg_d.append(('__cmd_val__', ""))
+                        msg_d.append(('err', 2307))
+                        msg_d.append(('errmsg', "The buddy to send a message to is offline."))
+                        msg_d.append(('id', 1))
+                        msg = gs_query.create_gamespy_message(msg_d)
+                        logger.log(logging.DEBUG, "Trying to send message to someone who isn't online: %s" % msg)
+                        self.transport.write(msg)
 
 
     def perform_addbuddy(self, data_parsed):
@@ -403,8 +462,6 @@ class PlayerSession(LineReceiver):
         buddies = self.db.get_buddy_list(self.profileid)
 
         for buddy in buddies:
-            print buddy
-
             if buddy['status'] != 1:
                 continue
 
@@ -456,7 +513,12 @@ class PlayerSession(LineReceiver):
 
             self.transport.write(bytes(msg))
 
+    def get_pending_messages(self):
+        messages = self.db.get_pending_messages(self.profileid)
 
+        for message in messages:
+            if message['sourceid'] not in self.blocked:
+                self.transport(message['msg'])
 
 
 if __name__ == "__main__":

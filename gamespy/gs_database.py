@@ -36,7 +36,11 @@ class GamespyDatabase(object):
             logger.log(-1, q)
             c.execute(q)
 
-            q = "CREATE TABLE buddies (userProfileId INT, buddyProfileId INT, time INT, status INT, notified INT, gameid TEXT)"
+            q = "CREATE TABLE buddies (userProfileId INT, buddyProfileId INT, time INT, status INT, notified INT, gameid TEXT, blocked INT)"
+            logger.log(-1, q)
+            c.execute(q)
+
+            q = "CREATE TABLE pending_messages (sourceid INT, targetid INT, msg TEXT)"
             logger.log(-1, q)
             c.execute(q)
             self.conn.commit()
@@ -211,6 +215,30 @@ class GamespyDatabase(object):
 
         return users
 
+    def save_pending_message(self, sourceid, targetid, msg):
+        q = "INSERT INTO pending_messages VALUES (?,?,?)"
+        q2 = q.replace("?", "%s") % (sourceid, targetid, msg)
+        logger.log(-1, q2)
+
+        c = self.conn.cursor()
+        c.execute(q, [sourceid, targetid, msg])
+        c.close()
+
+        self.conn.commit()
+
+    def get_pending_messages(self, profileid):
+        c = self.conn.cursor()
+
+        q = "SELECT * FROM pending_messages WHERE targetid = ?"
+        q2 = q.replace("?", "%s") % (profileid)
+        logger.log(-1, q2)
+
+        messages = []
+        for row in c.execute(q, [profileid]):
+            messages.append(self.get_dict(row))
+
+        return messages
+
     def update_profile(self, profileid, field):
         # Found profile id associated with session key.
         # Start replacing each field one by one.
@@ -327,12 +355,12 @@ class GamespyDatabase(object):
     def add_buddy(self, userProfileId, buddyProfileId):
         now = int(time.time())
 
-        q = "INSERT INTO buddies VALUES (?, ?, ?, ?, ?, ?)"
-        q2 = q.replace("?", "%s") % (userProfileId, buddyProfileId, now, 0, 0, "")
+        q = "INSERT INTO buddies VALUES (?, ?, ?, ?, ?, ?, ?)"
+        q2 = q.replace("?", "%s") % (userProfileId, buddyProfileId, now, 0, 0, "", 0)
         logger.log(-1, q2)
 
         c = self.conn.cursor()
-        c.execute(q, [userProfileId, buddyProfileId, now, 0, 0, ""]) # 0 will mean not authorized
+        c.execute(q, [userProfileId, buddyProfileId, now, 0, 0, "", 0]) # 0 will mean not authorized
         self.conn.commit()
 
     def auth_buddy(self, userProfileId, buddyProfileId):
@@ -342,6 +370,24 @@ class GamespyDatabase(object):
 
         c = self.conn.cursor()
         c.execute(q, [1, userProfileId, buddyProfileId]) # 1 will mean authorized
+        self.conn.commit()
+
+    def block_buddy(self, userProfileId, buddyProfileId):
+        q = "UPDATE buddies SET blocked = ? WHERE userProfileId = ? AND buddyProfileId = ?"
+        q2 = q.replace("?", "%s") % (1, userProfileId, buddyProfileId)
+        logger.log(-1, q2)
+
+        c = self.conn.cursor()
+        c.execute(q, [1, userProfileId, buddyProfileId]) # 1 will mean blocked
+        self.conn.commit()
+
+    def unblock_buddy(self, userProfileId, buddyProfileId):
+        q = "UPDATE buddies SET blocked = ? WHERE userProfileId = ? AND buddyProfileId = ?"
+        q2 = q.replace("?", "%s") % (0, userProfileId, buddyProfileId)
+        logger.log(-1, q2)
+
+        c = self.conn.cursor()
+        c.execute(q, [0, userProfileId, buddyProfileId]) # 0 will mean not blocked
         self.conn.commit()
 
     def get_buddy(self, userProfileId, buddyProfileId):
@@ -368,7 +414,20 @@ class GamespyDatabase(object):
         self.conn.commit()
 
     def get_buddy_list(self, userProfileId):
-        q = "SELECT * FROM buddies WHERE userProfileId = ?"
+        q = "SELECT * FROM buddies WHERE userProfileId = ? AND blocked = 0"
+        q2 = q.replace("?", "%s") % (userProfileId)
+        logger.log(-1, q2)
+
+        c = self.conn.cursor()
+
+        users = []
+        for row in c.execute(q, [userProfileId]):
+            users.append(self.get_dict(row))
+
+        return users
+
+    def get_blocked_list(self, userProfileId):
+        q = "SELECT * FROM buddies WHERE userProfileId = ? AND blocked = 1"
         q2 = q.replace("?", "%s") % (userProfileId)
         logger.log(-1, q2)
 
