@@ -4,11 +4,13 @@
 import logging
 import socket
 import struct
+import threading
+from multiprocessing.managers import BaseManager
+
 import gamespy.gs_utility as gs_utils
 import gamespy.gs_database as gs_database
 import other.utils as utils
-
-from multiprocessing.managers import BaseManager
+from gamespy_server_browser_server import GameSpyServerBrowserServer
 
 # Logger settings
 logger_output_to_console = True
@@ -61,6 +63,11 @@ class GameSpyQRServer(object):
         self.socket.bind(address)
 
         logger.log(logging.INFO, "Server is now listening on %s:%s..." % (address[0], address[1]))
+
+        # Dependencies! I don't really like this solution but it's easier than trying to manage it another way.
+        server_browser_server = GameSpyServerBrowserServer(self)
+        server_browser_server_thread = threading.Thread(target=server_browser_server.start())
+        server_browser_server_thread.start()
 
         self.wait_loop()
 
@@ -250,7 +257,8 @@ class GameSpyQRServer(object):
                 self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received echo from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
 
             elif recv_data[0] == '\x07': # Client Message Ack
-                self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received client message ack from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
+                #self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received client message ack from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
+                self.log(logging.DEBUG, address, "Received client message ack from %s:%s..." % (address[0], address[1]))
 
             elif recv_data[0] == '\x08': # Keep Alive
                 self.log(logging.DEBUG, address, "Received keep alive from %s:%s..." % (address[0], address[1]))

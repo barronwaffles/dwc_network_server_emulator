@@ -43,12 +43,12 @@ GameSpyServerDatabase.register("find_server_by_address")
 
 address = ("0.0.0.0", 28910)
 class GameSpyServerBrowserServer(object):
-    def __init__(self):
-        pass
+    def __init__(self, qr = None):
+        self.qr = qr
 
     def start(self):
         endpoint = serverFromString(reactor, "tcp:%d:interface=%s" % (address[1], address[0]))
-        conn = endpoint.listen(SessionFactory())
+        conn = endpoint.listen(SessionFactory(self.qr))
 
         try:
             if reactor.running == False:
@@ -59,19 +59,20 @@ class GameSpyServerBrowserServer(object):
 
 
 class SessionFactory(Factory):
-    def __init__(self):
+    def __init__(self, qr):
         logger.log(logging.INFO, "Now listening for connections on %s:%d...", address[0], address[1])
         self.secret_key_list = gs_utils.generate_secret_keys("gslist.cfg")
 
         # TODO: Prune server cache at some point
         self.server_cache = {}
+        self.qr = qr
 
     def buildProtocol(self, address):
-        return Session(address, self.secret_key_list, self.server_cache)
+        return Session(address, self.secret_key_list, self.server_cache, self.qr)
 
 
 class Session(LineReceiver):
-    def __init__(self, address, secret_key_list, server_cache):
+    def __init__(self, address, secret_key_list, server_cache, qr):
         self.setRawMode() # We're dealing with binary data so set to raw mode
         self.address = address
         self.forward_to_client = False
@@ -79,6 +80,7 @@ class Session(LineReceiver):
         self.secret_key_list = secret_key_list # Don't waste time parsing every session, so just accept it from the parent
         self.console = 0
         self.server_cache = server_cache
+        self.qr = qr
 
         manager_address = ("127.0.0.1", 27500)
         manager_password = ""
@@ -131,9 +133,15 @@ class Session(LineReceiver):
                 output += bytearray(utils.get_bytes_from_int(natneg_session))
                 output += bytearray(data)
 
-                client_s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                client_s.sendto(output, self.forward_client)
-                logger.log(logging.DEBUG, "Forwarded data to %s:%s..." % (self.forward_client[0], self.forward_client[1]))
+                if self.qr != None:
+                    self.qr.socket.sendto(output, self.forward_client)
+                    logger.log(logging.DEBUG, "Forwarded data to %s:%s through QR server..." % (self.forward_client[0], self.forward_client[1]))
+                else:
+                    # In case we can't contact the QR server, just try sending the packet directly.
+                    # This isn't standard behavior but it can work in some instances.
+                    client_s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    client_s.sendto(output, self.forward_client)
+                    logger.log(logging.DEBUG, "Forwarded data to %s:%s directly (potential error occurred)..." % (self.forward_client[0], self.forward_client[1]))
             return
 
         if data[2] == '\x00': # Server list request

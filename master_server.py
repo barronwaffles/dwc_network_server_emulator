@@ -44,8 +44,8 @@ if __name__ == "__main__":
     player_search_server_thread = threading.Thread(target=start_player_search_server)
     player_search_server_thread.start()
 
-    server_browser_server_thread = threading.Thread(target=start_server_browser_server)
-    server_browser_server_thread.start()
+    #server_browser_server_thread = threading.Thread(target=start_server_browser_server)
+    #server_browser_server_thread.start()
 
     natneg_server_thread = threading.Thread(target=start_natneg_server)
     natneg_server_thread.start()
