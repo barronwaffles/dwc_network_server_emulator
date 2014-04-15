@@ -108,6 +108,11 @@ class PlayerSession(LineReceiver):
     def connectionLost(self, reason):
         self.log(logging.INFO, "Client disconnected")
 
+        self.status = "0"
+        self.statstring = "Offline"
+        self.locstring = ""
+        self.send_status_to_friends()
+
         if self.session in self.sessions:
             del self.sessions[self.session]
             self.log(logging.INFO, "Deleted session %d" % self.sessions)
