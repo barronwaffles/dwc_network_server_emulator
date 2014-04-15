@@ -176,12 +176,17 @@ class Session(LineReceiver):
             source_ip = 0
             max_servers = 0
 
+            NO_SERVER_LIST = 0x02
             ALTERNATE_SOURCE_IP = 0x08
             LIMIT_RESULT_COUNT = 0x80
+
+            send_ip = False
             if (options & LIMIT_RESULT_COUNT):
                 max_servers = utils.get_int(data, idx)
             elif (options & ALTERNATE_SOURCE_IP):
                 source_ip = utils.get_int(data, idx)
+            elif (options & ALTERNATE_SOURCE_IP):
+                send_ip = True
 
             if '\\' in fields:
                 fields = [x for x in fields.split('\\') if x and not x.isspace()]
@@ -199,10 +204,15 @@ class Session(LineReceiver):
             logger.log(logging.DEBUG, "list version: %02x / encoding version: %02x / game version: %08x / query game: %s / game name: %s / challenge: %s / filter: %s / fields: %s / options: %08x / max servers: %d / source ip: %08x" % (list_version, encoding_version, game_version, query_game, game_name, challenge, filter, fields, options, max_servers, source_ip))
 
             # Requesting ip and port of client, not server
-            if filter == "" or fields == "":
+            if filter == "" or fields == "" or send_ip == True:
                 output = bytearray([int(x) for x in self.address.host.split('.')])
                 output += utils.get_bytes_from_short_be(self.address.port)
-                self.transport.write(bytes(output))
+
+                enc = gs_utils.EncTypeX()
+                output_enc = enc.encrypt(self.secret_key_list[game_name], challenge, output)
+
+                self.transport.write(bytes(output_enc))
+                
                 logger.log(logging.DEBUG, "Responding with own IP and port...")
                 logger.log(logging.DEBUG, utils.pretty_print_hex(output))
             else:
