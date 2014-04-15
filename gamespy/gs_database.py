@@ -244,7 +244,7 @@ class GamespyDatabase(object):
         # Start replacing each field one by one.
         # TODO: Optimize this so it's done all in one update.
         # FIXME: Possible security issue due to embedding an unsanitized string directly into the statement.
-        q = "UPDATE users SET %s = ? WHERE profileid = ?"
+        q = "UPDATE users SET \"%s\" = ? WHERE profileid = ?"
         q2 = q.replace("?", "%s") % (field[0], field[1], profileid)
         logger.log(-1, q2)
 
