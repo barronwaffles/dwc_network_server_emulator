@@ -233,7 +233,7 @@ class GameSpyQRServer(object):
 
                 if "statechanged" in k:
                     if k['statechanged'] == "1": # Create server
-                        if k['publicport'] != "0" and k['publicip'] != "0" and k['maxplayers'] != "0":
+                        if k['publicport'] != "0" and k['publicip'] != "0":
                             # dwc_mtype controls what kind of server query we're looking for.
                             # dwc_mtype = 0 is used when looking for a matchmaking game.
                             # dwc_mtype = 1 is unknown.

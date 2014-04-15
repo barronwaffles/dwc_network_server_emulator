@@ -304,7 +304,6 @@ class PlayerSession(LineReceiver):
         self.log(logging.DEBUG, "SENDING: %s" % msg)
         self.transport.write(bytes(msg))
 
-
     def perform_updatepro(self, data_parsed):
         # Wii example: \updatepro\\sesskey\199714190\firstname\Wii:2555151656076614@WR9E\partnerid\11\final\
 
@@ -432,6 +431,10 @@ class PlayerSession(LineReceiver):
         if buddy_exists == False:
             self.db.add_buddy(self.profileid, newprofileid)
 
+            if newprofileid in self.sessions:
+                logger.log(logging.DEBUG, "User is online, sending direct request from profile id %d to profile id %d..." % (self.profileid, newprofileid))
+                self.send_buddy_request(self.sessions[newprofileid], self.profileid)
+
 
     def perform_delbuddy(self, data_parsed):
         # Sample: \delbuddy\\sesskey\61913621\delprofileid\1\final\
@@ -506,21 +509,26 @@ class PlayerSession(LineReceiver):
         # Get list people who have added the user but haven't been accepted yet.
         buddies = self.db.get_pending_buddy_requests(self.profileid)
 
-        profile = self.db.get_profile_from_profileid(self.profileid)
+        for buddy in buddies:
+            self.send_buddy_request(self, buddy['userProfileId'], buddy['time'])
+
+    def send_buddy_request(self, session, profileid, senttime = None):
         sig = utils.generate_random_hex_str(32)
         msg = "\r\n\r\n"
         msg += "|signed|" + sig
 
-        for buddy in buddies:
-            msg_d = []
-            msg_d.append(('__cmd__', "bm"))
-            msg_d.append(('__cmd_val__', "2"))
-            msg_d.append(('f', buddy['userProfileId']))
-            msg_d.append(('date', buddy['time']))
-            msg_d.append(('msg', msg))
-            msg = gs_query.create_gamespy_message(msg_d)
+        if senttime == None:
+            senttime = int(time.time())
 
-            self.transport.write(bytes(msg))
+        msg_d = []
+        msg_d.append(('__cmd__', "bm"))
+        msg_d.append(('__cmd_val__', "2"))
+        msg_d.append(('f', profileid))
+        msg_d.append(('date', senttime))
+        msg_d.append(('msg', msg))
+        msg = gs_query.create_gamespy_message(msg_d)
+
+        session.transport.write(bytes(msg))
 
     def get_pending_messages(self):
         messages = self.db.get_pending_messages(self.profileid)
