@@ -185,7 +185,7 @@ class Session(LineReceiver):
                 max_servers = utils.get_int(data, idx)
             elif (options & ALTERNATE_SOURCE_IP):
                 source_ip = utils.get_int(data, idx)
-            elif (options & ALTERNATE_SOURCE_IP):
+            elif (options & NO_SERVER_LIST):
                 send_ip = True
 
             if '\\' in fields:
@@ -206,14 +206,14 @@ class Session(LineReceiver):
             # Requesting ip and port of client, not server
             if filter == "" or fields == "" or send_ip == True:
                 output = bytearray([int(x) for x in self.address.host.split('.')])
-                output += utils.get_bytes_from_short_be(self.address.port)
+                output += utils.get_bytes_from_short_be(6500) # Does this ever change?
 
                 enc = gs_utils.EncTypeX()
                 output_enc = enc.encrypt(self.secret_key_list[game_name], challenge, output)
 
                 self.transport.write(bytes(output_enc))
-                
-                logger.log(logging.DEBUG, "Responding with own IP and port...")
+
+                logger.log(logging.DEBUG, "Responding with own IP and game port...")
                 logger.log(logging.DEBUG, utils.pretty_print_hex(output))
             else:
                 self.find_server(query_game, filter, fields, max_servers, game_name, challenge)
