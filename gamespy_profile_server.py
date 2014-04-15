@@ -421,10 +421,10 @@ class PlayerSession(LineReceiver):
             return
 
         # Sample: \addbuddy\\sesskey\231601763\newprofileid\476756820\reason\\final\
-        buddies = self.db.get_buddy_list(self.profileid)
+        self.buddies = self.db.get_buddy_list(self.profileid)
 
         buddy_exists = False
-        for buddy in buddies:
+        for buddy in self.buddies:
             if buddy['buddyProfileId'] == newprofileid:
                 buddy_exists = True
                 break
@@ -446,7 +446,7 @@ class PlayerSession(LineReceiver):
 
     def send_status_to_friends(self):
         # TODO: Cache buddy list so we don't have to query the database every time
-        buddies = self.db.get_buddy_list(self.profileid)
+        self.buddies = self.db.get_buddy_list(self.profileid)
 
         if self.status == "0" and self.statstring == "Offline":
             # Going offline, don't need to send the other information.
@@ -461,16 +461,16 @@ class PlayerSession(LineReceiver):
         msg_d.append(('msg', status_msg))
         msg = gs_query.create_gamespy_message(msg_d)
 
-        for buddy in buddies:
+        for buddy in self.buddies:
             if buddy['buddyProfileId'] in self.sessions:
                 self.sessions[buddy['buddyProfileId']].transport.write(bytes(msg))
 
     def get_status_from_friends(self):
         # This will be called when the player logs in. Grab the player's buddy list and check the current sessions to
         # see if anyone is online. If they are online, make them send an update to the calling client.
-        buddies = self.db.get_buddy_list(self.profileid)
+        self.buddies = self.db.get_buddy_list(self.profileid)
 
-        for buddy in buddies:
+        for buddy in self.buddies:
             if buddy['status'] != 1:
                 continue
 
