@@ -448,7 +448,11 @@ class PlayerSession(LineReceiver):
         # TODO: Cache buddy list so we don't have to query the database every time
         buddies = self.db.get_buddy_list(self.profileid)
 
-        status_msg = "|s|%s|ss|%s|ls|%s|ip|%d|p|0|qm|0" % (self.status, self.statstring, self.locstring, self.get_ip_as_int(self.address.host))
+        if self.status == "0" and self.statstring == "Offline":
+            # Going offline, don't need to send the other information.
+            status_msg = "|s|%s|ss|%s" % (self.status, self.statstring)
+        else:
+            status_msg = "|s|%s|ss|%s|ls|%s|ip|%d|p|0|qm|0" % (self.status, self.statstring, self.locstring, self.get_ip_as_int(self.address.host))
 
         msg_d = []
         msg_d.append(('__cmd__', "bm"))
