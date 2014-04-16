@@ -289,13 +289,13 @@ class Session(LineReceiver):
                 flags |= ServerListFlags.NONSTANDARD_PORT_FLAG
                 flags_buffer += utils.get_bytes_from_short_be(int(server_info['publicport']))
 
-                if "localip0" in server_info:
-                    flags |= ServerListFlags.PRIVATE_IP_FLAG
-                    flags_buffer += bytearray([int(x) for x in server_info['localip0'].split('.')])
+                #if "localip0" in server_info:
+                #    flags |= ServerListFlags.PRIVATE_IP_FLAG
+                #    flags_buffer += bytearray([int(x) for x in server_info['localip0'].split('.')])
 
-                if "localport" in server_info:
-                    flags |= ServerListFlags.NONSTANDARD_PRIVATE_PORT_FLAG
-                    flags_buffer += utils.get_bytes_from_short_be(int(server_info['localport']))
+                #if "localport" in server_info:
+                #    flags |= ServerListFlags.NONSTANDARD_PRIVATE_PORT_FLAG
+                #    flags_buffer += utils.get_bytes_from_short_be(int(server_info['localport']))
 
                 flags |= ServerListFlags.ICMP_IP_FLAG
                 flags_buffer += bytearray([int(x) for x in "0.0.0.0".split('.')])
