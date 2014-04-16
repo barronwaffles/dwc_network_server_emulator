@@ -281,21 +281,24 @@ class Session(LineReceiver):
                 if "natneg" in server_info:
                     flags |= ServerListFlags.CONNECT_NEGOTIATE_FLAG
 
+                ip = 0
                 if self.console != 0:
-                    flags_buffer += utils.get_bytes_from_int_be(int(server_info['publicip'])) # Wii
+                    ip = utils.get_bytes_from_int_be(int(server_info['publicip'])) # Wii
+                    flags_buffer += ip
                 else:
-                    flags_buffer += utils.get_bytes_from_int(int(server_info['publicip'])) # DS
+                    ip = utils.get_bytes_from_int(int(server_info['publicip'])) # DS
+                    flags_buffer += ip
 
                 flags |= ServerListFlags.NONSTANDARD_PORT_FLAG
                 flags_buffer += utils.get_bytes_from_short_be(int(server_info['publicport']))
 
-                #if "localip0" in server_info:
-                #    flags |= ServerListFlags.PRIVATE_IP_FLAG
-                #    flags_buffer += bytearray([int(x) for x in server_info['localip0'].split('.')])
+                if "localip0" in server_info:
+                    flags |= ServerListFlags.PRIVATE_IP_FLAG
+                    flags_buffer += ip #bytearray([int(x) for x in server_info['localip'].split('.')])
 
-                #if "localport" in server_info:
-                #    flags |= ServerListFlags.NONSTANDARD_PRIVATE_PORT_FLAG
-                #    flags_buffer += utils.get_bytes_from_short_be(int(server_info['localport']))
+                if "localport" in server_info:
+                    flags |= ServerListFlags.NONSTANDARD_PRIVATE_PORT_FLAG
+                    flags_buffer += utils.get_bytes_from_short_be(int(server_info['localport']))
 
                 flags |= ServerListFlags.ICMP_IP_FLAG
                 flags_buffer += bytearray([int(x) for x in "0.0.0.0".split('.')])
