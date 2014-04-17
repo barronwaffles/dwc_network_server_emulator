@@ -351,8 +351,8 @@ class Session(LineReceiver):
             self.transport.write(bytes(data))
             logger.log(logging.DEBUG, "Sent server list message to %s:%s..." % (self.address.host, self.address.port))
 
-            if "publicip" in server and "publicport" in server:
-                self.server_cache[str(server['publicip']) + str(server['publicport'])] = server
+            # if "publicip" in server and "publicport" in server:
+            #     self.server_cache[str(server['publicip']) + str(server['publicport'])] = server
 
     def find_server_in_cache(self, addr, port, console):
         if console != 0:
@@ -363,11 +363,13 @@ class Session(LineReceiver):
         logger.log(logging.DEBUG, "IP: %s, Console: %d" % (ip, console))
 
         # Get server based on ip/port
-        server = None
-        logger.log(logging.DEBUG, self.server_cache)
-        logger.log(logging.DEBUG, "Searching for: %s %s" % (ip + str(port), addr))
-        if (str(ip) + str(port)) in self.server_cache:
-            server = self.server_cache[ip + str(port)]
-            #self.server_cache.pop((publicip + str(self.forward_client[1])))
+        # server = None
+        # logger.log(logging.DEBUG, self.server_cache)
+        # logger.log(logging.DEBUG, "Searching for: %s %s" % (ip + str(port), addr))
+        # if (str(ip) + str(port)) in self.server_cache:
+        #     server = self.server_cache[ip + str(port)]
+        #     #self.server_cache.pop((publicip + str(self.forward_client[1])))
+
+        server = self.server_manager.find_server_by_address(ip, self.forward_client[1])._getvalue()
 
         return server, ip
