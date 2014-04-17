@@ -4,6 +4,7 @@ from gamespy_backend_server import GameSpyBackendServer
 from gamespy_natneg_server import GameSpyNatNegServer
 from gamespy_qr_server import GameSpyQRServer
 from gamespy_server_browser_server import GameSpyServerBrowserServer
+from gamespy_gamestats_server import GameSpyGamestatsServer
 
 import threading
 
@@ -22,6 +23,10 @@ def start_profile_server():
 def start_player_search_server():
     player_search_server = GameSpyPlayerSearchServer()
     player_search_server.start()
+
+def start_gamestats_server():
+    gamestats_server = GameSpyGamestatsServer()
+    gamestats_server.start()
 
 def start_server_browser_server():
     server_browser_server = GameSpyServerBrowserServer()
@@ -43,6 +48,9 @@ if __name__ == "__main__":
 
     player_search_server_thread = threading.Thread(target=start_player_search_server)
     player_search_server_thread.start()
+
+    player_gamestats_thread = threading.Thread(target=start_gamestats_server)
+    player_gamestats_thread.start()
 
     #server_browser_server_thread = threading.Thread(target=start_server_browser_server)
     #server_browser_server_thread.start()

@@ -43,6 +43,11 @@ class GamespyDatabase(object):
             q = "CREATE TABLE pending_messages (sourceid INT, targetid INT, msg TEXT)"
             logger.log(-1, q)
             c.execute(q)
+
+            q = "CREATE TABLE gamestat_profile (profileid INT, dindex TEXT, ptype TEXT, data TEXT)"
+            logger.log(-1, q)
+            c.execute(q)
+
             self.conn.commit()
 
     def get_dict(self, row):
@@ -473,3 +478,39 @@ class GamespyDatabase(object):
         c = self.conn.cursor()
         c.execute(q, [1, userProfileId, buddyProfileId]) # 1 will mean that the player has been sent the "
         self.conn.commit()
+
+    # Gamestats-related functions
+    def pd_insert(self, profileid, dindex, ptype, data):
+        q = "INSERT OR IGNORE INTO gamestat_profile (profileid, dindex, ptype, data) VALUES(?,?,?,?)"
+        q2 = q.replace("?", "%s") % (profileid, dindex, ptype, data)
+        logger.log(-1, q2)
+
+        c = self.conn.cursor()
+        c.execute(q, [profileid, dindex, ptype, data])
+        self.conn.commit()
+
+        q = "UPDATE gamestat_profile SET data = ? WHERE profileid = ? AND dindex = ? AND ptype = ?"
+        q2 = q.replace("?", "%s") % (data, profileid, dindex, ptype)
+        logger.log(-1, q2)
+
+        c = self.conn.cursor()
+        c.execute(q, [data, profileid, dindex, ptype])
+        self.conn.commit()
+
+    def pd_get(self, profileid, dindex, ptype, data):
+        q = "SELECT * FROM gamestat_profile WHERE profileid = ? AND dindex = ? AND ptype = ?"
+        q2 = q.replace("?", "%s") % (dindex, ptype, data)
+        logger.log(-1, q2)
+
+        c = self.conn.cursor()
+        c.execute(q, [profileid, dindex, ptype])
+
+        r = self.get_dict(c.fetchone())
+
+        data = ""
+        if 'data' in r:
+            data = r['data']
+
+        c.close()
+
+        return data
