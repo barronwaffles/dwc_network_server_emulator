@@ -28,7 +28,7 @@ class GamespyDatabase(object):
             # but I'm not good with databases and I'm not 100% positive that, for instance, that all
             # user id's will be ints, or all passwords will be ints, etc, despite not seeing any
             # evidence yet to say otherwise as far as Nintendo DS games go.
-            q = "CREATE TABLE users (profileid INT, userid TEXT, password TEXT, gsbrcd TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, firstname TEXT, lastname TEXT, stat TEXT, partnerid TEXT, console INT, csnum TEXT, cfc TEXT, bssid TEXT, devname TEXT, birth TEXT, gameid TEXT)"
+            q = "CREATE TABLE users (profileid INT, userid TEXT, password TEXT, gsbrcd TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, firstname TEXT, lastname TEXT, stat TEXT, partnerid TEXT, console INT, csnum TEXT, cfc TEXT, bssid TEXT, devname TEXT, birth TEXT, gameid TEXT, enabled INT)"
             logger.log(-1, q)
             c.execute(q)
 
@@ -45,6 +45,10 @@ class GamespyDatabase(object):
             c.execute(q)
 
             q = "CREATE TABLE gamestat_profile (profileid INT, dindex TEXT, ptype TEXT, data TEXT)"
+            logger.log(-1, q)
+            c.execute(q)
+
+            q = "CREATE TABLE gameinfo (profileid INT, dindex TEXT, ptype TEXT, data TEXT)"
             logger.log(-1, q)
             c.execute(q)
 

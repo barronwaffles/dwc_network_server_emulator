@@ -90,7 +90,6 @@ class Gamestats(LineReceiver):
 
         msg = self.crypt(msg)
         self.transport.write(bytes(msg))
-        pass
 
     def connectionLost(self, reason):
         return
@@ -205,9 +204,8 @@ class Gamestats(LineReceiver):
             birth = ""
 
         valid_user = self.db.check_user_exists(userid, gsbrcd)
-        if valid_user == False:
-            profileid = self.db.create_user(userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth, gameid)
-        else:
+        profileid = None
+        if valid_user:
             profileid = self.db.perform_login(userid, password, gsbrcd)
 
             if profileid == None:
@@ -232,6 +230,9 @@ class Gamestats(LineReceiver):
 
             msg = self.crypt(msg)
             self.transport.write(bytes(msg))
+        else:
+            # Return error
+            pass
 
     def perform_ka(self, data_parsed):
         msg_d = []
