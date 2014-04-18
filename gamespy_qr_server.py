@@ -177,13 +177,15 @@ class GameSpyQRServer(object):
                 client_challenge = recv_data[5:-1]
                 if client_challenge == challenge:
                     # Challenge succeeded
-                    self.sessions[session_id].sent_challenge = True
 
-                    # Handle successful challenge stuff here
+                    # Send message back to client saying it was accepted
                     packet = bytearray([0xfe, 0xfd, 0x0a]) # Send client registered command
                     packet.extend(session_id_raw) # Get the session ID
                     self.socket.sendto(packet, address)
                     self.log(logging.DEBUG, address, "Sent client registered to %s:%s..." % (address[0], address[1]))
+                else:
+                    # Failed the challenge, request another during the next heartbeat
+                    self.sessions[session_id].sent_challenge = False
 
             elif recv_data[0] == '\x02': # Echo
                 self.log(logging.DEBUG, address, "NOT IMPLEMENTED! Received echo from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
@@ -230,6 +232,8 @@ class GameSpyQRServer(object):
 
                     self.socket.sendto(packet, address)
                     self.log(logging.DEBUG, address, "Sent challenge to %s:%s..." % (address[0], address[1]))
+
+                    self.sessions[session_id].sent_challenge = True
 
                 if "statechanged" in k:
                     if k['statechanged'] == "1": # Create server
