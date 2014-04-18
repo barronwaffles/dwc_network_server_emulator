@@ -75,9 +75,9 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.log(logging.DEBUG, ret)
 
                 for k, v in ret.iteritems():
-                    ret[k] = gs_utils.base64_encode(v)
+                    ret[k] = self.base64_enc(v)
 
-                self.wfile.write(urllib.urlencode(ret))
+                self.wfile.write(urllib.urlencode(ret).replace("%2A", "*"))
 
         #elif self.path == "/pr":
             # TODO
