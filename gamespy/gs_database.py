@@ -393,11 +393,11 @@ class GamespyDatabase(object):
         for r in c.execute(q, [authtoken]):
             authtoken = "NDS" + utils.generate_random_str(size)
 
-        q = "SELECT * FROM nas_logins WHERE userid LIKE ?"
+        q = "SELECT * FROM nas_logins WHERE userid = ?"
         q2 = q.replace("?", "%s") % (userid)
         logger.log(-1, q2)
 
-        c.execute(q, [authtoken])
+        c.execute(q, [userid])
         r = self.get_dict(c.fetchone())
 
         if r == None: # no row, add it
