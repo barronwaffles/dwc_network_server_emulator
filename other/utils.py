@@ -1,8 +1,8 @@
 import random
 import logging
 
-def generate_random_str(len):
-    return ''.join(random.choice("abcdefghjiklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890") for _ in range(len))
+def generate_random_str(len, set = "abcdefghjiklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"):
+    return ''.join(random.choice(set) for _ in range(len))
 
 def generate_random_number_str(len):
     return ''.join(random.choice("1234567890") for _ in range(len))

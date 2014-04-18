@@ -76,7 +76,7 @@ class Gamestats(LineReceiver):
         self.log(logging.INFO, "Received connection from %s:%d" % (self.address.host, self.address.port))
 
         # Generate a random challenge string
-        self.challenge = utils.generate_random_str(10)
+        self.challenge = utils.generate_random_str(10, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
         # The first command sent to the client is always a login challenge containing the server challenge key.
         msg_d = []

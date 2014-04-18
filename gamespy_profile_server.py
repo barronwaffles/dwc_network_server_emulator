@@ -92,7 +92,7 @@ class PlayerSession(LineReceiver):
         self.session = ""
 
         # Generate a random challenge string
-        self.challenge = utils.generate_random_str(8)
+        self.challenge = utils.generate_random_str(8, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
         # The first command sent to the client is always a login challenge containing the server challenge key.
         msg_d = []
