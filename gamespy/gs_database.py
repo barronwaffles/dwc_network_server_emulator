@@ -558,20 +558,22 @@ class GamespyDatabase(object):
         c.execute(q, [data, profileid, dindex, ptype])
         self.conn.commit()
 
-    def pd_get(self, profileid, dindex, ptype):
+    def pd_get(self, profileid, dindex, ptype, data):
         q = "SELECT * FROM gamestat_profile WHERE profileid = ? AND dindex = ? AND ptype = ?"
         q2 = q.replace("?", "%s") % (profileid, dindex, ptype)
         logger.log(-1, q2)
 
-        c = self.conn.cursor()
-        c.execute(q, [profileid, dindex, ptype])
+        # c = self.conn.cursor()
+        # c.execute(q, [profileid, dindex, ptype])
+        #
+        # r = self.get_dict(c.fetchone())
 
-        r = self.get_dict(c.fetchone())
-
+        # Eventually data will contain a list of fields that are being requested.
+        # Just return nothing for now.
         data = ""
-        if 'data' in r:
-            data = r['data']
+        #if 'data' in r:
+        #    data = r['data']
 
-        c.close()
+        # c.close()
 
         return data
