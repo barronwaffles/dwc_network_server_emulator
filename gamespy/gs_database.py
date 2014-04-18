@@ -52,6 +52,10 @@ class GamespyDatabase(object):
             logger.log(-1, q)
             c.execute(q)
 
+            q = "CREATE TABLE nas_logins (userid TEXT, authtoken TEXT, data TEXT)"
+            logger.log(-1, q)
+            c.execute(q)
+
             self.conn.commit()
 
     def get_dict(self, row):
@@ -361,6 +365,58 @@ class GamespyDatabase(object):
 
         return sessions
 
+    # nas server functions
+    def get_nas_login(self, authtoken):
+        q = "SELECT data FROM nas_logins WHERE authtoken = ?"
+        q2 = q.replace("?", "%s") % (authtoken)
+        logger.log(-1, q2)
+
+        c = self.conn.cursor()
+        c.execute(q, [authtoken])
+        r = self.get_dict(c.fetchone())
+        c.close()
+
+        if r == None:
+            return None
+        else:
+            return r["data"]
+
+    def generate_authtoken(self, userid, data):
+        size = 128
+        authtoken = "NDS" + utils.generate_random_str(size)
+
+        q = "SELECT authtoken FROM nas_logins WHERE authtoken = ?"
+        q2 = q.replace("?", "%s") % (authtoken)
+        logger.log(-1, q2)
+
+        c = self.conn.cursor()
+        for r in c.execute(q, [authtoken]):
+            authtoken = "NDS" + utils.generate_random_str(size)
+
+        q = "SELECT * FROM nas_logins WHERE userid LIKE ?"
+        q2 = q.replace("?", "%s") % (userid)
+        logger.log(-1, q2)
+
+        c.execute(q, [authtoken])
+        r = self.get_dict(c.fetchone())
+
+        if r == None: # no row, add it
+            q = "INSERT INTO nas_logins VALUES (?, ?, ?)"
+            q2 = q.replace("?", "%s") % (userid, authtoken, data)
+            logger.log(-1, q2)
+            c.execute(q, [userid, authtoken, data])
+        else:
+            q = "UPDATE nas_logins SET authtoken = ?, data = ? WHERE userid = ?"
+            q2 = q.replace("?", "%s") % (authtoken, data, userid)
+            logger.log(-1, q2)
+            c.execute(q, [authtoken, data, userid])
+
+        c.close()
+        self.conn.commit();
+
+        return authtoken
+        
+
     # Buddy functions
     def add_buddy(self, userProfileId, buddyProfileId):
         now = int(time.time())
@@ -502,9 +558,9 @@ class GamespyDatabase(object):
         c.execute(q, [data, profileid, dindex, ptype])
         self.conn.commit()
 
-    def pd_get(self, profileid, dindex, ptype, data):
+    def pd_get(self, profileid, dindex, ptype):
         q = "SELECT * FROM gamestat_profile WHERE profileid = ? AND dindex = ? AND ptype = ?"
-        q2 = q.replace("?", "%s") % (dindex, ptype, data)
+        q2 = q.replace("?", "%s") % (profileid, dindex, ptype)
         logger.log(-1, q2)
 
         c = self.conn.cursor()

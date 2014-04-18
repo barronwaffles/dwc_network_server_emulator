@@ -5,6 +5,7 @@ from gamespy_natneg_server import GameSpyNatNegServer
 from gamespy_qr_server import GameSpyQRServer
 from gamespy_server_browser_server import GameSpyServerBrowserServer
 from gamespy_gamestats_server import GameSpyGamestatsServer
+from nintendo_nas_server import NintendoNasServer
 
 import threading
 
@@ -36,6 +37,10 @@ def start_natneg_server():
     natneg_server = GameSpyNatNegServer()
     natneg_server.start()
 
+def start_nas_server():
+    nas_server = NintendoNasServer()
+    nas_server.start()
+
 if __name__ == "__main__":
     backend_server_thread = threading.Thread(target=start_backend_server)
     backend_server_thread.start()
@@ -57,3 +62,6 @@ if __name__ == "__main__":
 
     natneg_server_thread = threading.Thread(target=start_natneg_server)
     natneg_server_thread.start()
+
+    nas_server_thread = threading.Thread(target=start_nas_server)
+    nas_server_thread.start()

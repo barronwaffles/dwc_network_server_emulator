@@ -146,7 +146,7 @@ class Gamestats(LineReceiver):
         self.transport.write(bytes(msg))
 
     def perform_authp(self, data_parsed):
-        authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'])
+        authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'], self.db)
         #print authtoken_parsed
 
         if "lid" in data_parsed:
