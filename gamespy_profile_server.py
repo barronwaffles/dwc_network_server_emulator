@@ -154,7 +154,7 @@ class PlayerSession(LineReceiver):
                 self.log(logging.ERROR, "Found unknown command, don't know how to handle '%s'." % data_parsed['__cmd__'])
 
     def perform_login(self, data_parsed):
-        authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'])
+        authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'], self.db)
         #print authtoken_parsed
 
         # Track what console is connecting and save it in the database during user creation just in case we can use
