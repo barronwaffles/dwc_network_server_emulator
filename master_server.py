@@ -7,6 +7,8 @@ from gamespy_server_browser_server import GameSpyServerBrowserServer
 from gamespy_gamestats_server import GameSpyGamestatsServer
 from nintendo_nas_server import NintendoNasServer
 
+import gamespy.gs_database as gs_database
+
 import threading
 
 def start_backend_server():
@@ -42,6 +44,11 @@ def start_nas_server():
     nas_server.start()
 
 if __name__ == "__main__":
+    # Let database initialize before starting any servers.
+    # This fixes any conflicts where two servers find an uninitialized database at the same time and both try to
+    # initialize it.
+    database = gs_database.GamespyDatabase()
+
     backend_server_thread = threading.Thread(target=start_backend_server)
     backend_server_thread.start()
 
