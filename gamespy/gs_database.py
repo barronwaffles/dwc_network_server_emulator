@@ -1,9 +1,11 @@
 import sqlite3
 import hashlib
 import itertools
-import other.utils as utils
 import time
 import logging
+
+import other.utils as utils
+import gamespy.gs_utility as gs_utils
 
 # Logger settings
 logger_output_to_console = True
@@ -382,7 +384,9 @@ class GamespyDatabase(object):
             return r["data"]
 
     def generate_authtoken(self, userid, data):
-        size = 128
+        # Since the auth token passed back to the game will be random, we can make it small enough that there
+        # should never be a crash due to the size of the token.
+        size = 16
         authtoken = "NDS" + utils.generate_random_str(size)
 
         q = "SELECT authtoken FROM nas_logins WHERE authtoken = ?"
@@ -412,7 +416,7 @@ class GamespyDatabase(object):
             c.execute(q, [authtoken, data, userid])
 
         c.close()
-        self.conn.commit();
+        self.conn.commit()
 
         return authtoken
         
