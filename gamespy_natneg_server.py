@@ -64,8 +64,8 @@ class GameSpyNatNegServer(object):
                 self.session_list[gameid][session_id][client_id]['addr'] = addr
                 clients = len(self.session_list[gameid][session_id])
 
-                if self.session_list[gameid][session_id][client_id]['connected'] == False:
-                    for client in self.session_list[gameid][session_id]:
+                for client in self.session_list[gameid][session_id]:
+                    if self.session_list[gameid][session_id][client]['connected'] == False:
                         if client == client_id:
                             continue
 
@@ -106,7 +106,22 @@ class GameSpyNatNegServer(object):
                 if client_id not in self.session_list[gameid][session_id]:
                     pass
 
-                self.session_list[gameid][session_id][client_id]['connected'] = True
+                #self.session_list[gameid][session_id][client_id]['connected'] = True
+
+            elif recv_data[7] == '\x0a': # Address check. Note: UNTESTED!
+                client_id = "%02x" % ord(recv_data[13])
+                logger.log(logging.DEBUG, "Received address check command from %s:%s..." % (addr[0], addr[1]))
+
+                output = bytearray(recv_data[0:15])
+                output += bytearray([int(x) for x in addr[0].split('.')])
+                output += utils.get_bytes_from_short_be(addr[1])
+                output += bytearray(recv_data[len(output):])
+
+                output[7] = 0x0b
+                s.sendto(output, addr)
+
+                logger.log(logging.DEBUG, "Sent address check response to %s:%d..." % (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
+                logger.log(logging.DEBUG, utils.pretty_print_hex(output))
 
             elif recv_data[7] == '\x0d':
                 client_id = "%02x" % ord(recv_data[13])
