@@ -2,7 +2,6 @@ import base64
 import json
 import logging
 import time
-import urllib
 import urlparse
 import BaseHTTPServer
 import os
@@ -35,10 +34,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path == "/ac":
             length = int(self.headers['content-length'])
-            post = urlparse.parse_qs(self.rfile.read(length))
-
-            for k, v in post.iteritems():
-                post[k] = self.base64_dec(v[0])
+            post = self.str_to_dict(self.rfile.read(length))
 
             logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
             logger.log(logging.DEBUG, post)
@@ -59,10 +55,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.log(logging.DEBUG, "acctcreate response to %s", self.client_address)
                 logger.log(logging.DEBUG, ret)
 
-                for k, v in ret.iteritems():
-                    ret[k] = self.base64_enc(v)
-
-                self.wfile.write(urllib.urlencode(ret).replace("%2A", "*"))
+                self.wfile.write(self.dict_to_str(ret))
 
             elif action == "login":
                 ret["returncd"] = "001"
@@ -70,26 +63,28 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 challenge = utils.generate_random_str(8)
                 ret["challenge"] = challenge
                 post["challenge"] = challenge
-                authtoken = self.server.db.generate_authtoken(post["userid"], json.dumps(post))
+                authtoken = self.server.db.generate_authtoken(post["userid"], post)
                 ret["token"] = authtoken
 
                 logger.log(logging.DEBUG, "login response to %s", self.client_address)
                 logger.log(logging.DEBUG, ret)
 
-                for k, v in ret.iteritems():
-                    ret[k] = self.base64_enc(v)
+                self.wfile.write(self.dict_to_str(ret))
 
-                self.wfile.write(urllib.urlencode(ret).replace("%2A", "*"))
+        elif self.path == "/pr":
+            length = int(self.headers['content-length'])
+            post = self.str_to_dict(self.rfile.read(length))
 
-        #elif self.path == "/pr":
-            # TODO
+            logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
+            logger.log(logging.DEBUG, post)
+
+            # TODO?: implement bad word detection
+
+            self.wfile.write("0")
 
         elif self.path == "/download":
             length = int(self.headers['content-length'])
-            post = urlparse.parse_qs(self.rfile.read(length))
-
-            for k, v in post.iteritems():
-                post[k] = self.base64_dec(v[0])
+            post = self.str_to_dict(self.rfile.read(length))
 
             logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
             logger.log(logging.DEBUG, post)
@@ -147,11 +142,20 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
             self.wfile.write(ret)
 
-    def base64_dec(self, data):
-        return base64.b64decode(data.replace("*", "="))
+    def str_to_dict(self, str):
+        ret = urlparse.parse_qs(str)
 
-    def base64_enc(self, data):
-        return base64.b64encode(data).replace("=", "*")
+        for k, v in ret.iteritems():
+            ret[k] = base64.b64decode(v[0].replace("*", "="))
+
+        return ret
+
+    def dict_to_str(self, dict):
+        for k, v in dict.iteritems():
+            dict[k] = base64.b64encode(v).replace("=", "*")
+
+        # nas(wii).nintendowifi.net has a URL query-like format but does not use encoding for special characters
+        return "&".join("{!s}={!s}".format(k, v) for k, v in dict.items())
 
 if __name__ == "__main__":
     nas = NintendoNasServer()
