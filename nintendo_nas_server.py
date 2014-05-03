@@ -141,7 +141,9 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.end_headers()
 
             logger.log(logging.DEBUG, "download response to %s", self.client_address)
-            logger.log(logging.DEBUG, ret)
+            
+            if dlc_contenttype == False:
+                logger.log(logging.DEBUG, ret)
 
             self.wfile.write(ret)
 
