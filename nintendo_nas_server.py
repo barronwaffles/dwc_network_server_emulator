@@ -5,6 +5,7 @@ import time
 import urllib
 import urlparse
 import BaseHTTPServer
+import os
 
 import gamespy.gs_database as gs_database
 import gamespy.gs_utility as gs_utils
@@ -62,6 +63,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     ret[k] = self.base64_enc(v)
 
                 self.wfile.write(urllib.urlencode(ret).replace("%2A", "*"))
+
             elif action == "login":
                 ret["returncd"] = "001"
                 ret["locator"] = "gamespy.com"
@@ -81,8 +83,67 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         #elif self.path == "/pr":
             # TODO
-        #elif self.path == "/download":
-            # TODO
+
+        elif self.path == "/download":
+            length = int(self.headers['content-length'])
+            post = urlparse.parse_qs(self.rfile.read(length))
+
+            for k, v in post.iteritems():
+                post[k] = self.base64_dec(v[0])
+
+            logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
+            logger.log(logging.DEBUG, post)
+
+            action = post["action"]
+
+            # TODO: Cache all DLC information in a database instead of querying the folder.
+            ret = ""
+            dlcpath = "dlc/" + post["rhgamecd"]
+            dlc_contenttype = False
+
+            if action == "count":
+                count = 0
+
+                if os.path.exists(dlcpath):
+                    count = len(os.listdir(dlcpath))
+
+                ret = "%d" % count
+
+            if action == "list":
+                num = int(post["num"])
+                offset = int(post["offset"])
+
+                if os.path.exists(dlcpath):
+                    filelist = os.listdir(dlcpath)
+
+                    if offset + num <= len(filelist):
+                        for file in filelist[offset:offset+num]:
+                            filesize = os.path.getsize(dlcpath + "/" + file)
+                            ret += "%s\t\t\t\t%d\r\n" % (file, filesize)
+
+            if action == "contents":
+                # Get only the base filename just in case there is a path involved somewhere in the filename string.
+                dlc_contenttype = True
+                contents = os.path.basename(post["contents"])
+
+                if os.path.isfile(dlcpath + "/" + contents):
+                    ret = open(dlcpath + "/" + contents, "rb").read()
+
+            self.send_response(200)
+
+            if dlc_contenttype == True:
+                self.send_header("Content-type", "application/x-dsdl")
+                self.send_header("Content-Disposition", "attachment; filename=\"" + post["contents"] + "\"")
+            else:
+                self.send_header("Content-type", "text/plain")
+
+            self.send_header("X-DLS-Host", "http://127.0.0.1/")
+            self.end_headers()
+
+            logger.log(logging.DEBUG, "download response to %s", self.client_address)
+            logger.log(logging.DEBUG, ret)
+
+            self.wfile.write(ret)
 
     def base64_dec(self, data):
         return base64.b64decode(data.replace("*", "="))
