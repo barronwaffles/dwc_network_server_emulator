@@ -1,6 +1,7 @@
 import sqlite3
 import hashlib
 import itertools
+import json
 import time
 import logging
 
@@ -381,7 +382,7 @@ class GamespyDatabase(object):
         if r == None:
             return None
         else:
-            return r["data"]
+            return json.loads(r["data"])
 
     def generate_authtoken(self, userid, data):
         # Since the auth token passed back to the game will be random, we can make it small enough that there
@@ -403,6 +404,7 @@ class GamespyDatabase(object):
 
         c.execute(q, [userid])
         r = self.get_dict(c.fetchone())
+        data = json.dumps(data)
 
         if r == None: # no row, add it
             q = "INSERT INTO nas_logins VALUES (?, ?, ?)"

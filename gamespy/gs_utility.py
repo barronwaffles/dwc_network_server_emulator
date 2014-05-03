@@ -1,6 +1,5 @@
 import base64
 import hashlib
-import json
 import time
 
 import other.utils as utils
@@ -67,14 +66,7 @@ def prepare_rc4_base64(_key, _data):
 
 # get the login data from nas.nintendowifi.net/ac from an authtoken
 def parse_authtoken(authtoken, db):
-    messages = {}
-    nas_data = db.get_nas_login(authtoken)
-
-    if nas_data == None:
-       return None
-
-    return json.loads(nas_data)
-
+    return db.get_nas_login(authtoken)
 
 def generate_response(challenge, ac_challenge, secretkey, authtoken):
     md5 = hashlib.md5()
