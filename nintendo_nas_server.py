@@ -93,7 +93,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
             # TODO: Cache all DLC information in a database instead of querying the folder.
             ret = ""
-            dlcpath = "dlc/" + post["rhgamecd"]
+            dlcpath = "dlc/" + post["gamecd"]
             dlc_contenttype = False
 
             if action == "count":
@@ -109,12 +109,10 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 offset = int(post["offset"])
 
                 if os.path.exists(dlcpath):
-                    filelist = os.listdir(dlcpath)
-
-                    if offset + num <= len(filelist):
-                        for file in filelist[offset:offset+num]:
-                            filesize = os.path.getsize(dlcpath + "/" + file)
-                            ret += "%s\t\t\t\t%d\r\n" % (file, filesize)
+                    # Look for a list file first.
+                    # If the list file exists, send the entire thing back to the client.
+                    if os.path.isfile(dlcpath + "/_list.txt"):
+                        ret = open(dlcpath + "/_list.txt", "rb").read()
 
             if action == "contents":
                 # Get only the base filename just in case there is a path involved somewhere in the filename string.
