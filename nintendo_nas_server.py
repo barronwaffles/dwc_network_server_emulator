@@ -70,6 +70,15 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.log(logging.DEBUG, ret)
 
                 self.wfile.write(self.dict_to_str(ret))
+                
+            elif action == "SVCLOC":
+                ret["returncd"] = "007"
+                ret["statusdata"] = "Y"
+                ret["svchost"] = "dls1.nintendowifi.net"
+                
+                logger.log(logging.DEBUG, "SVCLOC response to %s", self.client_address)
+                logger.log(logging.DEBUG, ret)
+                self.wfile.write(self.dict_to_str(ret))
 
         elif self.path == "/pr":
             length = int(self.headers['content-length'])
