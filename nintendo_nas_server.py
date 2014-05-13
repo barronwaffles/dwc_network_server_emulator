@@ -110,6 +110,10 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
                 if os.path.exists(dlcpath):
                     count = len(os.listdir(dlcpath))
+                    
+                    # the above counts the file list as a file too, subtract that again if it exists
+                    if os.path.isfile(dlcpath + "/_list.txt"):
+                        count -= 1
 
                 ret = "%d" % count
 
