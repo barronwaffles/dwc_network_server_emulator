@@ -126,11 +126,22 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 num = int(post["num"])
                 offset = int(post["offset"])
 
+                attr1 = None
+                if "attr1" in post:
+                    attr1 = post["attr1"]
+                attr2 = None
+                if "attr2" in post:
+                    attr2 = post["attr2"]
+                attr3 = None
+                if "attr3" in post:
+                    attr3 = post["attr3"]
+
                 if os.path.exists(dlcpath):
                     # Look for a list file first.
                     # If the list file exists, send the entire thing back to the client.
                     if os.path.isfile(dlcpath + "/_list.txt"):
                         ret = open(dlcpath + "/_list.txt", "rb").read()
+                        ret = self.filter_list(ret, attr1, attr2, attr3)
 
             if action == "contents":
                 # Get only the base filename just in case there is a path involved somewhere in the filename string.
@@ -172,6 +183,39 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         # nas(wii).nintendowifi.net has a URL query-like format but does not use encoding for special characters
         return "&".join("{!s}={!s}".format(k, v) for k, v in dict.items())
+
+    def filter_list(self, data, attr1 = None, attr2 = None, attr3 = None):
+        if attr1 == None and attr2 == None and attr3 == None:
+            # Nothing to filter, just return the input data
+            return data
+
+        # Filter the list based on the attribute fields
+        output = ""
+
+        for line in data.split('\n'):
+            s = line.split('\t')
+
+            data = {}
+            data['filename'] = s[0]
+            data['desc'] = s[1]
+            data['attr1'] = s[2]
+            data['attr2'] = s[3]
+            data['attr3'] = s[4]
+            data['filesize'] = s[5]
+
+            matched = True
+            if attr1 != None and data['attr1'] != attr1:
+                matched = False
+            if attr2 != None and data['attr2'] != attr2:
+                matched = False
+            if attr3 != None and data['attr3'] != attr3:
+                matched = False
+
+            if matched == True:
+                output += line + '\r\n'
+
+
+        return output
 
 if __name__ == "__main__":
     nas = NintendoNasServer()
