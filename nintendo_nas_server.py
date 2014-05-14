@@ -71,6 +71,21 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
                 self.wfile.write(self.dict_to_str(ret))
 
+            elif action == "SVCLOC" or action == "svcloc": # Get service based on service id number
+                if post["svc"] == "9000": # DLC host = 9000
+                    ret["returncd"] = "007"
+                    ret["statusdata"] = "Y"
+                    ret["svchost"] = "dls1.nintendowifi.net"
+                    authtoken = self.server.db.generate_authtoken(post["userid"], post)
+                    ret["token"] = authtoken
+
+                logger.log(logging.DEBUG, "svcloc response to %s", self.client_address)
+                logger.log(logging.DEBUG, ret)
+
+                self.wfile.write(self.dict_to_str(ret))
+
+
+
         elif self.path == "/pr":
             length = int(self.headers['content-length'])
             post = self.str_to_dict(self.rfile.read(length))
@@ -91,7 +106,6 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
             action = post["action"]
 
-            # TODO: Cache all DLC information in a database instead of querying the folder.
             ret = ""
             dlcpath = "dlc/" + post["gamecd"]
             dlc_contenttype = False
