@@ -364,6 +364,7 @@ class Session(LineReceiver):
         #     #self.server_cache.pop((publicip + str(self.forward_client[1])))
 
         server = self.server_manager.find_server_by_address(ip, self.forward_client[1])._getvalue()
+        self.log(logging.DEBUG, "find_server_in_cache is returning: %s %s" % (server, ip))
 
         return server, ip
 
@@ -371,6 +372,9 @@ class Session(LineReceiver):
         # Find session id of server
         # Iterate through the list of servers sent to the client and match by IP and port.
         # Is there a better way to determine this information?
+        if self.forward_client == None or len(self.forward_client) != 2:
+            return
+
         server, ip = self.find_server_in_cache(self.forward_client[0], self.forward_client[1], self.console)
 
         if server == None:
@@ -389,7 +393,7 @@ class Session(LineReceiver):
         self.log(logging.DEBUG, "%s %s" % (ip, server['publicip']))
         if server['publicip'] == ip and server['publicport'] == str(self.forward_client[1]):
             # Send command to server to get it to connect to natneg
-            natneg_session = int(utils.generate_random_hex_str(8), 16) # Quick and lazy way to get a random 32bit integer. Replace with something else late.r
+            natneg_session = int(utils.generate_random_hex_str(8), 16) # Quick and lazy way to get a random 32bit integer. Replace with something else later
 
             output = bytearray([0xfe, 0xfd, 0x06])
             output += utils.get_bytes_from_int(server['__session__'])

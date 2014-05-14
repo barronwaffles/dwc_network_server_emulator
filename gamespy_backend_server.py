@@ -50,6 +50,7 @@ class GameSpyBackendServer(object):
         GameSpyServerDatabase.register("get_server_list", callable=lambda:self.server_list)
         GameSpyServerDatabase.register("find_servers", callable=self.find_servers)
         GameSpyServerDatabase.register("find_server_by_address", callable=self.find_server_by_address)
+        GameSpyServerDatabase.register("find_server_by_local_address", callable=self.find_server_by_local_address)
         GameSpyServerDatabase.register("update_server_list", callable=self.update_server_list)
         GameSpyServerDatabase.register("delete_server", callable=self.delete_server)
 
@@ -388,6 +389,29 @@ class GameSpyBackendServer(object):
                 if server['publicip'] == ip and server['publicport'] == str(port):
                     return server
 
+        return None
+
+    def find_server_by_local_address(self, publicip, localip, localport, gameid = None):
+        if gameid == None:
+            # Search all servers
+            for gameid in self.server_list:
+                for server in self.server_list[gameid]:
+                    logger.log(logging.DEBUG, "publicip: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
+                    if server['publicip'] == publicip and server['localport'] == str(localport):
+                        for x in range(0, 10):
+                            s = 'localip%d' % x
+                            if s in server:
+                                if server[s] == localip:
+                                    return server
+        else:
+            for server in self.server_list[gameid]:
+                logger.log(logging.DEBUG, "publicip: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
+                if server['publicip'] == publicip and server['localport'] == str(localport):
+                    for x in range(0, 10):
+                        s = 'localip%d' % x
+                        if s in server:
+                            if server[s] == localip:
+                                return server
         return None
 
 if __name__ == '__main__':
