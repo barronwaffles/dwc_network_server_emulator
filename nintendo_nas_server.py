@@ -70,15 +70,6 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.log(logging.DEBUG, ret)
 
                 self.wfile.write(self.dict_to_str(ret))
-                
-            elif action == "SVCLOC":
-                ret["returncd"] = "007"
-                ret["statusdata"] = "Y"
-                ret["svchost"] = "dls1.nintendowifi.net"
-                
-                logger.log(logging.DEBUG, "SVCLOC response to %s", self.client_address)
-                logger.log(logging.DEBUG, ret)
-                self.wfile.write(self.dict_to_str(ret))
 
             elif action == "SVCLOC" or action == "svcloc": # Get service based on service id number
                 if post["svc"] == "9000": # DLC host = 9000
