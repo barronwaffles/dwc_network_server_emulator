@@ -31,7 +31,7 @@ class GamespyDatabase(object):
             # but I'm not good with databases and I'm not 100% positive that, for instance, that all
             # user id's will be ints, or all passwords will be ints, etc, despite not seeing any
             # evidence yet to say otherwise as far as Nintendo DS games go.
-            q = "CREATE TABLE users (profileid INT, userid TEXT, password TEXT, gsbrcd TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, firstname TEXT, lastname TEXT, stat TEXT, partnerid TEXT, console INT, csnum TEXT, cfc TEXT, bssid TEXT, devname TEXT, birth TEXT, gameid TEXT, enabled INT)"
+            q = "CREATE TABLE users (profileid INT, userid TEXT, password TEXT, gsbrcd TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, firstname TEXT, lastname TEXT, stat TEXT, partnerid TEXT, console INT, csnum TEXT, cfc TEXT, bssid TEXT, devname TEXT, birth TEXT, gameid TEXT, enabled INT, zipcode TEXT, aim TEXT)"
             logger.log(-1, q)
             c.execute(q)
 
@@ -171,6 +171,8 @@ class GamespyDatabase(object):
             stat = ""
             partnerid = ""
             enabled = 1
+            zipcode = ""
+            aim = ""
 
             # Hash password before entering it into the database.
             # For now I'm using a very simple MD5 hash.
@@ -179,12 +181,12 @@ class GamespyDatabase(object):
             md5.update(password)
             password = md5.hexdigest()
 
-            q = "INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-            q2 = q.replace("?", "%s") % (profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled)
+            q = "INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            q2 = q.replace("?", "%s") % (profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled, zipcode, aim)
             logger.log(-1, q2)
 
             c = self.conn.cursor()
-            c.execute(q, [profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled])
+            c.execute(q, [profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled, zipcode, aim])
             c.close()
 
             self.conn.commit()
@@ -207,13 +209,17 @@ class GamespyDatabase(object):
             bssid = ""
             devname = ""
             birth = ""
+            zipcode = ""
+            aim = ""
 
-            q = "INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-            q2 = q.replace("?", "%s") % (profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid)
+            enabled = 1
+
+            q = "INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            q2 = q.replace("?", "%s") % (profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled, zipcode, aim)
             logger.log(-1, q2)
 
             c = self.conn.cursor()
-            c.execute(q, [profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid])
+            c.execute(q, [profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled, zipcode, aim])
             c.close()
 
             self.conn.commit()
