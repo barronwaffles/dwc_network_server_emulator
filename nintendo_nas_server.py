@@ -72,12 +72,15 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 self.wfile.write(self.dict_to_str(ret))
 
             elif action == "SVCLOC" or action == "svcloc": # Get service based on service id number
-                if post["svc"] == "9000": # DLC host = 9000
+                if post["svc"] == "9000" or post["svc"] == "9001": # DLC host = 9000
                     ret["returncd"] = "007"
                     ret["statusdata"] = "Y"
-                    ret["svchost"] = "dls1.nintendowifi.net"
+                    ret["svchost"] = self.headers['host'] # in case the client's DNS isn't redirecting dls1.nintendowifi.net
                     authtoken = self.server.db.generate_authtoken(post["userid"], post)
-                    ret["token"] = authtoken
+                    if post["svc"] == 9000:
+                        ret["token"] = authtoken
+                    else:
+                        ret["servicetoken"] = authtoken
 
                 logger.log(logging.DEBUG, "svcloc response to %s", self.client_address)
                 logger.log(logging.DEBUG, ret)
@@ -115,10 +118,20 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
                 if os.path.exists(dlcpath):
                     count = len(os.listdir(dlcpath))
-                    
-                    # the above counts the file list as a file too, subtract that again if it exists
+
                     if os.path.isfile(dlcpath + "/_list.txt"):
-                        count -= 1
+                        attr1 = None
+                        if "attr1" in post:
+                            attr1 = post["attr1"]
+                        attr2 = None
+                        if "attr2" in post:
+                            attr2 = post["attr2"]
+                        attr3 = None
+                        if "attr3" in post:
+                            attr3 = post["attr3"]
+                        list = open(dlcpath + "/_list.txt", "rb").read()
+                        list = self.filter_list(list, attr1, attr2, attr3)
+                        count = list.count("\r\n")
 
                 ret = "%d" % count
 
@@ -192,7 +205,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # Filter the list based on the attribute fields
         output = ""
 
-        for line in data.split('\n'):
+        for line in data.splitlines():
             s = line.split('\t')
 
             data = {}
