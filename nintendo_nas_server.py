@@ -195,24 +195,28 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         for line in data.split('\n'):
             s = line.split('\t')
 
-            data = {}
-            data['filename'] = s[0]
-            data['desc'] = s[1]
-            data['attr1'] = s[2]
-            data['attr2'] = s[3]
-            data['attr3'] = s[4]
-            data['filesize'] = s[5]
+            if len(s) == 6:
+                data = {}
+                data['filename'] = s[0]
+                data['desc'] = s[1]
+                data['attr1'] = s[2]
+                data['attr2'] = s[3]
+                data['attr3'] = s[4]
+                data['filesize'] = s[5]
 
-            matched = True
-            if attr1 != None and data['attr1'] != attr1:
-                matched = False
-            if attr2 != None and data['attr2'] != attr2:
-                matched = False
-            if attr3 != None and data['attr3'] != attr3:
-                matched = False
+                matched = True
+                if attr1 != None:
+                    if data['attr1'] != attr1:
+                        matched = False
+                if attr2 != None:
+                    if data['attr2'] != attr2:
+                        matched = False
+                if attr3 != None:
+                    if data['attr3'] != attr3:
+                        matched = False
 
-            if matched == True:
-                output += line + '\r\n'
+                if matched == True:
+                    output += line + '\r\n'
 
 
         return output
