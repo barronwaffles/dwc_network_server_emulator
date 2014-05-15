@@ -231,6 +231,9 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 if matched == True:
                     output += line + '\r\n'
 
+        if output == '':
+            # if nothing matches, at least return a newline; Pokemon BW at least expects this and will error without it
+            output = '\r\n'
 
         return output
 
