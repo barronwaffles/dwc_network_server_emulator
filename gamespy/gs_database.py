@@ -341,7 +341,7 @@ class GamespyDatabase(object):
         self.delete_session(profileid)
 
         # Create new session
-        session_key = self.generate_session_key(9)
+        session_key = self.generate_session_key(8)
 
         q ="INSERT INTO sessions VALUES (?, ?)"
         q2 = q.replace("?", "%s") % (session_key, profileid)
@@ -570,22 +570,16 @@ class GamespyDatabase(object):
         c.execute(q, [data, profileid, dindex, ptype])
         self.conn.commit()
 
-    def pd_get(self, profileid, dindex, ptype, data):
+    def pd_get(self, profileid, dindex, ptype):
         q = "SELECT * FROM gamestat_profile WHERE profileid = ? AND dindex = ? AND ptype = ?"
         q2 = q.replace("?", "%s") % (profileid, dindex, ptype)
         logger.log(-1, q2)
 
-        # c = self.conn.cursor()
-        # c.execute(q, [profileid, dindex, ptype])
-        #
-        # r = self.get_dict(c.fetchone())
+        c = self.conn.cursor()
+        c.execute(q, [profileid, dindex, ptype])
 
-        # Eventually data will contain a list of fields that are being requested.
-        # Just return nothing for now.
-        data = ""
-        #if 'data' in r:
-        #    data = r['data']
+        r = self.get_dict(c.fetchone())
 
-        # c.close()
+        c.close()
 
-        return data
+        return r

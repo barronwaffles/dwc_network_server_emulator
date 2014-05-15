@@ -273,20 +273,38 @@ class Gamestats(LineReceiver):
         self.db.pd_insert(self.profileid, data_parsed['dindex'], data_parsed['ptype'], data)
 
     def perform_getpd(self, data_parsed):
-        logger.log(logging.DEBUG, "FIXME: Implement getpd: %s" % data_parsed)
+        profile = self.db.pd_get(self.profileid, data_parsed['dindex'], data_parsed['ptype'])
 
-        # Return all of the data regardless of whatever the parameters passed to the function are.
-        # I'll properly implement this once I get a real example of it in action.
-        data = self.db.pd_get(self.profileid, data_parsed['dindex'], data_parsed['ptype'])
+        data = ""
+        keys = data_parsed['keys'].split('\x01')
+
+        profile_data = gs_query.parse_gamespy_message("\\prof\\" + profile['data'] + "\\final\\")
+        if profile_data != None:
+            profile_data = profile_data[0][0]
+
+        for key in keys:
+            if key != "__cmd__" and key != "__cmd_val__" and key != "":
+                data += "\\"
+                data += key
+                data += "\\"
+                if key in profile_data:
+                    data += profile_data[key]
+
+        modified = int(time.time())
 
         msg_d = []
         msg_d.append(('__cmd__', "getpdr"))
         msg_d.append(('__cmd_val__', 1))
         msg_d.append(('lid', self.lid))
         msg_d.append(('pid', self.profileid))
+        msg_d.append(('mod', modified))
         msg_d.append(('length', len(data)))
         msg_d.append(('data', data))
         msg = gs_query.create_gamespy_message(msg_d)
+
+        self.log(logging.DEBUG, "SENDING: '%s'..." % msg)
+
+
 
 
     def perform_newgame(self, data_parsed):

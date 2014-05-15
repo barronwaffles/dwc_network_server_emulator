@@ -248,7 +248,9 @@ class GameSpyQRServer(object):
                             self.server_manager.update_server_list(k['gamename'] , session_id, k, self.sessions[session_id].console)
                     elif k['statechanged'] == "2": # Close server
                         self.server_manager.delete_server(k['gamename'] , session_id)
-                        #self.sessions.pop(session_id)
+
+                        if session_id in self.sessions:
+                            self.sessions.pop(session_id)
 
 
             elif recv_data[0] == '\x04': # Add Error
