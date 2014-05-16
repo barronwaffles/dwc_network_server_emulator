@@ -18,4 +18,6 @@ OpenSpy Core - https://github.com/sfcspanky/Openspy-Core/
 Luigi Auriemma's Gslist and enctypex_decoder - http://aluigi.altervista.org/papers.htm  
   
   
-Please see the wiki for a list of games that have been tested: https://github.com/polaris-/nintendo_dwc_emulator/wiki/Compatibility
+Instructions on how to connect to the public test server are on the wiki: https://github.com/polaris-/nintendo_dwc_emulator/wiki  
+Compatibility list: https://github.com/polaris-/nintendo_dwc_emulator/wiki/Compatibility
+Available Nintendo DS Download Content List: https://github.com/polaris-/nintendo_dwc_emulator/wiki/Nintendo-DS-Download-Content  
