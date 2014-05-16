@@ -5,6 +5,8 @@ import logging
 import socket
 import struct
 import threading
+import time
+
 from multiprocessing.managers import BaseManager
 
 import gamespy.gs_utility as gs_utils
@@ -33,6 +35,9 @@ class GameSpyQRServer(object):
             self.console = 0
             self.playerid = 0
 
+            self.gamename = ""
+            self.keepalive = -1
+
     def __init__(self):
         self.sessions = {}
 
@@ -47,7 +52,10 @@ class GameSpyQRServer(object):
         GameSpyServerDatabase.register("delete_server")
 
     def log(self, level, address, message):
-        logger.log(level, "[%s:%d] %s", address[0], address[1],message)
+        if address == None:
+            logger.log(level, "%s", message)
+        else:
+            logger.log(level, "[%s:%d] %s", address[0], address[1], message)
 
     def start(self):
         manager_address = ("127.0.0.1", 27500)
@@ -68,6 +76,8 @@ class GameSpyQRServer(object):
         server_browser_server = GameSpyServerBrowserServer(self)
         server_browser_server_thread = threading.Thread(target=server_browser_server.start())
         server_browser_server_thread.start()
+
+        threading.Timer(1, self.keepalive_check).start()
 
         self.wait_loop()
 
@@ -157,11 +167,15 @@ class GameSpyQRServer(object):
             # Open source version of GameSpy found here: https://github.com/sfcspanky/Openspy-Core/tree/master/qr
             # Use as reference.
 
-            session_id = struct.unpack("<I", recv_data[1:5])[0]
-            session_id_raw = recv_data[1:5]
-            if session_id not in self.sessions:
-                # Found a new session, add to session list
-                self.sessions[session_id] = self.Session(address)
+            if recv_data[0] != '\x09':
+                # Don't add a session if the client is trying to check if the game is available or not
+                session_id = struct.unpack("<I", recv_data[1:5])[0]
+                session_id_raw = recv_data[1:5]
+                if session_id not in self.sessions:
+                    # Found a new session, add to session list
+                    self.sessions[session_id] = self.Session(address)
+                    self.sessions[session_id].session = session_id
+                    self.sessions[session_id].keepalive = int(time.time())
 
             # Handle commands
             if recv_data[0] == '\x00': # Query
@@ -246,6 +260,7 @@ class GameSpyQRServer(object):
 
                             # Some memory could be saved by clearing out any unwanted fields from k before sending.
                             self.server_manager.update_server_list(k['gamename'] , session_id, k, self.sessions[session_id].console)
+                            self.sessions[session_id].gamename = k['gamename']
                     elif k['statechanged'] == "2": # Close server
                         self.server_manager.delete_server(k['gamename'] , session_id)
 
@@ -268,6 +283,7 @@ class GameSpyQRServer(object):
 
             elif recv_data[0] == '\x08': # Keep Alive
                 self.log(logging.DEBUG, address, "Received keep alive from %s:%s..." % (address[0], address[1]))
+                self.sessions[session_id].keepalive = int(time.time())
 
             elif recv_data[0] == '\x09': # Available
                 # Availability check only sent to *.available.gs.nintendowifi.net
@@ -281,3 +297,23 @@ class GameSpyQRServer(object):
             else:
                 self.log(logging.ERROR, address, "Unknown request from %s:%s:" % (address[0], address[1]))
                 self.log(logging.DEBUG, address, utils.pretty_print_hex(recv_data))
+
+    def keepalive_check(self):
+        while 1:
+            #self.log(logging.DEBUG, None, "Keep alive check on %d sessions" % (len(self.sessions)))
+
+            pruned = []
+            for session_id in self.sessions:
+                now = int(time.time())
+                delta = now - self.sessions[session_id].keepalive
+                timeout = 60 # Remove clients that haven't responded in 60 seconds
+
+                if delta < 0 or delta >= timeout:
+                    pruned.append(session_id)
+                    self.server_manager.delete_server(self.sessions[session_id].gamename, self.sessions[session_id].session)
+                    self.log(logging.DEBUG, None, "Keep alive check removed %s:%s for game %s" % (self.sessions[session_id].address[0], self.sessions[session_id].address[1], self.sessions[session_id].gamename))
+
+            for session_id in pruned:
+                del self.sessions[session_id]
+
+            time.sleep(15.0)
