@@ -5,6 +5,7 @@ import time
 import urlparse
 import BaseHTTPServer
 import os
+import random
 
 import gamespy.gs_database as gs_database
 import gamespy.gs_utility as gs_utils
@@ -15,6 +16,10 @@ logger_output_to_file = True
 logger_name = "NintendoNasServer"
 logger_filename = "nintendo_nas_server.log"
 logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+
+# if a game from this list requests a file listing, the server will return that only one exists and return a random one
+# this is used for Mystery Gift distribution on Generation 4 Pokemon games
+gamecodes_return_random_file = ['ADAD', 'ADAE', 'ADAF', 'ADAI', 'ADAJ', 'ADAK', 'ADAS', 'CPUD', 'CPUE', 'CPUF', 'CPUI', 'CPUJ', 'CPUK', 'CPUS', 'IPGD', 'IPGE', 'IPGF', 'IPGI', 'IPGJ', 'IPGK', 'IPGS']
 
 #address = ("0.0.0.0", 80)
 address = ("127.0.0.1", 9000)
@@ -124,26 +129,29 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             dlc_contenttype = False
 
             if action == "count":
-                count = 0
+                if post["gamecd"] in gamecodes_return_random_file:
+                    ret = "1"
+                else:
+                    count = 0
 
-                if os.path.exists(dlcpath):
-                    count = len(os.listdir(dlcpath))
+                    if os.path.exists(dlcpath):
+                        count = len(os.listdir(dlcpath))
 
-                    if os.path.isfile(dlcpath + "/_list.txt"):
-                        attr1 = None
-                        if "attr1" in post:
-                            attr1 = post["attr1"]
-                        attr2 = None
-                        if "attr2" in post:
-                            attr2 = post["attr2"]
-                        attr3 = None
-                        if "attr3" in post:
-                            attr3 = post["attr3"]
-                        list = open(dlcpath + "/_list.txt", "rb").read()
-                        list = self.filter_list(list, attr1, attr2, attr3)
-                        count = list.count("\r\n")
+                        if os.path.isfile(dlcpath + "/_list.txt"):
+                            attr1 = None
+                            if "attr1" in post:
+                                attr1 = post["attr1"]
+                            attr2 = None
+                            if "attr2" in post:
+                                attr2 = post["attr2"]
+                            attr3 = None
+                            if "attr3" in post:
+                                attr3 = post["attr3"]
+                            list = open(dlcpath + "/_list.txt", "rb").read()
+                            list = self.filter_list(list, attr1, attr2, attr3)
+                            count = list.count("\r\n")
 
-                ret = "%d" % count
+                    ret = "%d" % count
 
             if action == "list":
                 num = int(post["num"])
@@ -165,6 +173,9 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     if os.path.isfile(dlcpath + "/_list.txt"):
                         ret = open(dlcpath + "/_list.txt", "rb").read()
                         ret = self.filter_list(ret, attr1, attr2, attr3)
+                        
+                        if post["gamecd"] in gamecodes_return_random_file:
+                            ret = self.filter_list_random_files(ret, 1)
 
             if action == "contents":
                 # Get only the base filename just in case there is a path involved somewhere in the filename string.
@@ -207,6 +218,20 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # nas(wii).nintendowifi.net has a URL query-like format but does not use encoding for special characters
         return "&".join("{!s}={!s}".format(k, v) for k, v in dict.items())
 
+    def filter_list_random_files(self, data, count):
+        # Get [count] random files from the filelist
+        lines = data.splitlines()
+        samples = random.sample(lines, count)
+        
+        output = ''
+        for sample in samples:
+            output += sample + '\r\n'
+        
+        if output == '':
+            output = '\r\n'
+        
+        return output
+    
     def filter_list(self, data, attr1 = None, attr2 = None, attr3 = None):
         if attr1 == None and attr2 == None and attr3 == None:
             # Nothing to filter, just return the input data
