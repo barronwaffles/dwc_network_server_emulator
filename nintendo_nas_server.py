@@ -72,15 +72,19 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 self.wfile.write(self.dict_to_str(ret))
 
             elif action == "SVCLOC" or action == "svcloc": # Get service based on service id number
+                ret["returncd"] = "007"
+                ret["statusdata"] = "Y"
+                authtoken = self.server.db.generate_authtoken(post["userid"], post)
+                
                 if post["svc"] == "9000" or post["svc"] == "9001": # DLC host = 9000
-                    ret["returncd"] = "007"
-                    ret["statusdata"] = "Y"
                     ret["svchost"] = self.headers['host'] # in case the client's DNS isn't redirecting dls1.nintendowifi.net
-                    authtoken = self.server.db.generate_authtoken(post["userid"], post)
                     if post["svc"] == 9000:
                         ret["token"] = authtoken
                     else:
                         ret["servicetoken"] = authtoken
+                elif post["svc"] == "0000": # Pokemon requests this for some things
+                    ret["servicetoken"] = authtoken
+                    ret["svchost"] = "n/a"
 
                 logger.log(logging.DEBUG, "svcloc response to %s", self.client_address)
                 logger.log(logging.DEBUG, ret)
@@ -231,6 +235,9 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 if matched == True:
                     output += line + '\r\n'
 
+        if output == '':
+            # if nothing matches, at least return a newline; Pokemon BW at least expects this and will error without it
+            output = '\r\n'
 
         return output
 
