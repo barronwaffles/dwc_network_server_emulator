@@ -64,6 +64,9 @@ class PlayerSession(LineReceiver):
         self.statstring = ""
         self.locstring = ""
 
+        self.keepalive = int(time.time())
+        self.sesskey = ""
+
     def log(self, level, message):
         if self.profileid == 0:
             if self.gameid == "":
@@ -86,6 +89,8 @@ class PlayerSession(LineReceiver):
         return ipaddress
 
     def connectionMade(self):
+        self.transport.setTcpKeepAlive(1)
+
         self.log(logging.INFO, "Received connection from %s:%d" % (self.address.host, self.address.port))
 
         # Create new session id
@@ -115,6 +120,7 @@ class PlayerSession(LineReceiver):
 
         if self.session in self.sessions:
             del self.sessions[self.session]
+            self.db.delete_session(self.session)
             self.log(logging.INFO, "Deleted session %d" % self.sessions)
 
     def rawDataReceived(self, data):
@@ -227,14 +233,14 @@ class PlayerSession(LineReceiver):
 
         if profileid != None:
             # Successfully logged in or created account, continue creating session.
-            sesskey = self.db.create_session(profileid)
+            self.sesskey = self.db.create_session(profileid)
 
             self.sessions[profileid] = self
 
             msg_d = []
             msg_d.append(('__cmd__', "lc"))
             msg_d.append(('__cmd_val__', "2"))
-            msg_d.append(('sesskey', sesskey))
+            msg_d.append(('sesskey', self.sesskey))
             msg_d.append(('proof', proof))
             msg_d.append(('userid', userid))
             msg_d.append(('profileid', profileid))
@@ -326,11 +332,17 @@ class PlayerSession(LineReceiver):
 
 
     def perform_ka(self, data_parsed):
-        # No op
-        return
+        self.keepalive = int(time.time())
+
+        msg_d = []
+        msg_d.append(('__cmd__', "ka"))
+        msg_d.append(('__cmd_val__', ""))
+        msg = gs_query.create_gamespy_message(msg_d)
+        self.transport.write(msg)
+
 
     def perform_status(self, data_parsed):
-        sesskey = data_parsed['sesskey']
+        self.sesskey = data_parsed['sesskey']
 
         #fields = []
         #fields.append(("stat", data_parsed['statstring']))
@@ -536,7 +548,6 @@ class PlayerSession(LineReceiver):
         for message in messages:
             if message['sourceid'] not in self.blocked:
                 self.transport(message['msg'])
-
 
 if __name__ == "__main__":
     gsps = GameSpyProfileServer()
