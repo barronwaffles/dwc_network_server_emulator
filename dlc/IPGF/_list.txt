@@ -1,0 +1,16 @@
+204gsJPsightseeing.myg					936
+205gsJPrally.myg					936
+206gsJPamitymeadow.myg					936
+248gsUNlockcapsule.myg					936
+24dppgs.myg					936
+48gs.myg					936
+51gs.myg					936
+52gs.myg					936
+53gs.myg					936
+54gs.myg					936
+59dppgs.myg					936
+60dppgs.myg					936
+61dppgs.myg					936
+62dppgs.myg					936
+65dppgs.myg					936
+68dppgs.myg					936
