@@ -276,6 +276,7 @@ class PlayerSession(LineReceiver):
     def perform_logout(self, data_parsed):
         self.log(logging.INFO, "Session %s has logged off" % (data_parsed['sesskey']))
         self.db.delete_session(data_parsed['sesskey'])
+        self.transport.loseConnection()
 
     def perform_getprofile(self, data_parsed):
         #profile = self.db.get_profile_from_session_key(data_parsed['sesskey'])
