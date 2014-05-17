@@ -78,6 +78,12 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 
                 if post["svc"] == "9000" or post["svc"] == "9001": # DLC host = 9000
                     ret["svchost"] = self.headers['host'] # in case the client's DNS isn't redirecting dls1.nintendowifi.net
+
+                    # Brawl has 2 host headers which Apache chokes on, so only return the first one or else it won't work
+                    cindex = ret["svchost"].find(',')
+                    if cindex != -1:
+                        ret["svchost"] = ret["svchost"][:cindex]
+
                     if post["svc"] == 9000:
                         ret["token"] = authtoken
                     else:
