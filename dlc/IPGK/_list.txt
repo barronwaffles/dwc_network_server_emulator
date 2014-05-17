@@ -1,0 +1,15 @@
+205gsJPrally.myg					936
+206gsJPamitymeadow.myg					936
+22gsYellowForest.myg					936
+23gsSightseeing.myg					936
+248gsUNlockcapsule.myg					936
+24dppgs.myg					936
+25gsWinnersPath.myg					936
+26gsEnigmaStone.myg					936
+27gs.myg					936
+28dppgs.myg					936
+29dppgs.myg					936
+30dppgs.myg					936
+31dppgs.myg					936
+63dppgs.myg					936
+65dppgs.myg					936
