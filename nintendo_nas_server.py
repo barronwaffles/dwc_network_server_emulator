@@ -110,10 +110,27 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
             logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
             logger.log(logging.DEBUG, post)
+            ret = {}
+            ret["prwords"] = "0000000000000000"
+            ret["prwordsA"] = "0000000000000000"
+            ret["prwordsC"] = "0000000000000000"
+            ret["prwordsE"] = "0000000000000000"
+            ret["prwordsJ"] = "0000000000000000"
+            ret["prwordsK"] = "0000000000000000"
+            ret["prwordsP"] = "0000000000000000"
+            ret["returncd"] = "000"
+            ret["datetime"] = time.strftime("%Y%m%d%H%M%S")
 
-            # TODO?: implement bad word detection
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.send_header("Server", "Nintendo Wii (http)")
+            self.send_header("NODE", "wifiappe3")
+            self.end_headers()
 
-            self.wfile.write("0")
+            logger.log(logging.DEBUG, "pr response to %s", self.client_address)
+            logger.log(logging.DEBUG, ret)
+
+            self.wfile.write(self.dict_to_str(ret))
 
         elif self.path == "/download":
             length = int(self.headers['content-length'])
@@ -188,6 +205,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_response(200)
 
             if dlc_contenttype == True:
+                self.send_header("Content-Length", str(len(ret)))
                 self.send_header("Content-type", "application/x-dsdl")
                 self.send_header("Content-Disposition", "attachment; filename=\"" + post["contents"] + "\"")
             else:
