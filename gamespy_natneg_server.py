@@ -100,6 +100,9 @@ class GameSpyNatNegServer(object):
                             logger.log(logging.DEBUG, "Found server from local ip/port: %s" % serveraddr)
 
                         publicport = self.session_list[gameid][session_id][client]['addr'][1]
+                        if self.session_list[gameid][session_id][client]['localaddr'][1] != 0:
+                            publicport = self.session_list[gameid][session_id][client]['localaddr'][1]
+
                         if self.session_list[gameid][session_id][client]['serveraddr'] != None:
                             publicport = int(self.session_list[gameid][session_id][client]['serveraddr']['publicport'])
 
@@ -123,6 +126,9 @@ class GameSpyNatNegServer(object):
                             logger.log(logging.DEBUG, "Found server 2 from local ip/port: %s" % serveraddr)
 
                         publicport = self.session_list[gameid][session_id][client_id]['addr'][1]
+                        if self.session_list[gameid][session_id][client_id]['localaddr'][1] != 0:
+                            publicport = self.session_list[gameid][session_id][client_id]['localaddr'][1]
+
                         if self.session_list[gameid][session_id][client_id]['serveraddr'] != None:
                             publicport = int(self.session_list[gameid][session_id][client_id]['serveraddr']['publicport'])
 
