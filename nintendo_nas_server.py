@@ -111,13 +111,16 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
             logger.log(logging.DEBUG, post)
             ret = {}
-            ret["prwords"] = "0000000000000000"
-            ret["prwordsA"] = "0000000000000000"
-            ret["prwordsC"] = "0000000000000000"
-            ret["prwordsE"] = "0000000000000000"
-            ret["prwordsJ"] = "0000000000000000"
-            ret["prwordsK"] = "0000000000000000"
-            ret["prwordsP"] = "0000000000000000"
+
+            words = len(post["words"].split('\t'))
+            wordsret = "0" * words
+            ret["prwords"] = wordsret
+            ret["prwordsA"] = wordsret
+            ret["prwordsC"] = wordsret
+            ret["prwordsE"] = wordsret
+            ret["prwordsJ"] = wordsret
+            ret["prwordsK"] = wordsret
+            ret["prwordsP"] = wordsret
             ret["returncd"] = "000"
             ret["datetime"] = time.strftime("%Y%m%d%H%M%S")
 
