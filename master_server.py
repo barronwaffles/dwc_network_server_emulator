@@ -6,6 +6,7 @@ from gamespy_qr_server import GameSpyQRServer
 from gamespy_server_browser_server import GameSpyServerBrowserServer
 from gamespy_gamestats_server import GameSpyGamestatsServer
 from nintendo_nas_server import NintendoNasServer
+from internal_stats_server import InternalStatsServer
 
 import gamespy.gs_database as gs_database
 
@@ -43,6 +44,10 @@ def start_nas_server():
     nas_server = NintendoNasServer()
     nas_server.start()
 
+def start_stats_server():
+    stats_server = InternalStatsServer()
+    stats_server.start()
+
 if __name__ == "__main__":
     # Let database initialize before starting any servers.
     # This fixes any conflicts where two servers find an uninitialized database at the same time and both try to
@@ -72,3 +77,6 @@ if __name__ == "__main__":
 
     nas_server_thread = threading.Thread(target=start_nas_server)
     nas_server_thread.start()
+
+#    stats_server_thread = threading.Thread(target=start_stats_server)
+#    stats_server_thread.start()
