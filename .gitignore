@@ -231,3 +231,4 @@ tools/data/*
 *.db
 *.db-journal
 test*.py
+.private/*
