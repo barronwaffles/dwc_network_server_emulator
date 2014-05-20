@@ -40,6 +40,9 @@ GameSpyServerDatabase.register("get_server_list")
 GameSpyServerDatabase.register("modify_server_list")
 GameSpyServerDatabase.register("find_servers")
 GameSpyServerDatabase.register("find_server_by_address")
+GameSpyServerDatabase.register("add_natneg_server")
+GameSpyServerDatabase.register("get_natneg_server")
+GameSpyServerDatabase.register("delete_natneg_server")
 
 address = ("0.0.0.0", 28910)
 class GameSpyServerBrowserServer(object):
@@ -286,23 +289,25 @@ class Session(LineReceiver):
                 flags_buffer += utils.get_bytes_from_short_be(int(server_info['publicport']))
 
                 if "localip0" in server_info:
+                    # How to handle multiple localips?
                     flags |= ServerListFlags.PRIVATE_IP_FLAG
-                    flags_buffer += ip #bytearray([int(x) for x in server_info['localip'].split('.')])
+                    flags_buffer += bytearray([int(x) for x in server_info['localip0'].split('.')]) #ip
 
                 if "localport" in server_info:
                     flags |= ServerListFlags.NONSTANDARD_PRIVATE_PORT_FLAG
                     flags_buffer += utils.get_bytes_from_short_be(int(server_info['localport']))
 
-                flags |= ServerListFlags.ICMP_IP_FLAG
-                flags_buffer += bytearray([int(x) for x in "0.0.0.0".split('.')])
+                #flags |= ServerListFlags.ICMP_IP_FLAG
+                #flags_buffer += bytearray([int(x) for x in "0.0.0.0".split('.')])
 
                 output += bytearray([flags & 0xff])
                 output += flags_buffer
 
                 if (flags & ServerListFlags.HAS_KEYS_FLAG):
                     # Write data for associated fields
-                    for field in fields:
-                        output += '\xff' + bytearray(server_info['requested'][field]) + '\0'
+                    if 'requested' in server_info:
+                        for field in fields:
+                            output += '\xff' + bytearray(server_info['requested'][field]) + '\0'
 
             output += '\0'
             output += utils.get_bytes_from_int(-1)
@@ -323,7 +328,7 @@ class Session(LineReceiver):
 
         for _server in self.server_list:
             server = _server
-            if len(server) > 0 and len(fields) > 0 and server['requested'] == {}:
+            if len(server) > 0 and len(fields) > 0 and 'requested' in server and server['requested'] == {}:
                 # If the requested fields weren't found then don't return a server.
                 # This fixes a bug with Mario Kart DS.
                 #print "Requested was empty"
@@ -393,19 +398,30 @@ class Session(LineReceiver):
         self.log(logging.DEBUG, "%s %s" % (ip, server['publicip']))
         if server['publicip'] == ip and server['publicport'] == str(self.forward_client[1]):
             # Send command to server to get it to connect to natneg
-            natneg_session = int(utils.generate_random_hex_str(8), 16) # Quick and lazy way to get a random 32bit integer. Replace with something else later
+            cookie = int(utils.generate_random_hex_str(8), 16) # Quick and lazy way to get a random 32bit integer. Replace with something else later
+
+            if len(data) == 10 and bytearray(data)[0:6] == bytearray([0xfd, 0xfc, 0x1e, 0x66, 0x6a, 0xb2]):
+                natneg_session = utils.get_int(data,6)
+                self.log(logging.DEBUG, "Adding %d to natneg server list" % (natneg_session))
+                self.server_manager.add_natneg_server(natneg_session, server) # Store info in backend so we can get it later in natneg
+
+                if self.qr != None:
+                    own_server = self.qr.get_own_server()
+
+                    self.log(logging.DEBUG, "Adding %d to natneg server list" % (natneg_session))
+                    self.server_manager.add_natneg_server(natneg_session, own_server) # Store info in backend so we can get it later in natneg
 
             output = bytearray([0xfe, 0xfd, 0x06])
             output += utils.get_bytes_from_int(server['__session__'])
-            output += bytearray(utils.get_bytes_from_int(natneg_session))
+            output += bytearray(utils.get_bytes_from_int(cookie))
             output += bytearray(data)
 
             if self.qr != None:
-                self.qr.socket.sendto(output, forward_client)
                 self.log(logging.DEBUG, "Forwarded data to %s:%s through QR server..." % (forward_client[0], forward_client[1]))
+                self.qr.socket.sendto(output, forward_client)
             else:
                 # In case we can't contact the QR server, just try sending the packet directly.
                 # This isn't standard behavior but it can work in some instances.
+                self.log(logging.DEBUG, "Forwarded data to %s:%s directly (potential error occurred)..." % (forward_client[0], forward_client[1]))
                 client_s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 client_s.sendto(output, forward_client)
-                self.log(logging.DEBUG, "Forwarded data to %s:%s directly (potential error occurred)..." % (forward_client[0], forward_client[1]))
