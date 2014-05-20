@@ -6,6 +6,7 @@ import socket
 import struct
 import threading
 import time
+import ctypes
 
 from multiprocessing.managers import BaseManager
 
@@ -37,6 +38,8 @@ class GameSpyQRServer(object):
 
             self.gamename = ""
             self.keepalive = -1
+
+            self.own_server = None
 
     def __init__(self):
         self.sessions = {}
@@ -249,9 +252,15 @@ class GameSpyQRServer(object):
 
                     self.sessions[session_id].sent_challenge = True
 
+                if k['publicip'] == "0": #and k['dwc_hoststate'] == "2": # When dwc_hoststate == 2 then it doesn't send an IP, so calculate it ourselves
+                    if self.sessions[session_id].console != 0:
+                        k['publicip'] = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in address[0].split('.')]), 0)).value) # Wii
+                    else:
+                        k['publicip'] = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in address[0].split('.')]), 0)).value) # DS
+
                 if "statechanged" in k:
                     if k['statechanged'] == "1": # Create server
-                        if k['publicport'] != "0" and k['publicip'] != "0":
+                        #if k['publicport'] != "0" and k['publicip'] != "0":
                             # dwc_mtype controls what kind of server query we're looking for.
                             # dwc_mtype = 0 is used when looking for a matchmaking game.
                             # dwc_mtype = 1 is unknown.
@@ -259,8 +268,8 @@ class GameSpyQRServer(object):
                             # dwc_mtype = 3 is used when looking for a friends only game (possibly other uses too).
 
                             # Some memory could be saved by clearing out any unwanted fields from k before sending.
-                            self.server_manager.update_server_list(k['gamename'] , session_id, k, self.sessions[session_id].console)
-                            self.sessions[session_id].gamename = k['gamename']
+                        self.own_server = self.server_manager.update_server_list(k['gamename'], session_id, k, self.sessions[session_id].console)._getvalue()
+                        self.sessions[session_id].gamename = k['gamename']
                     elif k['statechanged'] == "2": # Close server
                         self.server_manager.delete_server(k['gamename'] , session_id)
 
@@ -317,3 +326,6 @@ class GameSpyQRServer(object):
                 del self.sessions[session_id]
 
             time.sleep(15.0)
+
+    def get_own_server(self):
+        return self.own_server
