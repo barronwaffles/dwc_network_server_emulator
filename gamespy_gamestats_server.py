@@ -96,13 +96,12 @@ class Gamestats(LineReceiver):
 
     def rawDataReceived(self, data):
         # Decrypt packet
+        data = self.remaining_message + data
         msg = str(self.crypt(data))
 
-        logger.log(logging.DEBUG, "STATS RESPONSE: %s" % msg)
-
         #data = self.leftover + data
-        commands, self.leftover = gs_query.parse_gamespy_message(msg)
-        print commands
+        commands, self.remaining_message = gs_query.parse_gamespy_message(msg)
+        #logger.log(logging.DEBUG, "STATS RESPONSE: %s" % msg)
 
         for data_parsed in commands:
             print data_parsed
@@ -267,6 +266,12 @@ class Gamestats(LineReceiver):
 
         data_str = "\\data\\"
         length = int(data_parsed['length'])
+
+        if len(data) < length:
+            # The packet isn't complete yet, keep loop until we get the entire packet.
+            # The length entire packet SHOULD always be greater than the data field, so this check should be fine.
+            return
+
         idx = data.index(data_str) + len(data_str)
         data = data[idx:idx+length]
 
