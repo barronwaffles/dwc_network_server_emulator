@@ -80,22 +80,23 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 ret["returncd"] = "007"
                 ret["statusdata"] = "Y"
                 authtoken = self.server.db.generate_authtoken(post["userid"], post)
-                
-                if post["svc"] == "9000" or post["svc"] == "9001": # DLC host = 9000
-                    ret["svchost"] = self.headers['host'] # in case the client's DNS isn't redirecting dls1.nintendowifi.net
 
-                    # Brawl has 2 host headers which Apache chokes on, so only return the first one or else it won't work
-                    cindex = ret["svchost"].find(',')
-                    if cindex != -1:
-                        ret["svchost"] = ret["svchost"][:cindex]
+                if 'svc' in post:
+                    if post["svc"] == "9000" or post["svc"] == "9001": # DLC host = 9000
+                        ret["svchost"] = self.headers['host'] # in case the client's DNS isn't redirecting dls1.nintendowifi.net
 
-                    if post["svc"] == 9000:
-                        ret["token"] = authtoken
-                    else:
+                        # Brawl has 2 host headers which Apache chokes on, so only return the first one or else it won't work
+                        cindex = ret["svchost"].find(',')
+                        if cindex != -1:
+                            ret["svchost"] = ret["svchost"][:cindex]
+
+                        if post["svc"] == 9000:
+                            ret["token"] = authtoken
+                        else:
+                            ret["servicetoken"] = authtoken
+                    elif post["svc"] == "0000": # Pokemon requests this for some things
                         ret["servicetoken"] = authtoken
-                elif post["svc"] == "0000": # Pokemon requests this for some things
-                    ret["servicetoken"] = authtoken
-                    ret["svchost"] = "n/a"
+                        ret["svchost"] = "n/a"
 
                 logger.log(logging.DEBUG, "svcloc response to %s", self.client_address)
                 logger.log(logging.DEBUG, ret)

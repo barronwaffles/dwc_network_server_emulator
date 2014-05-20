@@ -283,7 +283,11 @@ class Gamestats(LineReceiver):
         data = ""
         keys = data_parsed['keys'].split('\x01')
 
-        profile_data = gs_query.parse_gamespy_message("\\prof\\" + profile['data'] + "\\final\\")
+        profile_data = None
+
+        if 'data' in profile:
+            profile_data = gs_query.parse_gamespy_message("\\prof\\" + profile['data'] + "\\final\\")
+
         if profile_data != None:
             profile_data = profile_data[0][0]
 
