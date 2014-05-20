@@ -37,10 +37,10 @@ class NintendoNasHTTPServer(BaseHTTPServer.HTTPServer):
 
 class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_POST(self):
-        if self.path == "/ac":
-            length = int(self.headers['content-length'])
-            post = self.str_to_dict(self.rfile.read(length))
+        length = int(self.headers['content-length'])
+        post = self.str_to_dict(self.rfile.read(length))
 
+        if self.path == "/ac":
             logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
             logger.log(logging.DEBUG, post)
             ret = {}
@@ -105,9 +105,6 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 
         elif self.path == "/pr":
-            length = int(self.headers['content-length'])
-            post = self.str_to_dict(self.rfile.read(length))
-
             logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
             logger.log(logging.DEBUG, post)
             ret = {}
@@ -136,9 +133,6 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.wfile.write(self.dict_to_str(ret))
 
         elif self.path == "/download":
-            length = int(self.headers['content-length'])
-            post = self.str_to_dict(self.rfile.read(length))
-
             logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
             logger.log(logging.DEBUG, post)
 
@@ -169,7 +163,8 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                                 attr3 = post["attr3"]
                             list = open(dlcpath + "/_list.txt", "rb").read()
                             list = self.filter_list(list, attr1, attr2, attr3)
-                            count = list.count("\r\n")
+
+                            count = list.strip().count("\r\n")
 
                     ret = "%d" % count
 
