@@ -46,6 +46,7 @@ class GameSpyServerDatabase(BaseManager):
 class GameSpyBackendServer(object):
     def __init__(self):
         self.server_list = {}
+        self.natneg_list = {}
 
         GameSpyServerDatabase.register("get_server_list", callable=lambda:self.server_list)
         GameSpyServerDatabase.register("find_servers", callable=self.find_servers)
@@ -53,6 +54,9 @@ class GameSpyBackendServer(object):
         GameSpyServerDatabase.register("find_server_by_local_address", callable=self.find_server_by_local_address)
         GameSpyServerDatabase.register("update_server_list", callable=self.update_server_list)
         GameSpyServerDatabase.register("delete_server", callable=self.delete_server)
+        GameSpyServerDatabase.register("add_natneg_server", callable=self.add_natneg_server)
+        GameSpyServerDatabase.register("get_natneg_server", callable=self.get_natneg_server)
+        GameSpyServerDatabase.register("delete_natneg_server", callable=self.delete_natneg_server)
 
     def start(self):
         address = ("127.0.0.1", 27500)
@@ -334,12 +338,12 @@ class GameSpyBackendServer(object):
 
             requested = {}
             for field in fields:
-                if not field in result:
-                    if field in server:
-                        requested[field] = server[field]
-                    else:
-                        # Return a dummy value. What's the normal behavior of the real server in this case?
-                        requested[field] = ""
+                #if not field in result:
+                if field in server:
+                    requested[field] = server[field]
+                else:
+                    # Return a dummy value. What's the normal behavior of the real server in this case?
+                    requested[field] = ""
 
 
             result['requested'] = requested
@@ -365,6 +369,8 @@ class GameSpyBackendServer(object):
         logger.log(logging.DEBUG, "Added %s to the server list for %s" % (value, gameid))
         self.server_list[gameid].append(value)
         logger.log(logging.DEBUG, "%s servers: %d" % (gameid, len(self.server_list[gameid])))
+
+        return value
 
     def delete_server(self, gameid, session):
         if not gameid in self.server_list:
@@ -397,7 +403,7 @@ class GameSpyBackendServer(object):
             for gameid in self.server_list:
                 for server in self.server_list[gameid]:
                     logger.log(logging.DEBUG, "publicip: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
-                    if server['publicip'] == publicip and server['localport'] == str(localport):
+                    if server['publicip'] == publicip and (server['localport'] == str(localport) or server['publicport'] == str(localport)):
                         for x in range(0, 10):
                             s = 'localip%d' % x
                             if s in server:
@@ -406,13 +412,33 @@ class GameSpyBackendServer(object):
         else:
             for server in self.server_list[gameid]:
                 logger.log(logging.DEBUG, "publicip: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
-                if server['publicip'] == publicip and server['localport'] == str(localport):
+                if server['publicip'] == publicip and (server['localport'] == str(localport) or server['publicport'] == str(localport)):
                     for x in range(0, 10):
                         s = 'localip%d' % x
                         if s in server:
                             if server[s] == localip:
                                 return server
         return None
+
+    def add_natneg_server(self, cookie, server):
+        if cookie not in self.natneg_list:
+            self.natneg_list[cookie] = []
+
+        logger.log(logging.DEBUG, "Added natneg server %d" % (cookie))
+        self.natneg_list[cookie].append(server)
+
+    def get_natneg_server(self, cookie):
+        if cookie in self.natneg_list:
+            return self.natneg_list[cookie]
+
+        return None
+
+    def delete_natneg_server(self, cookie):
+        # TODO: Find a good time to prune the natneg server listing.
+        if cookie in self.natneg_list:
+            del self.natneg_list[cookie]
+        logger.log(logging.DEBUG, "Deleted natneg server %d" % (cookie))
+
 
 if __name__ == '__main__':
     freeze_support()
