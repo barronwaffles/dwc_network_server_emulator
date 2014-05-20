@@ -413,6 +413,8 @@ class GamespyDatabase(object):
 
         if "devname" in data:
             data["devname"] = gs_utils.base64_encode(data["devname"])
+        if "ingamesn" in data:
+            data["ingamesn"] = gs_utils.base64_encode(data["ingamesn"])
 
         data = json.dumps(data)
 
