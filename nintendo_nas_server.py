@@ -165,7 +165,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             list = open(dlcpath + "/_list.txt", "rb").read()
                             list = self.filter_list(list, attr1, attr2, attr3)
 
-                            count = list.strip().count("\r\n")
+                            count = self.get_file_count(list)
 
                     ret = "%d" % count
 
@@ -288,6 +288,15 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             output = '\r\n'
 
         return output
+
+    def get_file_count(self, data):
+        file_count = 0
+
+        for line in data.splitlines():
+            if line:
+                file_count += 1
+
+        return file_count
 
 if __name__ == "__main__":
     nas = NintendoNasServer()
