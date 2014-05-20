@@ -285,7 +285,7 @@ class Gamestats(LineReceiver):
 
         profile_data = None
 
-        if 'data' in profile:
+        if profile != None and 'data' in profile:
             profile_data = gs_query.parse_gamespy_message("\\prof\\" + profile['data'] + "\\final\\")
 
         if profile_data != None:

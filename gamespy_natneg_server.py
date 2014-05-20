@@ -152,11 +152,11 @@ class GameSpyNatNegServer(object):
                 logger.log(logging.DEBUG, "Received connected command from %s:%s..." % (addr[0], addr[1]))
 
                 if gameid not in self.session_list:
-                    pass
+                    continue
                 if session_id not in self.session_list[gameid]:
-                    pass
+                    continue
                 if client_id not in self.session_list[gameid][session_id]:
-                    pass
+                    continue
 
                 self.session_list[gameid][session_id][client_id]['connected'] = True
 
