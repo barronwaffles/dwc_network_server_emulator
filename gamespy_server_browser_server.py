@@ -79,7 +79,7 @@ class Session(LineReceiver):
         self.setRawMode() # We're dealing with binary data so set to raw mode
         self.address = address
         self.forward_to_client = False
-        self.forward_client = ()
+        self.forward_client = None
         self.header_length = 0
         self.expected_packet_length = 0
         self.forward_packet = None
@@ -121,7 +121,7 @@ class Session(LineReceiver):
                 self.forward_data_to_client(self.forward_packet, self.forward_client)
 
                 self.forward_to_client = False
-                self.forward_client = ()
+                self.forward_client = None
                 self.header_length = 0
                 self.expected_packet_length = 0
                 self.forward_packet = None
@@ -217,7 +217,7 @@ class Session(LineReceiver):
                 self.forward_data_to_client(data[3:], dest)
                 
                 self.forward_to_client = False
-                self.forward_client = ()
+                self.forward_client = None
                 self.header_length = 0
                 self.expected_packet_length = 0
                 self.forward_packet = None
@@ -402,14 +402,14 @@ class Session(LineReceiver):
 
             if len(data) == 10 and bytearray(data)[0:6] == bytearray([0xfd, 0xfc, 0x1e, 0x66, 0x6a, 0xb2]):
                 natneg_session = utils.get_int(data,6)
-                self.log(logging.DEBUG, "Adding %d to natneg server list" % (natneg_session))
+                self.log(logging.DEBUG, "Adding %d to natneg server list: %s" % (natneg_session, server))
                 self.server_manager.add_natneg_server(natneg_session, server) # Store info in backend so we can get it later in natneg
 
-                if self.qr != None:
-                    own_server = self.qr.get_own_server()
-
-                    self.log(logging.DEBUG, "Adding %d to natneg server list" % (natneg_session))
-                    self.server_manager.add_natneg_server(natneg_session, own_server) # Store info in backend so we can get it later in natneg
+                # if self.qr != None:
+                #     own_server = self.qr.get_own_server()
+                #
+                #     self.log(logging.DEBUG, "Adding %d to natneg server list: %s" % (natneg_session, own_server))
+                #     self.server_manager.add_natneg_server(natneg_session, own_server) # Store info in backend so we can get it later in natneg
 
             output = bytearray([0xfe, 0xfd, 0x06])
             output += utils.get_bytes_from_int(server['__session__'])

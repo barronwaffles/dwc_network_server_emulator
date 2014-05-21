@@ -120,8 +120,9 @@ class PlayerSession(LineReceiver):
 
         if self.session in self.sessions:
             del self.sessions[self.session]
-            self.db.delete_session(self.session)
-            self.log(logging.INFO, "Deleted session %d" % self.sessions)
+
+        self.db.delete_session(self.session)
+        self.log(logging.INFO, "Deleted session " + self.session)
 
     def rawDataReceived(self, data):
         self.log(logging.DEBUG, "RESPONSE: '%s'..." % data)
@@ -133,7 +134,8 @@ class PlayerSession(LineReceiver):
         commands, self.remaining_message = gs_query.parse_gamespy_message(data)
 
         for data_parsed in commands:
-            self.log(-1, data_parsed)
+            #self.log(-1, data_parsed)
+            self.log(logging.DEBUG, data_parsed)
 
             if data_parsed['__cmd__'] == "login":
                 self.perform_login(data_parsed)
@@ -273,9 +275,18 @@ class PlayerSession(LineReceiver):
             self.get_status_from_friends()
             self.send_status_to_friends()
 
+            profile = self.db.get_profile_from_profileid(profileid)
+            if profile != None:
+                self.statstring = profile['stat']
+                self.locstring = profile['loc']
+
     def perform_logout(self, data_parsed):
         self.log(logging.INFO, "Session %s has logged off" % (data_parsed['sesskey']))
         self.db.delete_session(data_parsed['sesskey'])
+
+        if self.session in self.sessions:
+            del self.sessions[self.session]
+
         self.transport.loseConnection()
 
     def perform_getprofile(self, data_parsed):
@@ -345,15 +356,18 @@ class PlayerSession(LineReceiver):
     def perform_status(self, data_parsed):
         self.sesskey = data_parsed['sesskey']
 
-        #fields = []
-        #fields.append(("stat", data_parsed['statstring']))
-        #fields.append(("loc", data_parsed['locstring']))
-
-        #self.db.update_profile(sesskey, fields)
 
         self.status = data_parsed['__cmd_val__']
         self.statstring =  data_parsed['statstring']
         self.locstring =  data_parsed['locstring']
+
+        fields = []
+        #fields.append(("status", self.status))
+        fields.append(("stat", self.statstring))
+        fields.append(("loc", self.locstring))
+
+        for f in fields:
+            self.db.update_profile(self.sesskey, f)
 
         # Send authorization requests to client
         self.get_buddy_requests()

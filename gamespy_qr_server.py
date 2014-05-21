@@ -39,7 +39,6 @@ class GameSpyQRServer(object):
             self.gamename = ""
             self.keepalive = -1
 
-            self.own_server = None
 
     def __init__(self):
         self.sessions = {}
@@ -268,7 +267,7 @@ class GameSpyQRServer(object):
                             # dwc_mtype = 3 is used when looking for a friends only game (possibly other uses too).
 
                             # Some memory could be saved by clearing out any unwanted fields from k before sending.
-                        self.own_server = self.server_manager.update_server_list(k['gamename'], session_id, k, self.sessions[session_id].console)._getvalue()
+                        self.server_manager.update_server_list(k['gamename'], session_id, k, self.sessions[session_id].console)._getvalue()
                         self.sessions[session_id].gamename = k['gamename']
                     elif k['statechanged'] == "2": # Close server
                         self.server_manager.delete_server(k['gamename'] , session_id)
@@ -326,6 +325,3 @@ class GameSpyQRServer(object):
                 del self.sessions[session_id]
 
             time.sleep(15.0)
-
-    def get_own_server(self):
-        return self.own_server

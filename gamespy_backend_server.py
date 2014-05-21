@@ -397,12 +397,25 @@ class GameSpyBackendServer(object):
 
         return None
 
-    def find_server_by_local_address(self, publicip, localip, localport, gameid = None):
+    def find_server_by_local_address(self, publicip, localaddr, gameid = None):
+        localip = localaddr[0]
+        localport = localaddr[1]
+        localip_int_le = localaddr[2]
+        localip_int_be = localaddr[3]
+
         if gameid == None:
             # Search all servers
             for gameid in self.server_list:
                 for server in self.server_list[gameid]:
-                    logger.log(logging.DEBUG, "publicip: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
+                    logger.log(logging.DEBUG, "publicip 1: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_le), server['publicip'] == str(localip_int_le), server['publicport'], str(localport), server['publicport'] == str(localport)))
+                    if server['publicip'] == str(localip_int_le) and server['publicport'] == str(localport):
+                        return server
+
+                    logger.log(logging.DEBUG, "publicip 2: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_be), server['publicip'] == str(localip_int_be), server['publicport'], str(localport), server['publicport'] == str(localport)))
+                    if server['publicip'] == str(localip_int_be) and server['publicport'] == str(localport):
+                        return server
+
+                    logger.log(logging.DEBUG, "publicip 3: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
                     if server['publicip'] == publicip and (server['localport'] == str(localport) or server['publicport'] == str(localport)):
                         for x in range(0, 10):
                             s = 'localip%d' % x
@@ -411,6 +424,14 @@ class GameSpyBackendServer(object):
                                     return server
         else:
             for server in self.server_list[gameid]:
+                logger.log(logging.DEBUG, "publicip 1: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_le), server['publicip'] == str(localip_int_le), server['publicport'], str(localport), server['publicport'] == str(localport)))
+                if server['publicip'] == str(localip_int_le) and server['publicport'] == str(localport):
+                    return server
+
+                logger.log(logging.DEBUG, "publicip 2: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_be), server['publicip'] == str(localip_int_be), server['publicport'], str(localport), server['publicport'] == str(localport)))
+                if server['publicip'] == str(localip_int_be) and server['publicport'] == str(localport):
+                    return server
+
                 logger.log(logging.DEBUG, "publicip: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
                 if server['publicip'] == publicip and (server['localport'] == str(localport) or server['publicport'] == str(localport)):
                     for x in range(0, 10):

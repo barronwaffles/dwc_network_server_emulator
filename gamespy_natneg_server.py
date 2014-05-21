@@ -75,10 +75,12 @@ class GameSpyNatNegServer(object):
                 client_id = "%02x" % ord(recv_data[13])
 
                 localip_raw = recv_data[15:19]
+                localip_int_le = utils.get_int(recv_data, 15)
+                localip_int_be = utils.get_int_be(recv_data, 15)
                 localip = '.'.join(["%d" % ord(x) for x in localip_raw])
                 localport_raw = recv_data[19:21]
                 localport = utils.get_short_be(localport_raw, 0)
-                localaddr = (localip, localport)
+                localaddr = (localip, localport, localip_int_le, localip_int_be)
 
                 if gameid not in self.session_list:
                     self.session_list[gameid] = {}
@@ -99,6 +101,9 @@ class GameSpyNatNegServer(object):
 
                         #if self.session_list[gameid][session_id][client]['serveraddr'] == None:
                         serveraddr = self.get_server_info(gameid, session_id, client)
+                        if serveraddr == None:
+                            serveraddr = self.get_server_info_alt(gameid, session_id, client)
+
                         self.session_list[gameid][session_id][client]['serveraddr'] = serveraddr
                         logger.log(logging.DEBUG, "Found server from local ip/port: %s from %d" % (serveraddr, session_id))
 
@@ -125,6 +130,9 @@ class GameSpyNatNegServer(object):
                         # Send to other client
                         #if self.session_list[gameid][session_id][client_id]['serveraddr'] == None:
                         serveraddr = self.get_server_info(gameid, session_id, client_id)
+                        if serveraddr == None:
+                            serveraddr = self.get_server_info_alt(gameid, session_id, client)
+
                         self.session_list[gameid][session_id][client_id]['serveraddr'] = serveraddr
                         logger.log(logging.DEBUG, "Found server 2 from local ip/port: %s from %d" % (serveraddr, session_id))
 
@@ -175,6 +183,17 @@ class GameSpyNatNegServer(object):
                 logger.log(logging.DEBUG, "Sent address check response to %s:%d..." % (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
                 logger.log(logging.DEBUG, utils.pretty_print_hex(output))
 
+            elif recv_data[7] == '\x0c': # Natify
+                port_type = "%02x" % ord(recv_data[12])
+                logger.log(logging.DEBUG, "Received natify command from %s:%s..." % (addr[0], addr[1]))
+
+                output = bytearray(recv_data)
+                output[7] = 0x02 # ERT Test
+                s.sendto(output, addr)
+
+                logger.log(logging.DEBUG, "Sent natify response to %s:%d..." % (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
+                logger.log(logging.DEBUG, utils.pretty_print_hex(output))
+
             elif recv_data[7] == '\x0d':
                 client_id = "%02x" % ord(recv_data[13])
                 logger.log(logging.DEBUG, "Received report command from %s:%s..." % (addr[0], addr[1]))
@@ -222,29 +241,30 @@ class GameSpyNatNegServer(object):
 
         return server_info
 
-        # console = 0
-        # ipstr = self.session_list[gameid][session_id][client_id]['addr'][0]
-        #
-        # if console != 0:
-        #     ip = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # Wii
-        #     console = 0
-        # else:
-        #     ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # DS
-        #     console = 1
-        #
-        # serveraddr = self.server_manager.find_server_by_local_address(ip, self.session_list[gameid][session_id][client_id]['localaddr'][0], self.session_list[gameid][session_id][client_id]['localaddr'][1], self.session_list[gameid][session_id][client_id]['gameid'])._getvalue()
-        #
-        # if serveraddr == None:
-        #     if console != 0:
-        #         ip = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # Wii
-        #         console = 0
-        #     else:
-        #         ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # DS
-        #         console = 1
-        #
-        #     serveraddr = self.server_manager.find_server_by_local_address(ip, self.session_list[gameid][session_id][client_id]['localaddr'][0], self.session_list[gameid][session_id][client_id]['localaddr'][1], self.session_list[gameid][session_id][client_id]['gameid'])._getvalue()
-        #
-        # return serveraddr
+    def get_server_info_alt(self, gameid, session_id, client_id):
+        console = 0
+        ipstr = self.session_list[gameid][session_id][client_id]['addr'][0]
+
+        if console != 0:
+            ip = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # Wii
+            console = 0
+        else:
+            ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # DS
+            console = 1
+
+        serveraddr = self.server_manager.find_server_by_local_address(ip, self.session_list[gameid][session_id][client_id]['localaddr'], self.session_list[gameid][session_id][client_id]['gameid'])._getvalue()
+
+        if serveraddr == None:
+            if console != 0:
+                ip = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # Wii
+                console = 0
+            else:
+                ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # DS
+                console = 1
+
+            serveraddr = self.server_manager.find_server_by_local_address(ip, self.session_list[gameid][session_id][client_id]['localaddr'], self.session_list[gameid][session_id][client_id]['gameid'])._getvalue()
+
+        return serveraddr
 
 if __name__ == "__main__":
     natneg_server = GameSpyNatNegServer()
