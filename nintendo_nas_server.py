@@ -15,7 +15,8 @@ logger_output_to_console = True
 logger_output_to_file = True
 logger_name = "NintendoNasServer"
 logger_filename = "nintendo_nas_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+logger = utils.create_logger(
+    logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
 # if a game from this list requests a file listing, the server will return that only one exists and return a random one
 # this is used for Mystery Gift distribution on Generation 4 Pokemon games
@@ -28,27 +29,37 @@ gamecodes_return_random_file = [
 #address = ("0.0.0.0", 80)
 address = ("127.0.0.1", 9000)
 
+
 class NintendoNasServer(object):
+
     def start(self):
-        httpd = NintendoNasHTTPServer((address[0], address[1]), NintendoNasHTTPServerHandler)
-        logger.log(logging.INFO, "Now listening for connections on %s:%d...", address[0], address[1])
+        httpd = NintendoNasHTTPServer(
+            (address[0], address[1]), NintendoNasHTTPServerHandler)
+        logger.log(
+            logging.INFO, "Now listening for connections on %s:%d...", address[0], address[1])
         httpd.serve_forever()
 
+
 class NintendoNasHTTPServer(BaseHTTPServer.HTTPServer):
+
     def __init__(self, server_address, RequestHandlerClass):
         self.db = gs_database.GamespyDatabase()
-        BaseHTTPServer.HTTPServer.__init__(self, server_address, RequestHandlerClass)
+        BaseHTTPServer.HTTPServer.__init__(
+            self, server_address, RequestHandlerClass)
+
 
 class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+
     def do_POST(self):
         length = int(self.headers['content-length'])
         post = self.str_to_dict(self.rfile.read(length))
 
         if self.path == "/ac":
-            logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
+            logger.log(
+                logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
             logger.log(logging.DEBUG, post)
             ret = {
-                    "datetime": time.strftime("%Y%m%d%H%M%S"),
+                "datetime": time.strftime("%Y%m%d%H%M%S"),
                     "retry": "0",
             }
             action = post["action"]
@@ -62,14 +73,16 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 # TODO: test for duplicate accounts
                 ret["returncd"] = "002"
 
-                logger.log(logging.DEBUG, "acctcreate response to %s", self.client_address)
+                logger.log(
+                    logging.DEBUG, "acctcreate response to %s", self.client_address)
                 logger.log(logging.DEBUG, ret)
 
                 self.wfile.write(self.dict_to_str(ret))
 
             elif action == "login":
                 challenge = utils.generate_random_str(8)
-                authtoken = self.server.db.generate_authtoken(post["userid"], post)
+                authtoken = self.server.db.generate_authtoken(
+                    post["userid"], post)
                 ret.update({
                     "returncd": "001",
                     "locator": "gamespy.com",
@@ -81,21 +94,28 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     "challenge": challenge,
                 })
 
-                logger.log(logging.DEBUG, "login response to %s", self.client_address)
+                logger.log(
+                    logging.DEBUG, "login response to %s", self.client_address)
                 logger.log(logging.DEBUG, ret)
 
                 self.wfile.write(self.dict_to_str(ret))
 
-            elif action == "SVCLOC" or action == "svcloc": # Get service based on service id number
+            # Get service based on service id number
+            elif action == "SVCLOC" or action == "svcloc":
                 ret["returncd"] = "007"
                 ret["statusdata"] = "Y"
-                authtoken = self.server.db.generate_authtoken(post["userid"], post)
+                authtoken = self.server.db.generate_authtoken(
+                    post["userid"], post)
 
                 if 'svc' in post:
-                    if post["svc"] == "9000" or post["svc"] == "9001": # DLC host = 9000
-                        ret["svchost"] = self.headers['host'] # in case the client's DNS isn't redirecting dls1.nintendowifi.net
+                    # DLC host = 9000
+                    if post["svc"] == "9000" or post["svc"] == "9001":
+                        # in case the client's DNS isn't redirecting
+                        # dls1.nintendowifi.net
+                        ret["svchost"] = self.headers['host']
 
-                        # Brawl has 2 host headers which Apache chokes on, so only return the first one or else it won't work
+                        # Brawl has 2 host headers which Apache chokes on, so
+                        # only return the first one or else it won't work
                         cindex = ret["svchost"].find(',')
                         if cindex != -1:
                             ret["svchost"] = ret["svchost"][:cindex]
@@ -104,22 +124,23 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             ret["token"] = authtoken
                         else:
                             ret["servicetoken"] = authtoken
-                    elif post["svc"] == "0000": # Pokemon requests this for some things
+                    # Pokemon requests this for some things
+                    elif post["svc"] == "0000":
                         ret["servicetoken"] = authtoken
                         ret["svchost"] = "n/a"
 
-                logger.log(logging.DEBUG, "svcloc response to %s", self.client_address)
+                logger.log(
+                    logging.DEBUG, "svcloc response to %s", self.client_address)
                 logger.log(logging.DEBUG, ret)
 
                 self.wfile.write(self.dict_to_str(ret))
 
-
-
         elif self.path == "/pr":
-            logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
+            logger.log(
+                logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
             logger.log(logging.DEBUG, post)
             ret = {
-                    "returncd": "000",
+                "returncd": "000",
                     "datetime": time.strftime("%Y%m%d%H%M%S"),
             }
 
@@ -139,7 +160,8 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.wfile.write(self.dict_to_str(ret))
 
         elif self.path == "/download":
-            logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
+            logger.log(
+                logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
             logger.log(logging.DEBUG, post)
 
             action = post["action"]
@@ -178,7 +200,8 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
                 if os.path.exists(dlcpath):
                     # Look for a list file first.
-                    # If the list file exists, send the entire thing back to the client.
+                    # If the list file exists, send the entire thing back to
+                    # the client.
                     if os.path.isfile(dlcpath + "/_list.txt"):
                         ret = open(dlcpath + "/_list.txt", "rb").read()
                         ret = self.filter_list(ret, attr1, attr2, attr3)
@@ -187,7 +210,8 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             ret = self.filter_list_random_files(ret, 1)
 
             if action == "contents":
-                # Get only the base filename just in case there is a path involved somewhere in the filename string.
+                # Get only the base filename just in case there is a path
+                # involved somewhere in the filename string.
                 dlc_contenttype = True
                 contents = os.path.basename(post["contents"])
 
@@ -199,16 +223,18 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             if dlc_contenttype == True:
                 self.send_header("Content-Length", str(len(ret)))
                 self.send_header("Content-type", "application/x-dsdl")
-                self.send_header("Content-Disposition", "attachment; filename=\"" + post["contents"] + "\"")
+                self.send_header(
+                    "Content-Disposition", "attachment; filename=\"" + post["contents"] + "\"")
             else:
                 self.send_header("Content-type", "text/plain")
 
             self.send_header("X-DLS-Host", "http://127.0.0.1/")
             self.end_headers()
 
-            logger.log(logging.DEBUG, "download response to %s", self.client_address)
+            logger.log(
+                logging.DEBUG, "download response to %s", self.client_address)
 
-            #if dlc_contenttype == False:
+            # if dlc_contenttype == False:
             #    logger.log(logging.DEBUG, ret)
 
             self.wfile.write(ret)
@@ -220,7 +246,8 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             try:
                 ret[k] = base64.b64decode(v[0].replace("*", "="))
             except TypeError:
-                logger.log(logging.ERROR, "Could not decode following string: ret[%s] = %s" % (k, v[0]))
+                logger.log(
+                    logging.ERROR, "Could not decode following string: ret[%s] = %s" % (k, v[0]))
                 logger.log(logging.ERROR, "url: %s" % str)
 
         return ret
@@ -229,7 +256,8 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         for k, v in dict.iteritems():
             dict[k] = base64.b64encode(v).replace("=", "*")
 
-        # nas(wii).nintendowifi.net has a URL query-like format but does not use encoding for special characters
+        # nas(wii).nintendowifi.net has a URL query-like format but does not
+        # use encoding for special characters
         return "&".join("{!s}={!s}".format(k, v) for k, v in dict.items())
 
     def filter_list_random_files(self, data, count):
@@ -238,7 +266,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         samples = random.sample(lines, count)
         return '\r\n'.join(samples) + '\r\n'
 
-    def filter_list(self, data, attr1 = None, attr2 = None, attr3 = None):
+    def filter_list(self, data, attr1=None, attr2=None, attr3=None):
         if attr1 == None and attr2 == None and attr3 == None:
             # Nothing to filter, just return the input data
             return data
@@ -250,11 +278,13 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             s = line.split('\t')
 
             if len(s) == 6:
-                data = {d:s[i] for i, d in enumerate('filename', 'desc', 'attr1', 'attr2', 'attr3', 'filesize')}
+                data = {d: s[i]
+                        for i, d in enumerate('filename', 'desc', 'attr1', 'attr2', 'attr3', 'filesize')}
                 if (data['attr1'] == attr1) and (data['attr2'] == attr2) and (data['attr3'] == attr3):
                     output += line + '\r\n'
 
-        # if nothing matches, at least return a newline; Pokemon BW at least expects this and will error without it
+        # if nothing matches, at least return a newline; Pokemon BW at least
+        # expects this and will error without it
         return output or '\r\n'
 
     def get_file_count(self, data):
