@@ -1,14 +1,20 @@
-import random
+import base64
 import logging
+import random
+import struct
+import string
 
-def generate_random_str(len, set = "abcdefghjiklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"):
-    return ''.join(random.choice(set) for _ in range(len))
+def _generate_random_str(l, chs):
+    return ''.join(random.choice(chs) for _ in range(l))
 
-def generate_random_number_str(len):
-    return ''.join(random.choice("1234567890") for _ in range(len))
+def generate_random_str(l):
+    return _generate_random_str(l, string.letters + string.digits)
+
+def generate_random_number_str(l):
+    return _generate_random_str(l, string.digits)
 
 def generate_random_hex_str(len):
-    return ''.join(random.choice("1234567890abcdef") for _ in range(len))
+    return _generate_random_str(l, string.hexdigits)
 
 # Code: Tetris DS @ 020573F4
 def calculate_crc8(input):
@@ -66,25 +72,14 @@ def base32_decode(str, reverse = False):
 
 
 # Number routines
-# I'm not sure what the pythonic way to do this is, so I'm making the code explicit by giving myself functions to
-# convert the bytes to ints.
+
 def get_num_from_bytes(data, idx, bytes, bigEndian = False):
+    '''
+    Convert an arbitrary byte sequence of a given length into a number
+    '''
     # Get only the bytes we want to work with
-    data = data[idx:idx+bytes]
-
-    if bigEndian == True:
-        data = data[::-1]
-
-    num = 0
-    i = 0
-    while i < bytes and i < len(data):
-        if type(data[i]) is int:
-            num |= (data[i] << (8 * i))
-        else:
-            num |= (ord(data[i]) << (8 * i))
-        i += 1
-
-    return num
+    sfmt = "<>"[bigEndian] + {"B":1, "H":2, "I":4, "L":8}[bytes]
+    return struct.unpack(sfmt, data[idx:idx+bytes])[0]
 
 # Instead of passing slices, pass the buffer and index so we can calculate the length automatically.
 def get_short(data, idx):
@@ -105,18 +100,11 @@ def get_string(data, idx):
     return str(data[:end])
 
 def get_bytes_from_num(num, size, bigEndian = False):
-    output = bytearray(size)
-
-    i = 0
-    while i < size:
-        output[i] = (num >> 8 * i) & 0xff
-
-        i += 1
-
-    if bigEndian:
-        output = output[::-1]
-
-    return output
+    '''
+    Convert a number of a given size into a bytestring
+    '''
+    sfmt = "<>"[bigEndian]+{1:"B",2:"H",4:"I",8:"L"}[bytes]
+    return struct.pack(sfmt, num)
 
 def get_bytes_from_short(num):
     return get_bytes_from_num(num, 2, False)
