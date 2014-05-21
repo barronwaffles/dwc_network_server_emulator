@@ -3,8 +3,12 @@ dwc_network_server_emulator
   
 A Nintendo DS (and possibly Wii) server emulator.  
 
+**WANTED: More programmers!**  
+Whether it's to add new features or clean up existing code, we could always use the additional help. Check the bug tracker or ask another developers in #altwfc @ irc.rizon.net to see what bugs need to be fixed.  
+
   
-Requirements:  
+  
+**Requirements**  
 - Python 2.7  
 - Twisted  
 - zope.interface (Twisted dependency)  
