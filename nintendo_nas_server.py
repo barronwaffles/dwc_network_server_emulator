@@ -23,7 +23,7 @@ logger = utils.create_logger(
 gamecodes_return_random_file = [
     'ADAD', 'ADAE', 'ADAF', 'ADAI', 'ADAJ', 'ADAK', 'ADAS',
     'CPUD', 'CPUE', 'CPUF', 'CPUI', 'CPUJ', 'CPUK', 'CPUS',
-    'IPGD', 'IPGE', 'IPGF', 'IPGI', 'IPGJ', 'IPGK', 'IPGS'
+    'IPGD', 'IPGE', 'IPGF', 'IPGI', 'IPGJ', 'IPGK', 'IPGS',
 ]
 
 #address = ("0.0.0.0", 80)
@@ -98,32 +98,29 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
             # Get service based on service id number
             elif action == "SVCLOC" or action == "svcloc":
-                ret["returncd"] = "007"
-                ret["statusdata"] = "Y"
+                ret.update({
+                    "returncd": "007",
+                    "statusdata": "Y",
+                })
                 authtoken = self.server.db.generate_authtoken(
                     post["userid"], post)
 
                 if 'svc' in post:
                     # DLC host = 9000
-                    if post["svc"] == "9000" or post["svc"] == "9001":
+                    if post["svc"] in ("9000", "9001"):
                         # in case the client's DNS isn't redirecting
                         # dls1.nintendowifi.net
-                        ret["svchost"] = self.headers['host']
 
                         # Brawl has 2 host headers which Apache chokes on, so
                         # only return the first one or else it won't work
-                        cindex = ret["svchost"].find(',')
-                        if cindex != -1:
-                            ret["svchost"] = ret["svchost"][:cindex]
-
-                        if post["svc"] == 9000:
-                            ret["token"] = authtoken
-                        else:
-                            ret["servicetoken"] = authtoken
+                        ret["svchost"] = self.headers["host"].split(",")[0]
+                        ret["token" if post["svc"] == 9000 else "servicetoken"] = authtoken
                     # Pokemon requests this for some things
                     elif post["svc"] == "0000":
-                        ret["servicetoken"] = authtoken
-                        ret["svchost"] = "n/a"
+                        ret.update({
+                            "svchost": "n/a",
+                            "servicetoken": authtoken
+                        })
 
                 logger.debug("svcloc response to %s", self.client_address)
                 logger.debug(ret)
@@ -135,7 +132,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             logger.debug(post)
             ret = {
                 "returncd": "000",
-                    "datetime": time.strftime("%Y%m%d%H%M%S"),
+                "datetime": time.strftime("%Y%m%d%H%M%S"),
             }
 
             words = "0" * len(post["words"].split('\t'))
