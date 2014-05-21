@@ -1,0 +1,6 @@
+chapter_archive_01.fsa					6488
+chapter_archive_02.fsa					10512
+chapter_archive_03.fsa					6512
+chapter_archive_04.fsa					9092
+chapter_archive_05.fsa					14256
+chapter_archive_07.fsa					144

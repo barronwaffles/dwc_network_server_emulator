@@ -1,0 +1,6 @@
+chapter_archive_01.fsa	ZzCTMFswZDBuMEIwSjBEMF8wfjCSMH4wgjCMMAH-				6512
+chapter_archive_02.fsa	ajBeMG4wdTCTMEswkjBhMIcwRjBVMFswiDAB_g**				10512
+chapter_archive_03.fsa	fjCIMEgwizC3MKcwpDDfMJIwADB7MFQwWzCIMAH-				6512
+chapter_archive_04.fsa	rjDpMMYwozDKMGswADBvMGMwTTCTMGAwfjCSMAH-				9104
+chapter_archive_05.fsa	ojDrMLswpjC5MHgwbjAAMGEwSzBEMA**				14300
+chapter_archive_07.fsa	xzCqMK0wtzC5MGgwADDKML4wbjBXMJMwZzCTMA**				144
