@@ -19,7 +19,11 @@ logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_
 
 # if a game from this list requests a file listing, the server will return that only one exists and return a random one
 # this is used for Mystery Gift distribution on Generation 4 Pokemon games
-gamecodes_return_random_file = ['ADAD', 'ADAE', 'ADAF', 'ADAI', 'ADAJ', 'ADAK', 'ADAS', 'CPUD', 'CPUE', 'CPUF', 'CPUI', 'CPUJ', 'CPUK', 'CPUS', 'IPGD', 'IPGE', 'IPGF', 'IPGI', 'IPGJ', 'IPGK', 'IPGS']
+gamecodes_return_random_file = [
+    'ADAD', 'ADAE', 'ADAF', 'ADAI', 'ADAJ', 'ADAK', 'ADAS',
+    'CPUD', 'CPUE', 'CPUF', 'CPUI', 'CPUJ', 'CPUK', 'CPUS',
+    'IPGD', 'IPGE', 'IPGF', 'IPGI', 'IPGJ', 'IPGK', 'IPGS'
+]
 
 #address = ("0.0.0.0", 80)
 address = ("127.0.0.1", 9000)
@@ -43,9 +47,10 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         if self.path == "/ac":
             logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
             logger.log(logging.DEBUG, post)
-            ret = {}
-            ret["datetime"] = time.strftime("%Y%m%d%H%M%S")
-            ret["retry"] = "0"
+            ret = {
+                    "datetime": time.strftime("%Y%m%d%H%M%S"),
+                    "retry": "0",
+            }
             action = post["action"]
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
@@ -63,13 +68,18 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 self.wfile.write(self.dict_to_str(ret))
 
             elif action == "login":
-                ret["returncd"] = "001"
-                ret["locator"] = "gamespy.com"
                 challenge = utils.generate_random_str(8)
-                ret["challenge"] = challenge
-                post["challenge"] = challenge
                 authtoken = self.server.db.generate_authtoken(post["userid"], post)
-                ret["token"] = authtoken
+                ret.update({
+                    "returncd": "001",
+                    "locator": "gamespy.com",
+                    "challenge": challenge,
+                    "token": authtoken,
+                })
+
+                post.update({
+                    "challenge": challenge,
+                })
 
                 logger.log(logging.DEBUG, "login response to %s", self.client_address)
                 logger.log(logging.DEBUG, ret)
@@ -108,19 +118,14 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         elif self.path == "/pr":
             logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
             logger.log(logging.DEBUG, post)
-            ret = {}
+            ret = {
+                    "returncd": "000",
+                    "datetime": time.strftime("%Y%m%d%H%M%S"),
+            }
 
-            words = len(post["words"].split('\t'))
-            wordsret = "0" * words
-            ret["prwords"] = wordsret
-            ret["prwordsA"] = wordsret
-            ret["prwordsC"] = wordsret
-            ret["prwordsE"] = wordsret
-            ret["prwordsJ"] = wordsret
-            ret["prwordsK"] = wordsret
-            ret["prwordsP"] = wordsret
-            ret["returncd"] = "000"
-            ret["datetime"] = time.strftime("%Y%m%d%H%M%S")
+            words = "0" * len(post["words"].split('\t'))
+            for name in ("prwords", "prwordsA", "prwordsC", "prwordsE", "prwordsJ", "prwordsK", "prwordsP"):
+                ret[name] = words
 
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
@@ -153,15 +158,9 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         count = len(os.listdir(dlcpath))
 
                         if os.path.isfile(dlcpath + "/_list.txt"):
-                            attr1 = None
-                            if "attr1" in post:
-                                attr1 = post["attr1"]
-                            attr2 = None
-                            if "attr2" in post:
-                                attr2 = post["attr2"]
-                            attr3 = None
-                            if "attr3" in post:
-                                attr3 = post["attr3"]
+                            attr1 = post.get("attr1", None)
+                            attr2 = post.get("attr2", None)
+                            attr3 = post.get("attr3", None)
                             list = open(dlcpath + "/_list.txt", "rb").read()
                             list = self.filter_list(list, attr1, attr2, attr3)
 
@@ -173,15 +172,9 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 num = int(post["num"])
                 offset = int(post["offset"])
 
-                attr1 = None
-                if "attr1" in post:
-                    attr1 = post["attr1"]
-                attr2 = None
-                if "attr2" in post:
-                    attr2 = post["attr2"]
-                attr3 = None
-                if "attr3" in post:
-                    attr3 = post["attr3"]
+                attr1 = post.get("attr1", None)
+                attr2 = post.get("attr2", None)
+                attr3 = post.get("attr3", None)
 
                 if os.path.exists(dlcpath):
                     # Look for a list file first.
@@ -243,15 +236,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # Get [count] random files from the filelist
         lines = data.splitlines()
         samples = random.sample(lines, count)
-
-        output = ''
-        for sample in samples:
-            output += sample + '\r\n'
-
-        if output == '':
-            output = '\r\n'
-
-        return output
+        return '\r\n'.join(samples) + '\r\n'
 
     def filter_list(self, data, attr1 = None, attr2 = None, attr3 = None):
         if attr1 == None and attr2 == None and attr3 == None:
@@ -265,42 +250,15 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             s = line.split('\t')
 
             if len(s) == 6:
-                data = {}
-                data['filename'] = s[0]
-                data['desc'] = s[1]
-                data['attr1'] = s[2]
-                data['attr2'] = s[3]
-                data['attr3'] = s[4]
-                data['filesize'] = s[5]
-
-                matched = True
-                if attr1 != None:
-                    if data['attr1'] != attr1:
-                        matched = False
-                if attr2 != None:
-                    if data['attr2'] != attr2:
-                        matched = False
-                if attr3 != None:
-                    if data['attr3'] != attr3:
-                        matched = False
-
-                if matched == True:
+                data = {d:s[i] for i, d in enumerate('filename', 'desc', 'attr1', 'attr2', 'attr3', 'filesize')}
+                if (data['attr1'] == attr1) and (data['attr2'] == attr2) and (data['attr3'] == attr3):
                     output += line + '\r\n'
 
-        if output == '':
-            # if nothing matches, at least return a newline; Pokemon BW at least expects this and will error without it
-            output = '\r\n'
-
-        return output
+        # if nothing matches, at least return a newline; Pokemon BW at least expects this and will error without it
+        return output or '\r\n'
 
     def get_file_count(self, data):
-        file_count = 0
-
-        for line in data.splitlines():
-            if line:
-                file_count += 1
-
-        return file_count
+        return sum(1 for line in data.splitlines() if line)
 
 if __name__ == "__main__":
     nas = NintendoNasServer()
