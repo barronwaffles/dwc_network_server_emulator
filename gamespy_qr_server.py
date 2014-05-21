@@ -268,7 +268,9 @@ class GameSpyQRServer(object):
 
                             # Some memory could be saved by clearing out any unwanted fields from k before sending.
                         self.server_manager.update_server_list(k['gamename'], session_id, k, self.sessions[session_id].console)._getvalue()
-                        self.sessions[session_id].gamename = k['gamename']
+
+                        if session_id in self.sessions:
+                            self.sessions[session_id].gamename = k['gamename']
                     elif k['statechanged'] == "2": # Close server
                         self.server_manager.delete_server(k['gamename'] , session_id)
 
