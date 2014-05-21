@@ -189,7 +189,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     if os.path.isfile(dlcpath + "/_list.txt"):
                         ret = open(dlcpath + "/_list.txt", "rb").read()
                         ret = self.filter_list(ret, attr1, attr2, attr3)
-                        
+
                         if post["gamecd"] in gamecodes_return_random_file:
                             ret = self.filter_list_random_files(ret, 1)
 
@@ -214,7 +214,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.end_headers()
 
             logger.log(logging.DEBUG, "download response to %s", self.client_address)
-            
+
             #if dlc_contenttype == False:
             #    logger.log(logging.DEBUG, ret)
 
@@ -224,7 +224,11 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         ret = urlparse.parse_qs(str)
 
         for k, v in ret.iteritems():
-            ret[k] = base64.b64decode(v[0].replace("*", "="))
+            try:
+                ret[k] = base64.b64decode(v[0].replace("*", "="))
+            except TypeError:
+                logger.log(logging.ERROR, "Could not decode following string: ret[%s] = %s" % (k, v[0]))
+                logger.log(logging.ERROR, "url: %s" % str)
 
         return ret
 
@@ -239,16 +243,16 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # Get [count] random files from the filelist
         lines = data.splitlines()
         samples = random.sample(lines, count)
-        
+
         output = ''
         for sample in samples:
             output += sample + '\r\n'
-        
+
         if output == '':
             output = '\r\n'
-        
+
         return output
-    
+
     def filter_list(self, data, attr1 = None, attr2 = None, attr3 = None):
         if attr1 == None and attr2 == None and attr3 == None:
             # Nothing to filter, just return the input data
