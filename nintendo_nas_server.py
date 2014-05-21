@@ -35,8 +35,7 @@ class NintendoNasServer(object):
     def start(self):
         httpd = NintendoNasHTTPServer(
             (address[0], address[1]), NintendoNasHTTPServerHandler)
-        logger.log(
-            logging.INFO, "Now listening for connections on %s:%d...", address[0], address[1])
+        logger.info("Now listening for connections on %s:%d...", address[0], address[1])
         httpd.serve_forever()
 
 
@@ -55,9 +54,8 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         post = self.str_to_dict(self.rfile.read(length))
 
         if self.path == "/ac":
-            logger.log(
-                logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
-            logger.log(logging.DEBUG, post)
+            logger.debug("Request to %s from %s", self.path, self.client_address)
+            logger.debug(post)
             ret = {
                 "datetime": time.strftime("%Y%m%d%H%M%S"),
                     "retry": "0",
@@ -73,9 +71,8 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 # TODO: test for duplicate accounts
                 ret["returncd"] = "002"
 
-                logger.log(
-                    logging.DEBUG, "acctcreate response to %s", self.client_address)
-                logger.log(logging.DEBUG, ret)
+                logger.debug("acctcreate response to %s", self.client_address)
+                logger.debug(ret)
 
                 self.wfile.write(self.dict_to_str(ret))
 
@@ -94,9 +91,8 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     "challenge": challenge,
                 })
 
-                logger.log(
-                    logging.DEBUG, "login response to %s", self.client_address)
-                logger.log(logging.DEBUG, ret)
+                logger.debug("login response to %s", self.client_address)
+                logger.debug(ret)
 
                 self.wfile.write(self.dict_to_str(ret))
 
@@ -129,16 +125,14 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         ret["servicetoken"] = authtoken
                         ret["svchost"] = "n/a"
 
-                logger.log(
-                    logging.DEBUG, "svcloc response to %s", self.client_address)
-                logger.log(logging.DEBUG, ret)
+                logger.debug("svcloc response to %s", self.client_address)
+                logger.debug(ret)
 
                 self.wfile.write(self.dict_to_str(ret))
 
         elif self.path == "/pr":
-            logger.log(
-                logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
-            logger.log(logging.DEBUG, post)
+            logger.debug("Request to %s from %s", self.path, self.client_address)
+            logger.debug(post)
             ret = {
                 "returncd": "000",
                     "datetime": time.strftime("%Y%m%d%H%M%S"),
@@ -154,15 +148,14 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_header("NODE", "wifiappe3")
             self.end_headers()
 
-            logger.log(logging.DEBUG, "pr response to %s", self.client_address)
-            logger.log(logging.DEBUG, ret)
+            logger.debug("pr response to %s", self.client_address)
+            logger.debug(ret)
 
             self.wfile.write(self.dict_to_str(ret))
 
         elif self.path == "/download":
-            logger.log(
-                logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
-            logger.log(logging.DEBUG, post)
+            logger.debug("Request to %s from %s", self.path, self.client_address)
+            logger.debug(post)
 
             action = post["action"]
 
@@ -231,11 +224,10 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_header("X-DLS-Host", "http://127.0.0.1/")
             self.end_headers()
 
-            logger.log(
-                logging.DEBUG, "download response to %s", self.client_address)
+            logger.debug("download response to %s", self.client_address)
 
             # if dlc_contenttype == False:
-            #    logger.log(logging.DEBUG, ret)
+            #    logger.debug(ret)
 
             self.wfile.write(ret)
 
@@ -246,9 +238,8 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             try:
                 ret[k] = base64.b64decode(v[0].replace("*", "="))
             except TypeError:
-                logger.log(
-                    logging.ERROR, "Could not decode following string: ret[%s] = %s" % (k, v[0]))
-                logger.log(logging.ERROR, "url: %s" % str)
+                logger.error("Could not decode following string: ret[%s] = %s" % (k, v[0]))
+                logger.error("url: %s" % str)
 
         return ret
 
