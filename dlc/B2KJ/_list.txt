@@ -1,2 +1,0 @@
-distribution110609.bin					24
-tweet111209.bin					2416
