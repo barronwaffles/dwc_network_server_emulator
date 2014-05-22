@@ -5,7 +5,7 @@ from gamespy_natneg_server import GameSpyNatNegServer
 from gamespy_qr_server import GameSpyQRServer
 from gamespy_server_browser_server import GameSpyServerBrowserServer
 from gamespy_gamestats_server import GameSpyGamestatsServer
-from nintendo_nas_server import NintendoNasServer
+from nas_server import NasServer
 from internal_stats_server import InternalStatsServer
 
 import gamespy.gs_database as gs_database
@@ -41,7 +41,7 @@ def start_natneg_server():
     natneg_server.start()
 
 def start_nas_server():
-    nas_server = NintendoNasServer()
+    nas_server = NasServer()
     nas_server.start()
 
 def start_stats_server():

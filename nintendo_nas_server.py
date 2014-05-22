@@ -13,8 +13,8 @@ import other.utils as utils
 
 logger_output_to_console = True
 logger_output_to_file = True
-logger_name = "NintendoNasServer"
-logger_filename = "nintendo_nas_server.log"
+logger_name = "NasServer"
+logger_filename = "nas_server.log"
 logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
 # if a game from this list requests a file listing, the server will return that only one exists and return a random one
@@ -24,18 +24,18 @@ gamecodes_return_random_file = ['ADAD', 'ADAE', 'ADAF', 'ADAI', 'ADAJ', 'ADAK', 
 #address = ("0.0.0.0", 80)
 address = ("127.0.0.1", 9000)
 
-class NintendoNasServer(object):
+class NasServer(object):
     def start(self):
-        httpd = NintendoNasHTTPServer((address[0], address[1]), NintendoNasHTTPServerHandler)
+        httpd = NasHTTPServer((address[0], address[1]), NasHTTPServerHandler)
         logger.log(logging.INFO, "Now listening for connections on %s:%d...", address[0], address[1])
         httpd.serve_forever()
 
-class NintendoNasHTTPServer(BaseHTTPServer.HTTPServer):
+class NasHTTPServer(BaseHTTPServer.HTTPServer):
     def __init__(self, server_address, RequestHandlerClass):
         self.db = gs_database.GamespyDatabase()
         BaseHTTPServer.HTTPServer.__init__(self, server_address, RequestHandlerClass)
 
-class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_POST(self):
         length = int(self.headers['content-length'])
         post = self.str_to_dict(self.rfile.read(length))
@@ -303,5 +303,5 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         return file_count
 
 if __name__ == "__main__":
-    nas = NintendoNasServer()
+    nas = NasServer()
     nas.start()
