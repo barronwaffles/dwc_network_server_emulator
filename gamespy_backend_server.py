@@ -388,11 +388,11 @@ class GameSpyBackendServer(object):
             # Search all servers
             for gameid in self.server_list:
                 for server in self.server_list[gameid]:
-                    if server['publicip'] == ip and server['publicport'] == str(port):
+                    if server['publicip'] == ip and (port == 0 or server['publicport'] == str(port)):
                         return server
         else:
             for server in self.server_list[gameid]:
-                if server['publicip'] == ip and server['publicport'] == str(port):
+                if server['publicip'] == ip and (port == 0 or server['publicport'] == str(port)):
                     return server
 
         return None

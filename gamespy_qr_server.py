@@ -260,7 +260,12 @@ class GameSpyQRServer(object):
                     k['publicip'] = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in address[0].split('.')]), 0)).value) # DS
 
             if "statechanged" in k:
-                if k['statechanged'] == "1": # Create server
+                if k['statechanged'] == "2": # Close server
+                    self.server_manager.delete_server(k['gamename'] , session_id)
+
+                    if session_id in self.sessions:
+                        self.sessions.pop(session_id)
+                else: #if k['statechanged'] == "1": # Create server
                     #if k['publicport'] != "0" and k['publicip'] != "0":
                         # dwc_mtype controls what kind of server query we're looking for.
                         # dwc_mtype = 0 is used when looking for a matchmaking game.
@@ -273,11 +278,6 @@ class GameSpyQRServer(object):
 
                     if session_id in self.sessions:
                         self.sessions[session_id].gamename = k['gamename']
-                elif k['statechanged'] == "2": # Close server
-                    self.server_manager.delete_server(k['gamename'] , session_id)
-
-                    if session_id in self.sessions:
-                        self.sessions.pop(session_id)
 
 
         elif recv_data[0] == '\x04': # Add Error
