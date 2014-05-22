@@ -62,7 +62,7 @@ class GameSpyBackendServer(object):
         address = ("127.0.0.1", 27500)
         password = ""
 
-        logger.log(logging.INFO, "Started server on %s:%d..." % (address[0], address[1]))
+        logger.info("Started server on %s:%d..." % (address[0], address[1]))
 
         manager = GameSpyServerDatabase(address = address, authkey = password)
         server = manager.get_server()
@@ -349,7 +349,7 @@ class GameSpyBackendServer(object):
             result['requested'] = requested
             servers.append(result)
 
-        logger.log(logging.DEBUG, "Matched %d servers in %s seconds" % (len(servers), (time.time() - start)))
+        logger.debug("Matched %d servers in %s seconds" % (len(servers), (time.time() - start)))
 
         return servers
 
@@ -366,9 +366,9 @@ class GameSpyBackendServer(object):
         value['__session__'] = session
         value['__console__'] = console
 
-        logger.log(logging.DEBUG, "Added %s to the server list for %s" % (value, gameid))
+        logger.debug("Added %s to the server list for %s" % (value, gameid))
         self.server_list[gameid].append(value)
-        logger.log(logging.DEBUG, "%s servers: %d" % (gameid, len(self.server_list[gameid])))
+        logger.debug("%s servers: %d" % (gameid, len(self.server_list[gameid])))
 
         return value
 
@@ -381,7 +381,7 @@ class GameSpyBackendServer(object):
         count = len(self.server_list[gameid])
         self.server_list[gameid] = [x for x in self.server_list[gameid] if x['__session__'] != session]
         count -= len(self.server_list[gameid])
-        logger.log(logging.DEBUG, "Deleted %d %s servers where session = %d" % (count, gameid, session))
+        logger.debug("Deleted %d %s servers where session = %d" % (count, gameid, session))
 
     def find_server_by_address(self, ip, port, gameid = None):
         if gameid == None:
@@ -407,15 +407,15 @@ class GameSpyBackendServer(object):
             # Search all servers
             for gameid in self.server_list:
                 for server in self.server_list[gameid]:
-                    logger.log(logging.DEBUG, "publicip 1: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_le), server['publicip'] == str(localip_int_le), server['publicport'], str(localport), server['publicport'] == str(localport)))
+                    logger.debug("publicip 1: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_le), server['publicip'] == str(localip_int_le), server['publicport'], str(localport), server['publicport'] == str(localport)))
                     if server['publicip'] == str(localip_int_le) and server['publicport'] == str(localport):
                         return server
 
-                    logger.log(logging.DEBUG, "publicip 2: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_be), server['publicip'] == str(localip_int_be), server['publicport'], str(localport), server['publicport'] == str(localport)))
+                    logger.debug("publicip 2: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_be), server['publicip'] == str(localip_int_be), server['publicport'], str(localport), server['publicport'] == str(localport)))
                     if server['publicip'] == str(localip_int_be) and server['publicport'] == str(localport):
                         return server
 
-                    logger.log(logging.DEBUG, "publicip 3: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
+                    logger.debug("publicip 3: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
                     if server['publicip'] == publicip and (server['localport'] == str(localport) or server['publicport'] == str(localport)):
                         for x in range(0, 10):
                             s = 'localip%d' % x
@@ -424,15 +424,15 @@ class GameSpyBackendServer(object):
                                     return server
         else:
             for server in self.server_list[gameid]:
-                logger.log(logging.DEBUG, "publicip 1: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_le), server['publicip'] == str(localip_int_le), server['publicport'], str(localport), server['publicport'] == str(localport)))
+                logger.debug("publicip 1: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_le), server['publicip'] == str(localip_int_le), server['publicport'], str(localport), server['publicport'] == str(localport)))
                 if server['publicip'] == str(localip_int_le) and server['publicport'] == str(localport):
                     return server
 
-                logger.log(logging.DEBUG, "publicip 2: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_be), server['publicip'] == str(localip_int_be), server['publicport'], str(localport), server['publicport'] == str(localport)))
+                logger.debug("publicip 2: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_be), server['publicip'] == str(localip_int_be), server['publicport'], str(localport), server['publicport'] == str(localport)))
                 if server['publicip'] == str(localip_int_be) and server['publicport'] == str(localport):
                     return server
 
-                logger.log(logging.DEBUG, "publicip: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
+                logger.debug("publicip: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
                 if server['publicip'] == publicip and (server['localport'] == str(localport) or server['publicport'] == str(localport)):
                     for x in range(0, 10):
                         s = 'localip%d' % x
@@ -445,7 +445,7 @@ class GameSpyBackendServer(object):
         if cookie not in self.natneg_list:
             self.natneg_list[cookie] = []
 
-        logger.log(logging.DEBUG, "Added natneg server %d" % (cookie))
+        logger.debug("Added natneg server %d" % (cookie))
         self.natneg_list[cookie].append(server)
 
     def get_natneg_server(self, cookie):
@@ -458,7 +458,7 @@ class GameSpyBackendServer(object):
         # TODO: Find a good time to prune the natneg server listing.
         if cookie in self.natneg_list:
             del self.natneg_list[cookie]
-        logger.log(logging.DEBUG, "Deleted natneg server %d" % (cookie))
+        logger.debug("Deleted natneg server %d" % (cookie))
 
 
 if __name__ == '__main__':

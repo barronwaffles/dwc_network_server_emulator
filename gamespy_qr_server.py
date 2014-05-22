@@ -72,7 +72,7 @@ class GameSpyQRServer(object):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(address)
 
-        logger.log(logging.INFO, "Server is now listening on %s:%s..." % (address[0], address[1]))
+        logger.info("Server is now listening on %s:%s..." % (address[0], address[1]))
 
         # Dependencies! I don't really like this solution but it's easier than trying to manage it another way.
         server_browser_server = GameSpyServerBrowserServer(self)

@@ -46,13 +46,13 @@ class GameSpyNatNegServer(object):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.bind(address)
 
-        logger.log(logging.INFO, "Server is now listening on %s:%s..." % (address[0], address[1]))
+        logger.info("Server is now listening on %s:%s..." % (address[0], address[1]))
 
         while 1:
             recv_data, addr = s.recvfrom(2048)
 
-            logger.log(logging.DEBUG, "Connection from %s:%d..." % (addr[0], addr[1]))
-            logger.log(logging.DEBUG, utils.pretty_print_hex(recv_data))
+            logger.debug("Connection from %s:%d..." % (addr[0], addr[1]))
+            logger.debug(utils.pretty_print_hex(recv_data))
 
             # Make sure it's a legal packet
             if recv_data[0:6] != bytearray([0xfd, 0xfc, 0x1e, 0x66, 0x6a, 0xb2]):
@@ -63,7 +63,7 @@ class GameSpyNatNegServer(object):
 
             # Handle commands
             if recv_data[7] == '\x00':
-                logger.log(logging.DEBUG, "Received initialization from %s:%s..." % (addr[0], addr[1]))
+                logger.debug("Received initialization from %s:%s..." % (addr[0], addr[1]))
 
                 output = bytearray(recv_data[0:14])
                 output += bytearray([0xff, 0xff, 0x6d, 0x16, 0xb5, 0x7d, 0xea ]) # Checked with Tetris DS, Mario Kart DS, and Metroid Prime Hunters, and this seems to be the standard response to 0x00
@@ -105,7 +105,7 @@ class GameSpyNatNegServer(object):
                             serveraddr = self.get_server_info_alt(gameid, session_id, client)
 
                         self.session_list[gameid][session_id][client]['serveraddr'] = serveraddr
-                        logger.log(logging.DEBUG, "Found server from local ip/port: %s from %d" % (serveraddr, session_id))
+                        logger.debug("Found server from local ip/port: %s from %d" % (serveraddr, session_id))
 
                         publicport = self.session_list[gameid][session_id][client]['addr'][1]
                         if self.session_list[gameid][session_id][client]['localaddr'][1] != 0:
@@ -124,8 +124,8 @@ class GameSpyNatNegServer(object):
                         #s.sendto(output, (self.session_list[gameid][session_id][client_id]['addr']))
                         s.sendto(output, (self.session_list[gameid][session_id][client_id]['addr'][0], self.session_list[gameid][session_id][client_id]['addr'][1]))
 
-                        logger.log(logging.DEBUG, "Sent connection request to %s:%d..." % (self.session_list[gameid][session_id][client_id]['addr'][0], self.session_list[gameid][session_id][client_id]['addr'][1]))
-                        logger.log(logging.DEBUG, utils.pretty_print_hex(output))
+                        logger.debug("Sent connection request to %s:%d..." % (self.session_list[gameid][session_id][client_id]['addr'][0], self.session_list[gameid][session_id][client_id]['addr'][1]))
+                        logger.debug(utils.pretty_print_hex(output))
 
                         # Send to other client
                         #if self.session_list[gameid][session_id][client_id]['serveraddr'] == None:
@@ -134,7 +134,7 @@ class GameSpyNatNegServer(object):
                             serveraddr = self.get_server_info_alt(gameid, session_id, client)
 
                         self.session_list[gameid][session_id][client_id]['serveraddr'] = serveraddr
-                        logger.log(logging.DEBUG, "Found server 2 from local ip/port: %s from %d" % (serveraddr, session_id))
+                        logger.debug("Found server 2 from local ip/port: %s from %d" % (serveraddr, session_id))
 
                         publicport = self.session_list[gameid][session_id][client_id]['addr'][1]
                         if self.session_list[gameid][session_id][client_id]['localaddr'][1] != 0:
@@ -152,12 +152,12 @@ class GameSpyNatNegServer(object):
                         #s.sendto(output, (self.session_list[gameid][session_id][client]['addr']))
                         s.sendto(output, (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
 
-                        logger.log(logging.DEBUG, "Sent connection request to %s:%d..." % (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
-                        logger.log(logging.DEBUG, utils.pretty_print_hex(output))
+                        logger.debug("Sent connection request to %s:%d..." % (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
+                        logger.debug(utils.pretty_print_hex(output))
 
             elif recv_data[7] == '\x06': # Was able to connect
                 client_id = "%02x" % ord(recv_data[13])
-                logger.log(logging.DEBUG, "Received connected command from %s:%s..." % (addr[0], addr[1]))
+                logger.debug("Received connected command from %s:%s..." % (addr[0], addr[1]))
 
                 if gameid not in self.session_list:
                     continue
@@ -170,7 +170,7 @@ class GameSpyNatNegServer(object):
 
             elif recv_data[7] == '\x0a': # Address check. Note: UNTESTED!
                 client_id = "%02x" % ord(recv_data[13])
-                logger.log(logging.DEBUG, "Received address check command from %s:%s..." % (addr[0], addr[1]))
+                logger.debug("Received address check command from %s:%s..." % (addr[0], addr[1]))
 
                 output = bytearray(recv_data[0:15])
                 output += bytearray([int(x) for x in addr[0].split('.')])
@@ -180,31 +180,31 @@ class GameSpyNatNegServer(object):
                 output[7] = 0x0b
                 s.sendto(output, addr)
 
-                logger.log(logging.DEBUG, "Sent address check response to %s:%d..." % (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
-                logger.log(logging.DEBUG, utils.pretty_print_hex(output))
+                logger.debug("Sent address check response to %s:%d..." % (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
+                logger.debug(utils.pretty_print_hex(output))
 
             elif recv_data[7] == '\x0c': # Natify
                 port_type = "%02x" % ord(recv_data[12])
-                logger.log(logging.DEBUG, "Received natify command from %s:%s..." % (addr[0], addr[1]))
+                logger.debug("Received natify command from %s:%s..." % (addr[0], addr[1]))
 
                 output = bytearray(recv_data)
                 output[7] = 0x02 # ERT Test
                 s.sendto(output, addr)
 
-                logger.log(logging.DEBUG, "Sent natify response to %s:%d..." % (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
-                logger.log(logging.DEBUG, utils.pretty_print_hex(output))
+                logger.debug("Sent natify response to %s:%d..." % (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
+                logger.debug(utils.pretty_print_hex(output))
 
             elif recv_data[7] == '\x0d':
                 client_id = "%02x" % ord(recv_data[13])
-                logger.log(logging.DEBUG, "Received report command from %s:%s..." % (addr[0], addr[1]))
-                logger.log(logging.DEBUG, utils.pretty_print_hex(recv_data))
+                logger.debug("Received report command from %s:%s..." % (addr[0], addr[1]))
+                logger.debug(utils.pretty_print_hex(recv_data))
 
                 output = bytearray(recv_data)
                 output[7] = 0x0e # Report response
                 s.sendto(recv_data, addr)
 
             else: # Was able to connect
-                logger.log(logging.DEBUG, "Received unknown command %02x from %s:%s..." % (ord(recv_data[7]), addr[0], addr[1]))
+                logger.debug("Received unknown command %02x from %s:%s..." % (ord(recv_data[7]), addr[0], addr[1]))
 
     def get_server_info(self, gameid, session_id, client_id):
         server_info = None

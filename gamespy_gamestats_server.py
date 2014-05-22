@@ -38,7 +38,7 @@ class GameSpyGamestatsServer(object):
 
 class GamestatsFactory(Factory):
     def __init__(self):
-        logger.log(logging.INFO, "Now listening for connections on %s:%d...", address[0], address[1])
+        logger.info("Now listening for connections on %s:%d...", address[0], address[1])
         self.sessions = {}
 
     def buildProtocol(self, address):
@@ -101,7 +101,7 @@ class Gamestats(LineReceiver):
 
         #data = self.leftover + data
         commands, self.remaining_message = gs_query.parse_gamespy_message(msg)
-        #logger.log(logging.DEBUG, "STATS RESPONSE: %s" % msg)
+        #logger.debug("STATS RESPONSE: %s" % msg)
 
         for data_parsed in commands:
             print data_parsed
@@ -121,7 +121,7 @@ class Gamestats(LineReceiver):
             elif data_parsed['__cmd__'] == "updgame":
                 self.perform_updgame(data_parsed)
             else:
-                logger.log(logging.DEBUG, "Found unknown command, don't know how to handle '%s'." % data_parsed['__cmd__'])
+                logger.debug("Found unknown command, don't know how to handle '%s'." % data_parsed['__cmd__'])
 
     def perform_auth(self, data_parsed):
         self.log(logging.DEBUG, "Parsing 'auth'...")
@@ -261,7 +261,7 @@ class Gamestats(LineReceiver):
 
         # TODO: Return error message.
         if int(data_parsed['pid']) != self.profileid:
-            logger.log(logging.WARNING, "ERROR: %d tried to update %d's profile" % (int(data_parsed['pid']), self.profileid))
+            logger.warning("ERROR: %d tried to update %d's profile" % (int(data_parsed['pid']), self.profileid))
             return
 
         data_str = "\\data\\"

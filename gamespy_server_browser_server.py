@@ -1,4 +1,5 @@
-# I found an open source implemention of this exact server I'm trying to emulate here: https://github.com/sfcspanky/Openspy-Core/blob/master/serverbrowsing/
+# I found an open source implemention of this exact server I'm trying to emulate here:
+# https://github.com/sfcspanky/Openspy-Core/blob/master/serverbrowsing/
 # Use as reference later.
 
 import logging
@@ -63,7 +64,7 @@ class GameSpyServerBrowserServer(object):
 
 class SessionFactory(Factory):
     def __init__(self, qr):
-        logger.log(logging.INFO, "Now listening for connections on %s:%d...", address[0], address[1])
+        logger.info("Now listening for connections on %s:%d...", address[0], address[1])
         self.secret_key_list = gs_utils.generate_secret_keys("gslist.cfg")
 
         # TODO: Prune server cache at some point

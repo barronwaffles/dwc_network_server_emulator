@@ -36,7 +36,7 @@ class GameSpyPlayerSearchServer(object):
 
 class PlayerSearchFactory(Factory):
     def __init__(self):
-        logger.log(logging.INFO, "Now listening for player search connections on %s:%d...", address[0], address[1])
+        logger.info("Now listening for player search connections on %s:%d...", address[0], address[1])
 
     def buildProtocol(self, address):
         return PlayerSearch(address)
@@ -57,7 +57,7 @@ class PlayerSearch(LineReceiver):
         pass
 
     def rawDataReceived(self, data):
-        logger.log(logging.DEBUG, "SEARCH RESPONSE: %s" % data)
+        logger.debug("SEARCH RESPONSE: %s" % data)
 
         data = self.leftover + data
         commands, self.leftover = gs_query.parse_gamespy_message(data)
@@ -68,7 +68,7 @@ class PlayerSearch(LineReceiver):
             if data_parsed['__cmd__'] == "otherslist":
                 self.perform_otherslist(data_parsed)
             else:
-                logger.log(logging.DEBUG, "Found unknown search command, don't know how to handle '%s'." % data_parsed['__cmd__'])
+                logger.debug("Found unknown search command, don't know how to handle '%s'." % data_parsed['__cmd__'])
 
     def perform_otherslist(self, data_parsed):
         # Reference: http://wiki.tockdom.com/wiki/MKWii_Network_Protocol/Server/gpsp.gs.nintendowifi.net
@@ -83,7 +83,7 @@ class PlayerSearch(LineReceiver):
             numopids = int(data_parsed['numopids'])
             opids = data_parsed['opids'].split('|')
             if (len(opids) != numopids) and (not int(opids[0]) == 0):
-                logger.log(logging.ERROR, "Unexpected number of opids, got %d, expected %d." % (len(opids), numopids))
+                logger.error("Unexpected number of opids, got %d, expected %d." % (len(opids), numopids))
 
             # Return all uniquenicks despite any unexpected/missing opids
             for opid in opids:

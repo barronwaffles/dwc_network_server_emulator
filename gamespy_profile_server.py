@@ -38,7 +38,7 @@ class GameSpyProfileServer(object):
 class PlayerFactory(Factory):
     def __init__(self):
         # Instead of storing the sessions in the database, it might make more sense to store them in the PlayerFactory.
-        logger.log(logging.INFO, "Now listening for connections on %s:%d...", address[0], address[1])
+        logger.info("Now listening for connections on %s:%d...", address[0], address[1])
         self.sessions = {}
 
     def buildProtocol(self, address):
@@ -410,7 +410,7 @@ class PlayerSession(LineReceiver):
                     msg_d.append(('errmsg', "The profile the message was to be sent to is not a buddy."))
                     msg_d.append(('id', 1))
                     msg = gs_query.create_gamespy_message(msg_d)
-                    logger.log(logging.DEBUG, "Trying to send message to someone who isn't a buddy: %s" % msg)
+                    logger.debug("Trying to send message to someone who isn't a buddy: %s" % msg)
                     self.transport.write(msg)
                     return
 
@@ -436,14 +436,14 @@ class PlayerSession(LineReceiver):
                         msg_d.append(('errmsg', "The buddy to send a message to is offline."))
                         msg_d.append(('id', 1))
                         msg = gs_query.create_gamespy_message(msg_d)
-                        logger.log(logging.DEBUG, "Trying to send message to someone who isn't online: %s" % msg)
+                        logger.debug("Trying to send message to someone who isn't online: %s" % msg)
                         self.transport.write(msg)
 
 
     def perform_addbuddy(self, data_parsed):
         newprofileid = int(data_parsed['newprofileid'])
         if newprofileid == self.profileid:
-            logger.log(logging.DEBUG, "Can't add self as friend: %d == %d", newprofileid, self.profileid)
+            logger.debug("Can't add self as friend: %d == %d", newprofileid, self.profileid)
             return
 
         # Sample: \addbuddy\\sesskey\231601763\newprofileid\476756820\reason\\final\
@@ -459,7 +459,7 @@ class PlayerSession(LineReceiver):
             self.db.add_buddy(self.profileid, newprofileid)
 
             if newprofileid in self.sessions:
-                logger.log(logging.DEBUG, "User is online, sending direct request from profile id %d to profile id %d..." % (self.profileid, newprofileid))
+                logger.debug("User is online, sending direct request from profile id %d to profile id %d..." % (self.profileid, newprofileid))
                 self.send_buddy_request(self.sessions[newprofileid], self.profileid)
 
 
