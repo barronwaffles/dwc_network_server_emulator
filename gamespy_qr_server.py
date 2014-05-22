@@ -87,7 +87,7 @@ class GameSpyQRServer(object):
             packet_thread.start()
 
     def handle_packet(self, socket, recv_data, address):
-        self.db = gs_database.GamespyDatabase()
+        db = gs_database.GamespyDatabase()
 
         # Tetris DS overlay 10 @ 02144184 - Handle responses back to server
         # Tetris DS overlay 10 @ 02144184 - Handle responses back to server
@@ -230,7 +230,7 @@ class GameSpyQRServer(object):
                 # The endianness of some server data depends on the endianness of the console, so we must be able
                 # to account for that.
                 self.sessions[session_id].playerid = int(k['dwc_pid'])
-                profile = self.db.get_profile_from_profileid(self.sessions[session_id].playerid)
+                profile = db.get_profile_from_profileid(self.sessions[session_id].playerid)
 
                 if "console" in profile:
                     self.sessions[session_id].console = profile['console']

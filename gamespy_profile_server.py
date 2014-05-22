@@ -275,10 +275,10 @@ class PlayerSession(LineReceiver):
             self.get_status_from_friends()
             self.send_status_to_friends()
 
-            profile = self.db.get_profile_from_profileid(profileid)
-            if profile != None:
-                self.statstring = profile['stat']
-                self.locstring = profile['loc']
+            # profile = self.db.get_profile_from_profileid(profileid)
+            # if profile != None:
+            #     self.statstring = profile['stat']
+            #     self.locstring = profile['loc']
 
     def perform_logout(self, data_parsed):
         self.log(logging.INFO, "Session %s has logged off" % (data_parsed['sesskey']))
@@ -361,13 +361,13 @@ class PlayerSession(LineReceiver):
         self.statstring =  data_parsed['statstring']
         self.locstring =  data_parsed['locstring']
 
-        fields = []
-        #fields.append(("status", self.status))
-        fields.append(("stat", self.statstring))
-        fields.append(("loc", self.locstring))
-
-        for f in fields:
-            self.db.update_profile(self.sesskey, f)
+        # fields = []
+        # #fields.append(("status", self.status))
+        # fields.append(("stat", self.statstring))
+        # fields.append(("loc", self.locstring))
+        #
+        # for f in fields:
+        #     self.db.update_profile(self.sesskey, f)
 
         # Send authorization requests to client
         self.get_buddy_requests()
