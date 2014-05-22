@@ -19,7 +19,7 @@ class StatsPage(resource.Resource):
     def render_GET(self, request):
         # TODO: Make this easier to modify later
 
-        server_list = stats.get_server_list()
+        server_list = self.stats.get_server_list()
 
         output = "<html>"
         output += "<table border='1'>"
@@ -40,7 +40,7 @@ class StatsPage(resource.Resource):
         output += "</table>"
 
         output += "<br>"
-        output += "<i>Last updated: %s</i><br>" % (stats.get_last_update_time())
+        output += "<i>Last updated: %s</i><br>" % (self.stats.get_last_update_time())
         output += "</html>"
 
         return output

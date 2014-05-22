@@ -48,8 +48,6 @@ class GameSpyQRServer(object):
         self.secret_key_list = gs_utils.generate_secret_keys("gslist.cfg")
         #self.log(logging.DEBUG, address, "Generated list of secret game keys...")
 
-        self.db = gs_database.GamespyDatabase()
-
         GameSpyServerDatabase.register("update_server_list")
         GameSpyServerDatabase.register("delete_server")
 
@@ -89,6 +87,8 @@ class GameSpyQRServer(object):
             packet_thread.start()
 
     def handle_packet(self, socket, recv_data, address):
+        self.db = gs_database.GamespyDatabase()
+
         # Tetris DS overlay 10 @ 02144184 - Handle responses back to server
         # Tetris DS overlay 10 @ 02144184 - Handle responses back to server
         #

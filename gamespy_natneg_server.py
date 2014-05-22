@@ -6,6 +6,7 @@ import socket
 import ctypes
 import struct
 import threading
+import time
 import gamespy.gs_utility as gs_utils
 import other.utils as utils
 
