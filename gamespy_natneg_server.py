@@ -52,7 +52,6 @@ class GameSpyNatNegServer(object):
 
         while 1:
             recv_data, addr = s.recvfrom(2048)
-            time.sleep(0.05)
 
             packet_thread = threading.Thread(target=self.handle_packet, args=(s, recv_data, addr))
             packet_thread.start()
@@ -60,6 +59,7 @@ class GameSpyNatNegServer(object):
     def handle_packet(self, s, recv_data, addr):
         logger.log(logging.DEBUG, "Connection from %s:%d..." % (addr[0], addr[1]))
         logger.log(logging.DEBUG, utils.pretty_print_hex(recv_data))
+        time.sleep(0.05)
 
         # Make sure it's a legal packet
         if recv_data[0:6] != bytearray([0xfd, 0xfc, 0x1e, 0x66, 0x6a, 0xb2]):

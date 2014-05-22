@@ -81,13 +81,13 @@ class GameSpyQRServer(object):
 
         while 1:
             recv_data, address = self.socket.recvfrom(2048)
-            time.sleep(0.05)
 
             packet_thread = threading.Thread(target=self.handle_packet, args=(self.socket, recv_data, address))
             packet_thread.start()
 
     def handle_packet(self, socket, recv_data, address):
         db = gs_database.GamespyDatabase()
+        time.sleep(0.05)
 
         # Tetris DS overlay 10 @ 02144184 - Handle responses back to server
         # Tetris DS overlay 10 @ 02144184 - Handle responses back to server
