@@ -86,6 +86,7 @@ class GameSpyQRServer(object):
     def wait_loop(self):
         while 1:
             recv_data, address = self.socket.recvfrom(2048)
+            time.sleep(0.05)
 
             # Tetris DS overlay 10 @ 02144184 - Handle responses back to server
             # Tetris DS overlay 10 @ 02144184 - Handle responses back to server

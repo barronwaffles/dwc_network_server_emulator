@@ -50,6 +50,7 @@ class GameSpyNatNegServer(object):
 
         while 1:
             recv_data, addr = s.recvfrom(2048)
+            time.sleep(0.05)
 
             logger.log(logging.DEBUG, "Connection from %s:%d..." % (addr[0], addr[1]))
             logger.log(logging.DEBUG, utils.pretty_print_hex(recv_data))
