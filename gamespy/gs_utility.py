@@ -18,14 +18,12 @@ def generate_secret_keys(filename="gslist.cfg"):
     return secret_key_list
 
 # GameSpy uses a slightly modified version of base64 which replaces +/= with []_
-def base64_encode(input):
-    output = base64.b64encode(input).replace('+', '[').replace('/', ']').replace('=', '_')
-    return output
+def base64_encode(inp):
+    return base64.b64encode(inp).replace('+', '[').replace('/', ']').replace('=', '_')
 
 
-def base64_decode(input):
-    output = base64.b64decode(input.replace('[', '+').replace('/', ']').replace('_', '='))
-    return output
+def base64_decode(inp):
+    return base64.b64decode(inp.replace('[', '+').replace('/', ']').replace('_', '='))
 
 # Tetris DS overlay 10 @ 0216E9B8
 def rc4_encrypt(_key, _data):

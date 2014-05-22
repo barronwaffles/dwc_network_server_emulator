@@ -1,18 +1,22 @@
+'''
+Provides functions for creating GameSpy messages out of different structure types
+
+GameSpy messages are \-seperated sets of key-value pairs separated by \ .
+
+'''
 import copy
 
-def parse_gamespy_message(message):
+def parse_gamespy_message(msg):
     stack = []
-    messages = {}
-    msg = message
 
-    while len(msg) > 0 and "\\final\\" in msg:
+    while "\\final\\" in msg:
         # Find the command
         # Don't search for more commands if there isn't a \final\, save the left over for the next packet
         found_command = False
-        while len(msg) > 0 and msg[0] == '\\':
-            keyEnd = msg[1:].index('\\') + 1
-            key = msg[1:keyEnd]
-            msg = msg[keyEnd + 1:]
+        messages = {}
+        while msg and msg[0] == '\\':
+
+            key, msg = msg[1:].split('\\', 1)
 
             if key == "final":
                 break
@@ -21,9 +25,8 @@ def parse_gamespy_message(message):
                 if msg[0] == '\\':
                     value = ""
                 else:
-                    valueEnd = msg[1:].index('\\')
-                    value = msg[:valueEnd + 1]
-                    msg = msg[valueEnd + 1:]
+                    value, msg = msg.split('\\')
+                    msg = '\\' + msg
             else:
                 value = msg
 
@@ -35,11 +38,12 @@ def parse_gamespy_message(message):
             messages[key] = value
 
         stack.append(messages)
-        messages = {}
 
     # Return msg so we can prepend any leftover commands to the next packet.
     return stack, msg
 
+def prepare_kv(key, value):
+    return r'\{0}\{1}'.format(key, value)
 
 # Generate a list based on the input dictionary.
 # The main command must also be stored in __cmd__ for it to put the parameter at the beginning.
@@ -47,53 +51,42 @@ def create_gamespy_message_from_dict(messages_orig):
     # Deep copy the dictionary because we don't want the original to be modified
     messages = copy.deepcopy(messages_orig)
 
-    cmd = ""
-    cmd_val = ""
-
-    if "__cmd__" in messages:
-        cmd = messages['__cmd__']
-        messages.pop('__cmd__', None)
-
-    if "__cmd_val__" in messages:
-        cmd_val = messages['__cmd_val__']
-        messages.pop('__cmd_val__', None)
+    cmd = messages.pop('__cmd__', "")
+    cmd_val = messages.pop('__cmd_val__', "")
 
     if cmd in messages:
         messages.pop(cmd, None)
 
-    l = []
-    l.append(("__cmd__", cmd))
-    l.append(("__cmd_val__", cmd_val))
+    l = [
+        ("__cmd__", cmd),
+        ("__cmd_val__", cmd_val),
+    ]
 
-    for message in messages:
-        l.append((message, messages[message]))
-
+    l.extend((key, val) for key, val in messages.items())
     return l
 
 
 def create_gamespy_message_from_list(messages):
-    d = {}
-    cmd = ""
-    cmd_val = ""
+    cmd, cmdval = "", ""
 
     query = ""
-    for message in messages:
-        if message[0] == "__cmd__":
-            cmd = message[1]
-        elif message[0] == "__cmd_val__":
-            cmd_val = message[1]
+    for key, val in messages:
+        if key == "__cmd__":
+            cmd = val
+        elif key == "__cmd_val__":
+            cmd_val = val
         else:
-            query += "\\%s\\%s" % (message[0], message[1])
+            query += prepare_kv(key, val)
 
-    if cmd != "":
+    if cmd:
         # Prepend the main command if one was found.
-        query = "\\%s\\%s%s" % (cmd, cmd_val, query)
+        query = r"\%s\%s%s" % (cmd, cmd_val, query)
 
     return query
 
 
 # Create a message based on a dictionary (or list) of parameters.
-def create_gamespy_message(messages, id=None):
+def create_gamespy_message(messages, i=None):
     query = ""
 
     if isinstance(messages, dict):
@@ -101,19 +94,17 @@ def create_gamespy_message(messages, id=None):
 
     # Check for an id if the id needs to be updated.
     # If it already exists in the list then update it, else add it
-    if id != None:
+    if i != None:
         for message in messages:
             if message[0] == "id":
                 messages.pop(messages.index(message))
-                messages.append(("id", str(id)))
-                id = None  # Updated id, so don't add it to the query later
+                messages.append(("id", str(i)))
+                i = None  # Updated id, so don't add it to the query later
                 break  # Found id, stop searching list
 
     query = create_gamespy_message_from_list(messages)
 
-    if id != None:
-        query += create_gamespy_message_from_list([("id", id)])
+    if i != None:
+        query += create_gamespy_message_from_list([("id", i)])
 
-    query += "\\final\\"
-
-    return query
+    return query + "\\final\\"
