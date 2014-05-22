@@ -30,6 +30,60 @@ gamecodes_return_random_file = [
 address = ("127.0.0.1", 9000)
 
 
+
+def filter_list(data, attr1=None, attr2=None, attr3=None):
+    if attr1 == None and attr2 == None and attr3 == None:
+        # Nothing to filter, just return the input data
+        return data
+
+    # Filter the list based on the attribute fields
+    output = ""
+
+    for line in data.splitlines():
+        s = line.split('\t')
+
+        if len(s) == 6:
+            data = {d: s[i]
+                    for i, d in enumerate(('filename', 'desc', 'attr1', 'attr2', 'attr3', 'filesize'))}
+            if (data['attr1'] == attr1) and (data['attr2'] == attr2) and (data['attr3'] == attr3):
+                output += line + '\r\n'
+
+    # if nothing matches, at least return a newline; Pokemon BW at least
+    # expects this and will error without it
+    return output or '\r\n'
+
+
+def str_to_dict(s):
+    ret = urlparse.parse_qs(s)
+
+    for k, v in ret.iteritems():
+        try:
+            ret[k] = base64.b64decode(v[0].replace("*", "="))
+        except TypeError:
+            logger.error("Could not decode following string: ret[%s] = %s" % (k, v[0]))
+            logger.error("url: %s" % s)
+
+    return ret
+
+
+def dict_to_str(d):
+    # nas(wii).nintendowifi.net has a URL query-like format but does not
+    # use encoding for special characters
+    prepare = lambda v: base64.b64encode(v).replace("=", "*")
+    return "&".join("{!s}={!s}".format(k, prepare(v)) for k, v in d.items())
+
+
+def filter_list_random_files(data, count):
+    # Get [count] random files from the filelist
+    samples = random.sample(data.splitlines(), count)
+    return '\r\n'.join(samples) + '\r\n'
+
+
+def get_file_count(data):
+    return sum(1 for line in data.splitlines() if line)
+
+
+
 class NintendoNasServer(object):
 
     def start(self):
@@ -46,12 +100,11 @@ class NintendoNasHTTPServer(BaseHTTPServer.HTTPServer):
         BaseHTTPServer.HTTPServer.__init__(
             self, server_address, RequestHandlerClass)
 
-
 class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def do_POST(self):
         length = int(self.headers['content-length'])
-        post = self.str_to_dict(self.rfile.read(length))
+        post = str_to_dict(self.rfile.read(length))
 
         if self.path == "/ac":
             logger.debug("Request to %s from %s", self.path, self.client_address)
@@ -74,7 +127,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.debug("acctcreate response to %s", self.client_address)
                 logger.debug(ret)
 
-                self.wfile.write(self.dict_to_str(ret))
+                self.wfile.write(dict_to_str(ret))
 
             elif action == "login":
                 challenge = utils.generate_random_str(8)
@@ -94,10 +147,10 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.debug("login response to %s", self.client_address)
                 logger.debug(ret)
 
-                self.wfile.write(self.dict_to_str(ret))
+                self.wfile.write(dict_to_str(ret))
 
             # Get service based on service id number
-            elif action == "SVCLOC" or action == "svcloc":
+            elif action in ("SVCLOC", "svcloc"):
                 ret.update({
                     "returncd": "007",
                     "statusdata": "Y",
@@ -125,7 +178,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.debug("svcloc response to %s", self.client_address)
                 logger.debug(ret)
 
-                self.wfile.write(self.dict_to_str(ret))
+                self.wfile.write(dict_to_str(ret))
 
         elif self.path == "/pr":
             logger.debug("Request to %s from %s", self.path, self.client_address)
@@ -148,7 +201,7 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             logger.debug("pr response to %s", self.client_address)
             logger.debug(ret)
 
-            self.wfile.write(self.dict_to_str(ret))
+            self.wfile.write(dict_to_str(ret))
 
         elif self.path == "/download":
             logger.debug("Request to %s from %s", self.path, self.client_address)
@@ -170,15 +223,13 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         count = len(os.listdir(dlcpath))
 
                         if os.path.isfile(dlcpath + "/_list.txt"):
-                            attr1 = post.get("attr1", None)
-                            attr2 = post.get("attr2", None)
-                            attr3 = post.get("attr3", None)
-                            list = open(dlcpath + "/_list.txt", "rb").read()
-                            list = self.filter_list(list, attr1, attr2, attr3)
+                            data = open(dlcpath + "/_list.txt", "rb").read()
+                            data = filter_list(data, post.get("attr1", None),
+                                               post.get("attr1", None), post.get("attr1", None))
 
-                            count = self.get_file_count(list)
+                            count = get_file_count(data)
 
-                    ret = "%d" % count
+                    ret = str(count)
 
             if action == "list":
                 num = int(post["num"])
@@ -194,10 +245,10 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     # the client.
                     if os.path.isfile(dlcpath + "/_list.txt"):
                         ret = open(dlcpath + "/_list.txt", "rb").read()
-                        ret = self.filter_list(ret, attr1, attr2, attr3)
+                        ret = filter_list(ret, attr1, attr2, attr3)
 
                         if post["gamecd"] in gamecodes_return_random_file:
-                            ret = self.filter_list_random_files(ret, 1)
+                            ret = filter_list_random_files(ret, 1)
 
             if action == "contents":
                 # Get only the base filename just in case there is a path
@@ -227,56 +278,6 @@ class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             #    logger.debug(ret)
 
             self.wfile.write(ret)
-
-    def str_to_dict(self, str):
-        ret = urlparse.parse_qs(str)
-
-        for k, v in ret.iteritems():
-            try:
-                ret[k] = base64.b64decode(v[0].replace("*", "="))
-            except TypeError:
-                logger.error("Could not decode following string: ret[%s] = %s" % (k, v[0]))
-                logger.error("url: %s" % str)
-
-        return ret
-
-    def dict_to_str(self, dict):
-        for k, v in dict.iteritems():
-            dict[k] = base64.b64encode(v).replace("=", "*")
-
-        # nas(wii).nintendowifi.net has a URL query-like format but does not
-        # use encoding for special characters
-        return "&".join("{!s}={!s}".format(k, v) for k, v in dict.items())
-
-    def filter_list_random_files(self, data, count):
-        # Get [count] random files from the filelist
-        lines = data.splitlines()
-        samples = random.sample(lines, count)
-        return '\r\n'.join(samples) + '\r\n'
-
-    def filter_list(self, data, attr1=None, attr2=None, attr3=None):
-        if attr1 == None and attr2 == None and attr3 == None:
-            # Nothing to filter, just return the input data
-            return data
-
-        # Filter the list based on the attribute fields
-        output = ""
-
-        for line in data.splitlines():
-            s = line.split('\t')
-
-            if len(s) == 6:
-                data = {d: s[i]
-                        for i, d in enumerate('filename', 'desc', 'attr1', 'attr2', 'attr3', 'filesize')}
-                if (data['attr1'] == attr1) and (data['attr2'] == attr2) and (data['attr3'] == attr3):
-                    output += line + '\r\n'
-
-        # if nothing matches, at least return a newline; Pokemon BW at least
-        # expects this and will error without it
-        return output or '\r\n'
-
-    def get_file_count(self, data):
-        return sum(1 for line in data.splitlines() if line)
 
 if __name__ == "__main__":
     nas = NintendoNasServer()
