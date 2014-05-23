@@ -40,6 +40,183 @@ logger_name = "GamespyBackendServer"
 logger_filename = "gamespy_backend_server.log"
 logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
+def get_token(filters):
+    # Complex example from Dungeon Explorer: Warriors of Ancient Arts
+    # dwc_mver = 3 and dwc_pid != 474890913 and maxplayers = 2 and numplayers < 2 and dwc_mtype = 0 and dwc_mresv != dwc_pid and (MatchType='english')
+    #
+    # Even more complex example from Phantasy Star Zero:
+    # dwc_mver = 3 and dwc_pid != 4 and maxplayers = 3 and numplayers < 3 and dwc_mtype = 0 and dwc_mresv != dwc_pid and (((20=auth)AND((1&mskdif)=mskdif)AND((14&mskstg)=mskstg)))
+    #
+    # Example with OR from Mario Kart Wii:
+    # dwc_mver = 90 and dwc_pid != 1 and maxplayers = 11 and numplayers < 11 and dwc_mtype = 0 and dwc_hoststate = 2 and dwc_suspend = 0 and (rk = 'vs_123' and (ev > 4263 or ev <= 5763) and p = 0)
+    i = 0
+    start = i
+    special_chars = "_"
+
+    token_type = TokenType.UNKNOWN
+
+    # Skip whitespace
+    while i < len(filters) and filters[i].isspace():
+        i += 1
+        start += 1
+
+    if i < len(filters):
+        if filters[i] == "(":
+            i += 1
+            token_type = TokenType.TOKEN
+
+        elif filters[i] == ")":
+            i += 1
+            token_type = TokenType.TOKEN
+
+        elif filters[i] == "&":
+            i += 1
+            token_type = TokenType.TOKEN
+
+        elif filters[i] == "=":
+            i += 1
+            token_type = TokenType.TOKEN
+
+        elif filters[i] == ">" or filters[i] == "<":
+            i += 1
+            token_type = TokenType.TOKEN
+
+            if i < len(filters) and filters[i] == "=":
+                # >= or <=
+                i += 1
+
+        elif i + 1 < len(filters) and filters[i] == "!" and filters[i + 1] == "=":
+            i += 2
+            token_type = TokenType.TOKEN
+
+        elif filters[i] == "'":
+            # String literal
+            token_type = TokenType.STRING
+
+            i += 1 # Skip quotation mark
+            while i < len(filters) and filters[i] != "'":
+                i += 1
+
+            if i < len(filters) and filters[i] == "'":
+                i += 1 # Skip quotation mark
+
+        elif filters[i] == "\"":
+            # I don't know if it's in the spec or not, but I added "" string literals as well just in case.
+            token_type = TokenType.STRING
+
+            i += 1 # Skip quotation mark
+            while i < len(filters) and filters[i] != "\"":
+                i += 1
+
+            if i < len(filters) and filters[i] == "\"":
+                i += 1 # Skip quotation mark
+
+        elif i + 1 < len(filters) and filters[i] == '-' and filters[i + 1].isdigit():
+            # Negative number
+            token_type = TokenType.NUMBER
+            i += 1
+            while i < len(filters) and filters[i].isdigit():
+                i += 1
+        elif filters[i].isalnum() or filters[i] in special_chars:
+            # Whole numbers or words
+            if filters[i].isdigit():
+                token_type = TokenType.NUMBER
+            elif filters[i].isalpha():
+                token_type = TokenType.FIELD
+
+            while i < len(filters) and (filters[i].isalnum() or filters[i] in special_chars) and filters[i] not in "!=>< ":
+                i += 1
+
+    token = filters[start:i]
+    if token_type == TokenType.FIELD and (token.lower() == "and" or token.lower() == "or"):
+        token = token.lower()
+
+    return token, i, token_type
+
+def translate_expression(filters):
+    output = []
+    variables = []
+
+    while filters:
+        token, i, token_type = get_token(filters)
+        filters = filters[i:]
+
+        if token_type == TokenType.TOKEN:
+            # Python uses == instead of = for comparisons, so replace it with the proper token for compilation.
+            if token == "=":
+                token = "=="
+
+        elif token_type == TokenType.FIELD:
+            # Each server has its own variables so handle it later.
+            variables.append(len(output))
+
+        output.append(token)
+
+    return output, variables
+
+def validate_ast(node, num_literal_only):
+    # This function tries to verify that the expression is a valid expression before it gets evaluated.
+    # Anything besides the whitelisted things below are strictly forbidden:
+    # - String literals
+    # - Number literals
+    # - Binary operators (CAN ONLY BE PERFORMED ON TWO NUMBER LITERALS)
+    # - Comparisons (cannot use 'in', 'not in', 'is', 'is not' operators)
+    #
+    # Anything such as variables or arrays or function calls are NOT VALID.
+    # Never run the expression received from the client before running this function on the expression first.
+    #print type(node)
+
+    # Only allow literals, comparisons, and math operations
+    valid_node = False
+    if isinstance(node, ast.Num):
+        valid_node = True
+
+    elif isinstance(node, ast.Str):
+        if num_literal_only == False:
+            valid_node = True
+
+    elif isinstance(node, ast.BoolOp):
+        for value in node.values:
+            valid_node = validate_ast(value, num_literal_only)
+
+            if valid_node == False:
+                break
+
+    elif isinstance(node, ast.BinOp):
+        valid_node = validate_ast(node.left, True)
+
+        if valid_node == True:
+            valid_node = validate_ast(node.right, True)
+
+    elif isinstance(node, ast.UnaryOp):
+        valid_node = validate_ast(node.operand, num_literal_only)
+
+    elif isinstance(node, ast.Expr):
+        valid_node = validate_ast(node.value, num_literal_only)
+
+    elif isinstance(node, ast.Compare):
+        valid_node = validate_ast(node.left, num_literal_only)
+
+        for op in node.ops:
+            #print type(op)
+
+            # Restrict "is", "is not", "in", and "not in" python comparison operators.
+            # These are python-specific and the games have no way of knowing what they are, so there's no reason
+            # to keep them around.
+            if isinstance(op, ast.Is) or isinstance(op, ast.IsNot) or isinstance(op, ast.In) or isinstance(op, ast.NotIn):
+                valid_node = False
+                break
+
+        if valid_node == True:
+            for expr in node.comparators:
+                valid_node = validate_ast(expr, num_literal_only)
+
+    elif isinstance(node, ast.Call):
+        valid_node = False
+
+    return valid_node
+
+
 class GameSpyServerDatabase(BaseManager):
     pass
 
@@ -68,182 +245,6 @@ class GameSpyBackendServer(object):
         server = manager.get_server()
         server.serve_forever()
 
-    def get_token(self, filters):
-        # Complex example from Dungeon Explorer: Warriors of Ancient Arts
-        # dwc_mver = 3 and dwc_pid != 474890913 and maxplayers = 2 and numplayers < 2 and dwc_mtype = 0 and dwc_mresv != dwc_pid and (MatchType='english')
-        #
-        # Even more complex example from Phantasy Star Zero:
-        # dwc_mver = 3 and dwc_pid != 4 and maxplayers = 3 and numplayers < 3 and dwc_mtype = 0 and dwc_mresv != dwc_pid and (((20=auth)AND((1&mskdif)=mskdif)AND((14&mskstg)=mskstg)))
-        #
-        # Example with OR from Mario Kart Wii:
-        # dwc_mver = 90 and dwc_pid != 1 and maxplayers = 11 and numplayers < 11 and dwc_mtype = 0 and dwc_hoststate = 2 and dwc_suspend = 0 and (rk = 'vs_123' and (ev > 4263 or ev <= 5763) and p = 0)
-        i = 0
-        start = i
-        special_chars = "_"
-
-        token_type = TokenType.UNKNOWN
-
-        # Skip whitespace
-        while i < len(filters) and filters[i].isspace():
-            i += 1
-            start += 1
-
-        if i < len(filters):
-            if filters[i] == "(":
-                i += 1
-                token_type = TokenType.TOKEN
-
-            elif filters[i] == ")":
-                i += 1
-                token_type = TokenType.TOKEN
-
-            elif filters[i] == "&":
-                i += 1
-                token_type = TokenType.TOKEN
-
-            elif filters[i] == "=":
-                i += 1
-                token_type = TokenType.TOKEN
-
-            elif filters[i] == ">" or filters[i] == "<":
-                i += 1
-                token_type = TokenType.TOKEN
-
-                if i < len(filters) and filters[i] == "=":
-                    # >= or <=
-                    i += 1
-
-            elif i + 1 < len(filters) and filters[i] == "!" and filters[i + 1] == "=":
-                i += 2
-                token_type = TokenType.TOKEN
-
-            elif filters[i] == "'":
-                # String literal
-                token_type = TokenType.STRING
-
-                i += 1 # Skip quotation mark
-                while i < len(filters) and filters[i] != "'":
-                    i += 1
-
-                if i < len(filters) and filters[i] == "'":
-                    i += 1 # Skip quotation mark
-
-            elif filters[i] == "\"":
-                # I don't know if it's in the spec or not, but I added "" string literals as well just in case.
-                token_type = TokenType.STRING
-
-                i += 1 # Skip quotation mark
-                while i < len(filters) and filters[i] != "\"":
-                    i += 1
-
-                if i < len(filters) and filters[i] == "\"":
-                    i += 1 # Skip quotation mark
-
-            elif i + 1 < len(filters) and filters[i] == '-' and filters[i + 1].isdigit():
-                # Negative number
-                token_type = TokenType.NUMBER
-                i += 1
-                while i < len(filters) and filters[i].isdigit():
-                    i += 1
-            elif filters[i].isalnum() or filters[i] in special_chars:
-                # Whole numbers or words
-                if filters[i].isdigit():
-                    token_type = TokenType.NUMBER
-                elif filters[i].isalpha():
-                    token_type = TokenType.FIELD
-
-                while i < len(filters) and (filters[i].isalnum() or filters[i] in special_chars) and filters[i] not in "!=>< ":
-                    i += 1
-
-        token = filters[start:i]
-        if token_type == TokenType.FIELD and (token.lower() == "and" or token.lower() == "or"):
-            token = token.lower()
-
-        return token, i, token_type
-
-    def translate_expression(self, filters):
-        output = []
-        variables = []
-
-        while len(filters) > 0:
-            token, i, token_type = self.get_token(filters)
-            filters = filters[i:]
-
-            if token_type == TokenType.TOKEN:
-                # Python uses == instead of = for comparisons, so replace it with the proper token for compilation.
-                if token == "=":
-                    token = "=="
-
-            elif token_type == TokenType.FIELD:
-                # Each server has its own variables so handle it later.
-                variables.append(len(output))
-
-            output.append(token)
-
-        return output, variables
-
-    def validate_ast(self, node, num_literal_only):
-        # This function tries to verify that the expression is a valid expression before it gets evaluated.
-        # Anything besides the whitelisted things below are strictly forbidden:
-        # - String literals
-        # - Number literals
-        # - Binary operators (CAN ONLY BE PERFORMED ON TWO NUMBER LITERALS)
-        # - Comparisons (cannot use 'in', 'not in', 'is', 'is not' operators)
-        #
-        # Anything such as variables or arrays or function calls are NOT VALID.
-        # Never run the expression received from the client before running this function on the expression first.
-        #print type(node)
-
-        # Only allow literals, comparisons, and math operations
-        valid_node = False
-        if isinstance(node, ast.Num):
-            valid_node = True
-
-        elif isinstance(node, ast.Str):
-            if num_literal_only == False:
-                valid_node = True
-
-        elif isinstance(node, ast.BoolOp):
-            for value in node.values:
-                valid_node = self.validate_ast(value, num_literal_only)
-
-                if valid_node == False:
-                    break
-
-        elif isinstance(node, ast.BinOp):
-            valid_node = self.validate_ast(node.left, True)
-
-            if valid_node == True:
-                valid_node = self.validate_ast(node.right, True)
-
-        elif isinstance(node, ast.UnaryOp):
-            valid_node = self.validate_ast(node.operand, num_literal_only)
-
-        elif isinstance(node, ast.Expr):
-            valid_node = self.validate_ast(node.value, num_literal_only)
-
-        elif isinstance(node, ast.Compare):
-            valid_node = self.validate_ast(node.left, num_literal_only)
-
-            for op in node.ops:
-                #print type(op)
-
-                # Restrict "is", "is not", "in", and "not in" python comparison operators.
-                # These are python-specific and the games have no way of knowing what they are, so there's no reason
-                # to keep them around.
-                if isinstance(op, ast.Is) or isinstance(op, ast.IsNot) or isinstance(op, ast.In) or isinstance(op, ast.NotIn):
-                    valid_node = False
-                    break
-
-            if valid_node == True:
-                for expr in node.comparators:
-                    valid_node = self.validate_ast(expr, num_literal_only)
-
-        elif isinstance(node, ast.Call):
-            valid_node = False
-
-        return valid_node
-
 
     def find_servers(self, gameid, filters, fields, max_count):
         matched_servers = []
@@ -258,14 +259,14 @@ class GameSpyBackendServer(object):
         start = time.time()
 
         for server in self.server_list[gameid]:
-            translated, variables = self.translate_expression(filters)
+            translated, variables = translate_expression(filters)
 
             for idx in variables:
                 token = translated[idx]
 
                 if token in server:
                     token = server[token]
-                    _, _, token_type = self.get_token(token)
+                    _, _, token_type = get_token(token)
 
                     if token_type == TokenType.FIELD:
                         # At this point, any field should be a string.
@@ -283,7 +284,7 @@ class GameSpyBackendServer(object):
             m = ast.parse(q, "<string>", "exec")
             valid_filter = True
             for node in m.body:
-                valid_filter = self.validate_ast(node, False)
+                valid_filter = validate_ast(node, False)
 
             if valid_filter == False:
                 # Return only anything matched up until this point.
@@ -315,35 +316,14 @@ class GameSpyBackendServer(object):
                 result['localip' + str(i)] = server['localip' + str(i)]
                 i += 1
 
-            if 'localport' in server:
-                result['localport'] = server['localport']
+            allkeys = ('localport', 'localport', 'natneg', 'publicip', 'publicport', '__session__', '__console__')
+            for key in allkeys:
+                if key in server:
+                    result[key] = server[key]
 
-            if 'localport' in server:
-                result['localport'] = server['localport']
-
-            if 'natneg' in server:
-                result['natneg'] = server['natneg']
-
-            if 'publicip' in server:
-                result['publicip'] = server['publicip']
-
-            if 'publicport' in server:
-                result['publicport'] = server['publicport']
-
-            if '__session__' in server:
-                result['__session__'] = server['__session__']
-
-            if '__console__' in server:
-                result['__console__'] = server['__console__']
-
-            requested = {}
-            for field in fields:
-                #if not field in result:
-                if field in server:
-                    requested[field] = server[field]
-                else:
-                    # Return a dummy value. What's the normal behavior of the real server in this case?
-                    requested[field] = ""
+            # Return a dummy value if we don't have one.
+            # What's the normal behavior of the real server in this case?
+            requested = {field: server.get(field, "") for field in fields}
 
 
             result['requested'] = requested
@@ -359,8 +339,7 @@ class GameSpyBackendServer(object):
         self.delete_server(gameid, session)
 
         # If the game doesn't exist already, create a new list.
-        if not gameid in self.server_list:
-            self.server_list[gameid] = []
+        self.server_list.setdefault(gameid, [])
 
         # Add new server
         value['__session__'] = session
@@ -386,16 +365,14 @@ class GameSpyBackendServer(object):
     def find_server_by_address(self, ip, port, gameid = None):
         if gameid == None:
             # Search all servers
-            for gameid in self.server_list:
-                for server in self.server_list[gameid]:
-                    if server['publicip'] == ip and server['publicport'] == str(port):
-                        return server
+            for gid in self.server_list:
+                server = self.find_server_by_address(ip, port, gid)
+                if server is not None:
+                    return server
         else:
             for server in self.server_list[gameid]:
                 if server['publicip'] == ip and server['publicport'] == str(port):
                     return server
-
-        return None
 
     def find_server_by_local_address(self, publicip, localaddr, gameid = None):
         localip = localaddr[0]
@@ -405,60 +382,43 @@ class GameSpyBackendServer(object):
 
         if gameid == None:
             # Search all servers
-            for gameid in self.server_list:
-                for server in self.server_list[gameid]:
-                    logger.debug("publicip 1: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_le), server['publicip'] == str(localip_int_le), server['publicport'], str(localport), server['publicport'] == str(localport)))
-                    if server['publicip'] == str(localip_int_le) and server['publicport'] == str(localport):
-                        return server
-
-                    logger.debug("publicip 2: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_be), server['publicip'] == str(localip_int_be), server['publicport'], str(localport), server['publicport'] == str(localport)))
-                    if server['publicip'] == str(localip_int_be) and server['publicport'] == str(localport):
-                        return server
-
-                    logger.debug("publicip 3: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
-                    if server['publicip'] == publicip and (server['localport'] == str(localport) or server['publicport'] == str(localport)):
-                        for x in range(0, 10):
-                            s = 'localip%d' % x
-                            if s in server:
-                                if server[s] == localip:
-                                    return server
+            for gid in self.server_list:
+                server = self.find_server_by_local_address(publicip, localaddr, gid)
+                if server is not None:
+                    return server
         else:
             for server in self.server_list[gameid]:
-                logger.debug("publicip 1: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_le), server['publicip'] == str(localip_int_le), server['publicport'], str(localport), server['publicport'] == str(localport)))
+                logger.debug("publicip 1: %s == %s ? %d port: %s == %s ? %d",
+                             server['publicip'], str(localip_int_le), server['publicip'] == str(localip_int_le),
+                             server['publicport'], str(localport), server['publicport'] == str(localport))
                 if server['publicip'] == str(localip_int_le) and server['publicport'] == str(localport):
                     return server
 
-                logger.debug("publicip 2: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_be), server['publicip'] == str(localip_int_be), server['publicport'], str(localport), server['publicport'] == str(localport)))
+                logger.debug("publicip 2: %s == %s ? %d port: %s == %s ? %d",
+                             server['publicip'], str(localip_int_be), server['publicip'] == str(localip_int_be),
+                             server['publicport'], str(localport), server['publicport'] == str(localport))
                 if server['publicip'] == str(localip_int_be) and server['publicport'] == str(localport):
                     return server
 
-                logger.debug("publicip: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
+                logger.debug("publicip 3: %s == %s ? %d", server['publicip'], publicip, server['publicip'] == publicip)
                 if server['publicip'] == publicip and (server['localport'] == str(localport) or server['publicport'] == str(localport)):
-                    for x in range(0, 10):
-                        s = 'localip%d' % x
-                        if s in server:
-                            if server[s] == localip:
-                                return server
-        return None
+                    for x in range(10):
+                        if server.get('localip%d'%x, None) == localip:
+                            return server
 
     def add_natneg_server(self, cookie, server):
-        if cookie not in self.natneg_list:
-            self.natneg_list[cookie] = []
-
-        logger.debug("Added natneg server %d" % (cookie))
+        self.natneg_list.setdefault(cookie, [])
+        logger.debug("Added natneg server %d", cookie)
         self.natneg_list[cookie].append(server)
 
     def get_natneg_server(self, cookie):
-        if cookie in self.natneg_list:
-            return self.natneg_list[cookie]
-
-        return None
+        return self.natneg_list.get(cookie, None)
 
     def delete_natneg_server(self, cookie):
         # TODO: Find a good time to prune the natneg server listing.
         if cookie in self.natneg_list:
             del self.natneg_list[cookie]
-        logger.debug("Deleted natneg server %d" % (cookie))
+        logger.debug("Deleted natneg server %d", cookie)
 
 
 if __name__ == '__main__':

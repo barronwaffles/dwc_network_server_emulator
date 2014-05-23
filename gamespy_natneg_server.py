@@ -4,7 +4,6 @@
 import logging
 import socket
 import ctypes
-import struct
 import gamespy.gs_utility as gs_utils
 import other.utils as utils
 
@@ -29,6 +28,10 @@ GameSpyServerDatabase.register("add_natneg_server")
 GameSpyServerDatabase.register("get_natneg_server")
 GameSpyServerDatabase.register("delete_natneg_server")
 
+def first(gen):
+    try: return next(gen)
+    except StopIteration: return None
+
 class GameSpyNatNegServer(object):
     def __init__(self):
         self.session_list = {}
@@ -48,7 +51,7 @@ class GameSpyNatNegServer(object):
 
         logger.info("Server is now listening on %s:%s..." % (address[0], address[1]))
 
-        while 1:
+        while True:
             recv_data, addr = s.recvfrom(2048)
 
             logger.debug("Connection from %s:%d..." % (addr[0], addr[1]))
@@ -58,15 +61,16 @@ class GameSpyNatNegServer(object):
             if recv_data[0:6] != bytearray([0xfd, 0xfc, 0x1e, 0x66, 0x6a, 0xb2]):
                 continue
 
-            session_id = struct.unpack("<I", recv_data[8:12])[0]
             session_id_raw = recv_data[8:12]
+            session_id = util.get_int(session_id_raw, 0)
 
             # Handle commands
             if recv_data[7] == '\x00':
                 logger.debug("Received initialization from %s:%s..." % (addr[0], addr[1]))
 
                 output = bytearray(recv_data[0:14])
-                output += bytearray([0xff, 0xff, 0x6d, 0x16, 0xb5, 0x7d, 0xea ]) # Checked with Tetris DS, Mario Kart DS, and Metroid Prime Hunters, and this seems to be the standard response to 0x00
+                # Checked with Tetris DS, Mario Kart DS, and Metroid Prime Hunters, and this seems to be the standard response to 0x00
+                output += bytearray([0xff, 0xff, 0x6d, 0x16, 0xb5, 0x7d, 0xea ])
                 output[7] = 0x01 # Initialization response
                 s.sendto(output, addr)
 
@@ -82,77 +86,83 @@ class GameSpyNatNegServer(object):
                 localport = utils.get_short_be(localport_raw, 0)
                 localaddr = (localip, localport, localip_int_le, localip_int_be)
 
-                if gameid not in self.session_list:
-                    self.session_list[gameid] = {}
-                if session_id not in self.session_list[gameid]:
-                    self.session_list[gameid][session_id] = {}
-                if client_id not in self.session_list[gameid][session_id]:
-                    self.session_list[gameid][session_id][client_id] = { 'connected': False, 'addr': '', 'localaddr': None, 'serveraddr': None, 'gameid': None }
+                self.session_list.setdefault(gameid, {})
+                self.session_list[gameid].setdefault(session_id, {})
+                self.session_list[gameid][session_id].setdefault(client_id, {
+                    'connected': False,
+                    'addr': '',
+                    'localaddr': None,
+                    'serveraddr': None,
+                    'gameid': None
+                })
 
-                self.session_list[gameid][session_id][client_id]['gameid'] = utils.get_string(recv_data[21:], 0)
-                self.session_list[gameid][session_id][client_id]['addr'] = addr
-                self.session_list[gameid][session_id][client_id]['localaddr'] = localaddr
+                clientsession = self.session_list[gameid][session_id][client_id]
+
+                clientsession['gameid'] = utils.get_string(recv_data[21:], 0)
+                clientsession['addr'] = addr
+                clientsession['localaddr'] = localaddr
                 clients = len(self.session_list[gameid][session_id])
 
                 for client in self.session_list[gameid][session_id]:
-                    if self.session_list[gameid][session_id][client]['connected'] == False: # and self.session_list[gameid][session_id][client]['localaddr'][1] != 0:
+                    csess = self.session_list[gameid][session_id][client]
+                    if csess['connected'] == False: # and csess['localaddr'][1] != 0:
                         if client == client_id:
                             continue
 
-                        #if self.session_list[gameid][session_id][client]['serveraddr'] == None:
+                        #if csess['serveraddr'] == None:
                         serveraddr = self.get_server_info(gameid, session_id, client)
-                        if serveraddr == None:
+                        if serveraddr is None:
                             serveraddr = self.get_server_info_alt(gameid, session_id, client)
 
-                        self.session_list[gameid][session_id][client]['serveraddr'] = serveraddr
+                        csess['serveraddr'] = serveraddr
                         logger.debug("Found server from local ip/port: %s from %d" % (serveraddr, session_id))
 
-                        publicport = self.session_list[gameid][session_id][client]['addr'][1]
-                        if self.session_list[gameid][session_id][client]['localaddr'][1] != 0:
-                            publicport = self.session_list[gameid][session_id][client]['localaddr'][1]
+                        publicport = csess['addr'][1]
+                        if csess['localaddr'][1] != 0:
+                            publicport = csess['localaddr'][1]
 
-                        if self.session_list[gameid][session_id][client]['serveraddr'] != None:
-                            publicport = int(self.session_list[gameid][session_id][client]['serveraddr']['publicport'])
+                        if csess['serveraddr'] is not None:
+                            publicport = int(csess['serveraddr']['publicport'])
 
                         # Send to requesting client
                         output = bytearray(recv_data[0:12])
-                        output += bytearray([int(x) for x in self.session_list[gameid][session_id][client]['addr'][0].split('.')])
+                        output += bytearray([int(x) for x in csess['addr'][0].split('.')])
                         output += utils.get_bytes_from_short_be(publicport)
 
                         output += bytearray([0x42, 0x00]) # Unknown, always seems to be \x42\x00
                         output[7] = 0x05
-                        #s.sendto(output, (self.session_list[gameid][session_id][client_id]['addr']))
-                        s.sendto(output, (self.session_list[gameid][session_id][client_id]['addr'][0], self.session_list[gameid][session_id][client_id]['addr'][1]))
+                        #s.sendto(output, (clientsession['addr']))
+                        s.sendto(output, (clientsession['addr'][0], clientsession['addr'][1]))
 
-                        logger.debug("Sent connection request to %s:%d..." % (self.session_list[gameid][session_id][client_id]['addr'][0], self.session_list[gameid][session_id][client_id]['addr'][1]))
+                        logger.debug("Sent connection request to {0[0]}:{0[1]}...".format(clientsession['addr']))
                         logger.debug(utils.pretty_print_hex(output))
 
                         # Send to other client
-                        #if self.session_list[gameid][session_id][client_id]['serveraddr'] == None:
+                        #if clientsession['serveraddr'] == None:
                         serveraddr = self.get_server_info(gameid, session_id, client_id)
                         if serveraddr == None:
                             serveraddr = self.get_server_info_alt(gameid, session_id, client)
 
-                        self.session_list[gameid][session_id][client_id]['serveraddr'] = serveraddr
+                        clientsession['serveraddr'] = serveraddr
                         logger.debug("Found server 2 from local ip/port: %s from %d" % (serveraddr, session_id))
 
-                        publicport = self.session_list[gameid][session_id][client_id]['addr'][1]
-                        if self.session_list[gameid][session_id][client_id]['localaddr'][1] != 0:
-                            publicport = self.session_list[gameid][session_id][client_id]['localaddr'][1]
+                        publicport = clientsession['addr'][1]
+                        if clientsession['localaddr'][1] != 0:
+                            publicport = clientsession['localaddr'][1]
 
-                        if self.session_list[gameid][session_id][client_id]['serveraddr'] != None:
-                            publicport = int(self.session_list[gameid][session_id][client_id]['serveraddr']['publicport'])
+                        if clientsession['serveraddr'] != None:
+                            publicport = int(clientsession['serveraddr']['publicport'])
 
                         output = bytearray(recv_data[0:12])
-                        output += bytearray([int(x) for x in self.session_list[gameid][session_id][client_id]['addr'][0].split('.')])
+                        output += bytearray([int(x) for x in clientsession['addr'][0].split('.')])
                         output += utils.get_bytes_from_short_be(publicport)
 
                         output += bytearray([0x42, 0x00]) # Unknown, always seems to be \x42\x00
                         output[7] = 0x05
-                        #s.sendto(output, (self.session_list[gameid][session_id][client]['addr']))
-                        s.sendto(output, (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
+                        #s.sendto(output, (csess['addr']))
+                        s.sendto(output, (csess['addr'][0], csess['addr'][1]))
 
-                        logger.debug("Sent connection request to %s:%d..." % (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
+                        logger.debug("Sent connection request to {0[0]}:{0[1]}...".format(csess['addr']))
                         logger.debug(utils.pretty_print_hex(output))
 
             elif recv_data[7] == '\x06': # Was able to connect
@@ -161,9 +171,9 @@ class GameSpyNatNegServer(object):
 
                 if gameid not in self.session_list:
                     continue
-                if session_id not in self.session_list[gameid]:
+                elif session_id not in self.session_list[gameid]:
                     continue
-                if client_id not in self.session_list[gameid][session_id]:
+                elif client_id not in self.session_list[gameid][session_id]:
                     continue
 
                 self.session_list[gameid][session_id][client_id]['connected'] = True
@@ -180,7 +190,7 @@ class GameSpyNatNegServer(object):
                 output[7] = 0x0b
                 s.sendto(output, addr)
 
-                logger.debug("Sent address check response to %s:%d..." % (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
+                logger.debug("Sent address check response to {0[0]}:{0[1]}...".format(self.session_list[gameid][session_id][client]['addr']))
                 logger.debug(utils.pretty_print_hex(output))
 
             elif recv_data[7] == '\x0c': # Natify
@@ -191,7 +201,7 @@ class GameSpyNatNegServer(object):
                 output[7] = 0x02 # ERT Test
                 s.sendto(output, addr)
 
-                logger.debug("Sent natify response to %s:%d..." % (self.session_list[gameid][session_id][client]['addr'][0], self.session_list[gameid][session_id][client]['addr'][1]))
+                logger.debug("Sent natify response to {0[0]}:{0[1]}...".format(self.session_list[gameid][session_id][client]['addr']))
                 logger.debug(utils.pretty_print_hex(output))
 
             elif recv_data[7] == '\x0d':
@@ -210,59 +220,40 @@ class GameSpyNatNegServer(object):
         server_info = None
         servers = self.server_manager.get_natneg_server(session_id)._getvalue()
 
-        if servers == None:
+        if servers is None:
             return None
 
-        console = 0
+        console = 0 # 0 == Wii, 1 == DS
         ipstr = self.session_list[gameid][session_id][client_id]['addr'][0]
+        getint = lambda value: [get_int_be, get_int][console]
 
-        if console != 0:
-            ip = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # Wii
-            console = 0
-        else:
-            ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # DS
-            console = 1
+        ip = str(ctypes.c_int32(getint(bytearray([int(x) for x in ipstr.split('.')]), 0)).value)
+        console = not console
 
-        for server in servers:
-            if server['publicip'] == ip:
-                server_info = server
-                break
+        server_info = first(server for server in servers if server['publicip'] == ip)
 
-        if server_info == None:
-            if console != 0:
-                ip = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # Wii
-            else:
-                ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # DS
-
-            for server in servers:
-                if server['publicip'] == ip:
-                    server_info = server
-                    break
+        if server_info is None:
+            ip = str(ctypes.c_int32(getint(bytearray([int(x) for x in ipstr.split('.')]), 0)).value)
+            server_info = first(server for server in servers if server['publicip'] == ip)
 
         return server_info
 
     def get_server_info_alt(self, gameid, session_id, client_id):
-        console = 0
-        ipstr = self.session_list[gameid][session_id][client_id]['addr'][0]
+        console = 0 # 0 == Wii, 1 == DS
+        clientsession = self.session_list[gameid][session_id][client_id]
+        ipstr = clientsession['addr'][0]
+        getint = lambda value: [get_int_be, get_int][console]
 
-        if console != 0:
-            ip = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # Wii
-            console = 0
-        else:
-            ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # DS
-            console = 1
+        ip = str(ctypes.c_int32(getint(bytearray([int(x) for x in ipstr.split('.')]), 0)).value)
+        console = not console
 
-        serveraddr = self.server_manager.find_server_by_local_address(ip, self.session_list[gameid][session_id][client_id]['localaddr'], self.session_list[gameid][session_id][client_id]['gameid'])._getvalue()
+        serveraddr = self.server_manager.find_server_by_local_address(ip, clientsession['localaddr'], clientsession['gameid'])._getvalue()
 
-        if serveraddr == None:
-            if console != 0:
-                ip = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # Wii
-                console = 0
-            else:
-                ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in ipstr.split('.')]), 0)).value) # DS
-                console = 1
+        if serveraddr is None:
+            ip = str(ctypes_c_int32(getint(bytearray([int(x) for x in ipstr.split('.')]), 0)).value)
+            console = not console
 
-            serveraddr = self.server_manager.find_server_by_local_address(ip, self.session_list[gameid][session_id][client_id]['localaddr'], self.session_list[gameid][session_id][client_id]['gameid'])._getvalue()
+            serveraddr = self.server_manager.find_server_by_local_address(ip, clientsession['localaddr'], clientsession['gameid'])._getvalue()
 
         return serveraddr
 
