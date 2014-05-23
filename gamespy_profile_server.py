@@ -70,7 +70,7 @@ class PlayerSession(LineReceiver):
     def log(self, level, message, *args):
         profilepart = (" | "+self.profileid) if self.profileid else ""
         gamepart = (" | "+self.gameid) if self.gameid else ""
-        logger.log(level, "[%s:%d%s%s] %s", self.address.host, self.address.port, profilepart, gamepart, message, *args)
+        logger.log(level, "[%s:%d%s%s] %s", self.address.host, self.address.port, profilepart, gamepart, message % args)
 
     def get_ip_as_int(self, address):
         ipaddress = 0

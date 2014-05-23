@@ -94,8 +94,8 @@ class Session(LineReceiver):
         self.server_manager = GameSpyServerDatabase(address = manager_address, authkey= manager_password)
         self.server_manager.connect()
 
-    def log(self, level, message):
-        logger.log(level, "[%s:%d] %s", self.address.host, self.address.port,message)
+    def log(self, level, message, *args):
+        logger.log(level, "[%s:%d] %s", self.address.host, self.address.port, message % args)
 
     def rawDataReceived(self, data):
         # First 2 bytes are the packet size.
@@ -129,7 +129,7 @@ class Session(LineReceiver):
             return
 
         if data[2] == '\x00': # Server list request
-            self.log(logging.DEBUG, "Received server list request from %s:%s..." % (self.address.host, self.address.port))
+            self.log(logging.DEBUG, "Received server list request from %s:%s...", self.address.host, self.address.port)
 
             # This code is so... not python. The C programmer in me is coming out strong.
             # TODO: Rewrite this section later?

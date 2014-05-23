@@ -60,7 +60,7 @@ class Gamestats(LineReceiver):
     def log(self, level, message, *args):
         gameid = (" | %s"%self.gameid) if self.gameid else ""
         sessid = (" | %s"%self.session) if self.gameid else ""
-        logger.log(level, "[%s:%d%s%s] %s", self.address.host, self.address.port, sessid, gameid, message, *args)
+        logger.log(level, "[%s:%d%s%s] %s", self.address.host, self.address.port, sessid, gameid, message % args)
 
     def connectionMade(self):
         self.log(logging.INFO, "Received connection from %s:%d", self.address.host, self.address.port)

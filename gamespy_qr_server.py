@@ -54,7 +54,7 @@ class GameSpyQRServer(object):
         GameSpyServerDatabase.register("delete_server")
 
     def log(self, level, address, message, *args):
-        logger.log(level, "%s%s", ("[%s:%d ]"%(address[0], address[1])) if address else "", message, *args)
+        logger.log(level, "%s%s", ("[%s:%d ]"%(address[0], address[1])) if address else "", message % args)
 
     def start(self):
         manager_address = ("127.0.0.1", 27500)
