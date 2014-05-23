@@ -133,14 +133,11 @@ class Session(LineReceiver):
 
             # This code is so... not python. The C programmer in me is coming out strong.
             # TODO: Rewrite this section later?
-            idx = 3
-            list_version = ord(data[idx])
-            idx += 1
-            encoding_version = ord(data[idx])
-            idx += 1
-            game_version = utils.get_int(data, idx)
-            idx += 4
+            list_version = ord(data[3])
+            encoding_version = ord(data[4])
+            game_version = utils.get_int(data, 5)
 
+            idx = 9
             query_game = utils.get_string(data, idx)
             idx += len(query_game) + 1
             game_name = utils.get_string(data, idx)
@@ -185,7 +182,7 @@ class Session(LineReceiver):
             #print "%08x" % options
             #print "%d %08x" % (max_servers, source_ip)
 
-            self.log(logging.DEBUG, "list version: %02x / encoding version: %02x / game version: %08x / query game: %s / game name: %s / challenge: %s / filter: %s / fields: %s / options: %08x / max servers: %d / source ip: %08x" % (list_version, encoding_version, game_version, query_game, game_name, challenge, filter, fields, options, max_servers, source_ip))
+            self.log(logging.DEBUG, "list version: %02x / encoding version: %02x / game version: %08x / query game: %s / game name: %s / challenge: %s / filter: %s / fields: %s / options: %08x / max servers: %d / source ip: %08x", list_version, encoding_version, game_version, query_game, game_name, challenge, filter, fields, options, max_servers, source_ip)
 
             # Requesting ip and port of client, not server
             if filter == "" or fields == "" or send_ip == True:
@@ -210,7 +207,7 @@ class Session(LineReceiver):
             dest_port = utils.get_short_be(data, 7) # What's the pythonic way to do this? unpack?
             dest = (dest_addr, dest_port)
 
-            self.log(logging.DEBUG, "Received send message request from %s:%s to %s:%d... expecting %d byte packet." % (self.address.host, self.address.port, dest_addr, dest_port, packet_len))
+            self.log(logging.DEBUG, "Received send message request from %s:%s to %s:%d... expecting %d byte packet.", self.address.host, self.address.port, dest_addr, dest_port, packet_len)
             self.log(logging.DEBUG, utils.pretty_print_hex(bytearray(data)))
 
             if packet_len == len(data):
@@ -229,10 +226,10 @@ class Session(LineReceiver):
                 self.expected_packet_length = packet_len
 
         elif data[2] == '\x03': # Keep alive reply
-            self.log(logging.DEBUG, "Received keep alive from %s:%s..." % (self.address.host, self.address.port))
+            self.log(logging.DEBUG, "Received keep alive from %s:%s...", self.address.host, self.address.port)
 
         else:
-            self.log(logging.DEBUG, "Received unknown command (%02x) from %s:%s..." % (ord(data[2]), self.address.host, self.address.port))
+            self.log(logging.DEBUG, "Received unknown command (%02x) from %s:%s...", ord(data[2]), self.address.host, self.address.port)
             self.log(logging.DEBUG, utils.pretty_print_hex(bytearray(data)))
             self.log(logging.DEBUG, utils.pretty_print_hex(data))
 
@@ -261,7 +258,7 @@ class Session(LineReceiver):
 
             if key_count != len(fields):
                 # For some reason we didn't get all of the expected data.
-                self.log(logging.WARNING, "key_count[%d] != len(fields)[%d]" % (key_count, len(fields)))
+                self.log(logging.WARNING, "key_count[%d] != len(fields)[%d]", key_count, len(fields))
                 self.log(logging.WARNING, fields)
 
             flags_buffer = bytearray()
@@ -354,12 +351,10 @@ class Session(LineReceiver):
             #     self.server_cache[str(server['publicip']) + str(server['publicport'])] = server
 
     def find_server_in_cache(self, addr, port, console):
-        if console != 0:
-            ip = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in addr.split('.')]), 0)).value) # Wii
-        else:
-            ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in addr.split('.')]), 0)).value) # DS
+        getint = [utils.get_int, utiils.get_int_be][console != 0] # Use BE for Wii
+        ip = str(ctypes.c_int32(getint(bytearray([int(x) for x in addr.split('.')]), 0)).value) # Wii
 
-        self.log(logging.DEBUG, "IP: %s, Console: %d" % (ip, console))
+        self.log(logging.DEBUG, "IP: %s, Console: %d", ip, console)
 
         # Get server based on ip/port
         # server = None
@@ -370,7 +365,7 @@ class Session(LineReceiver):
         #     #self.server_cache.pop((publicip + str(self.forward_client[1])))
 
         server = self.server_manager.find_server_by_address(ip, self.forward_client[1])._getvalue()
-        self.log(logging.DEBUG, "find_server_in_cache is returning: %s %s" % (server, ip))
+        self.log(logging.DEBUG, "find_server_in_cache is returning: %s %s", server, ip)
 
         return server, ip
 
@@ -384,26 +379,23 @@ class Session(LineReceiver):
         server, ip = self.find_server_in_cache(self.forward_client[0], self.forward_client[1], self.console)
 
         if server == None:
-            if self.console == 0:
-                server, ip = self.find_server_in_cache(self.forward_client[0], self.forward_client[1], 1) # Try Wii
-            elif self.console == 1:
-                server, ip = self.find_server_in_cache(self.forward_client[0], self.forward_client[1], 0) # Try DS
+            server, ip = self.find_server_in_cache(self.forward_client[0], self.forward_client[1], int(not self.console))
 
-        self.log(logging.DEBUG, "find_server_in_cache returned: %s" % server)
-        self.log(logging.DEBUG, "Trying to send message to %s:%d..." % (self.forward_client[0], self.forward_client[1]))
+        self.log(logging.DEBUG, "find_server_in_cache returned: %s", server)
+        self.log(logging.DEBUG, "Trying to send message to %s:%d...", self.forward_client[0], self.forward_client[1])
         self.log(logging.DEBUG, utils.pretty_print_hex(bytearray(data)))
 
         if server == None:
             return
 
-        self.log(logging.DEBUG, "%s %s" % (ip, server['publicip']))
+        self.log(logging.DEBUG, "%s %s", ip, server['publicip'])
         if server['publicip'] == ip and server['publicport'] == str(self.forward_client[1]):
             # Send command to server to get it to connect to natneg
             cookie = int(utils.generate_random_hex_str(8), 16) # Quick and lazy way to get a random 32bit integer. Replace with something else later
 
             if len(data) == 10 and bytearray(data)[0:6] == bytearray([0xfd, 0xfc, 0x1e, 0x66, 0x6a, 0xb2]):
                 natneg_session = utils.get_int(data,6)
-                self.log(logging.DEBUG, "Adding %d to natneg server list: %s" % (natneg_session, server))
+                self.log(logging.DEBUG, "Adding %d to natneg server list: %s", natneg_session, server)
                 self.server_manager.add_natneg_server(natneg_session, server) # Store info in backend so we can get it later in natneg
 
                 # if self.qr != None:
@@ -418,11 +410,11 @@ class Session(LineReceiver):
             output += bytearray(data)
 
             if self.qr != None:
-                self.log(logging.DEBUG, "Forwarded data to %s:%s through QR server..." % (forward_client[0], forward_client[1]))
+                self.log(logging.DEBUG, "Forwarded data to %s:%s through QR server...", forward_client[0], forward_client[1])
                 self.qr.socket.sendto(output, forward_client)
             else:
                 # In case we can't contact the QR server, just try sending the packet directly.
                 # This isn't standard behavior but it can work in some instances.
-                self.log(logging.DEBUG, "Forwarded data to %s:%s directly (potential error occurred)..." % (forward_client[0], forward_client[1]))
+                self.log(logging.DEBUG, "Forwarded data to %s:%s directly (potential error occurred)...", forward_client[0], forward_client[1])
                 client_s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 client_s.sendto(output, forward_client)
