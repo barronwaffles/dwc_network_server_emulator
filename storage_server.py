@@ -101,6 +101,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             action = self.headers['SOAPAction']
             post = self.rfile.read(length)
             logger.log(logging.DEBUG, "SakeStorageServer SOAPAction %s", action)
+            logger.log(logging.DEBUG, post)
             
             shortaction = action[action.rfind('/')+1:-1]
             
@@ -117,6 +118,9 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.log(logging.WARNING, "Unknown table access '%s' in %s by %s", table, shortaction, self.client_address)
                 return
             
+            ret += '<' + shortaction + 'Response xmlns="http://gamespy.net/sake">'
+            ret += '<' + shortaction + 'Result>Success</' + shortaction + 'Result>'
+            
             # TODO: Actually make GetMyRecords only return *my* records
             if action == '"http://gamespy.net/sake/SearchForRecords"' or action == '"http://gamespy.net/sake/GetMyRecords"':
                 columndata = data.getElementsByTagName('ns1:fields')[0].getElementsByTagName('ns1:string')
@@ -126,9 +130,6 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     logger.log(logging.WARNING, "IllegalColumnAccess: %s in %s by %s", e.message, shortaction, self.client_address)
                     return
                     
-                ret += '<SearchForRecordsResponse xmlns="http://gamespy.net/sake">'
-                ret += '<SearchForRecordsResult>Success</SearchForRecordsResult>'
-
                 # build SELECT statement, yes I know one shouldn't do this but I cross-checked the table name and all the columns above so it should be fine
                 statement = 'SELECT '
                 statement += columns[0]
@@ -145,25 +146,26 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     for r in rows:
                         ret += '<ArrayOfRecordValue>'
                         for i, c in enumerate(r):
+                            type = self.server.get_typedata(table, columns[i])
+                            
                             ret += '<RecordValue>'
-                            ret += '<' + self.server.get_typedata(table, columns[i]) + '>'
-                            if c:
-                                ret += '<value>' + str(c) + '</value>'
+                            ret += '<' + type + '>'
+                            if c is not None:
+                                if type == 'booleanValue':
+                                    ret += '<value>' + ('true' if c else 'false') + '</value>'
+                                else:
+                                    ret += '<value>' + str(c) + '</value>'
                             else:
                                 ret += '<value/>'
-                            ret += '</' + self.server.get_typedata(table, columns[i]) + '>'
+                            ret += '</' + type + '>'
                             ret += '</RecordValue>'
                         ret += '</ArrayOfRecordValue>'
                     ret += '</values>'
                 else:
                     ret += '<values/>'
                 
-                ret += '</SearchForRecordsResponse>'
                 
             elif action == '"http://gamespy.net/sake/GetRecordCount"':
-                ret += '<GetRecordCountResponse xmlns="http://gamespy.net/sake">'
-                ret += '<GetRecordCountResult>Success</GetRecordCountResult>'
-                
                 statement = 'SELECT COUNT(1) FROM ' + table
                     
                 cursor = self.server.db.cursor()
@@ -171,8 +173,41 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 count = cursor.fetchone()[0]
                 
                 ret += '<count>' + str(count) + '</count>'                
-                ret += '</GetRecordCountResponse>'
             
+            elif action == '"http://gamespy.net/sake/UpdateRecord"':
+                recordid = str(int(data.getElementsByTagName('ns1:recordid')[0].firstChild.data))
+                
+                columndata = []
+                values = data.getElementsByTagName('ns1:values')[0]
+                recordfields = values.getElementsByTagName('ns1:RecordField')
+                for rf in recordfields:
+                    columndata.append( rf.getElementsByTagName('ns1:name')[0] )
+                    
+                try:
+                    columns = self.confirm_columns(columndata, table)
+                except IllegalColumnAccessException as e:
+                    logger.log(logging.WARNING, "IllegalColumnAccess: %s in %s by %s", e.message, shortaction, self.client_address)
+                    return
+                    
+                rowdata = []
+                for rf in recordfields:
+                    cn = rf.getElementsByTagName('ns1:value')[0].childNodes
+                    # circumvent checking for <intValue> and so on by just taking whatever is there
+                    rowdata.append( cn[len(cn)/2].getElementsByTagName('ns1:value')[0].firstChild.data )
+                    
+                statement = 'UPDATE ' + table + ' SET '
+                
+                statement += columns[0] + ' = ?'
+                for c in columns[1:]:
+                    statement += ' AND ' + c + ' = ?'
+                statement += ' WHERE recordid = ?'
+                rowdata.append( recordid )
+                
+                cursor = self.server.db.cursor()
+                cursor.execute(statement, rowdata)
+                self.server.db.commit()
+            
+            ret += '</' + shortaction + 'Response>'
             ret += '</soap:Body></soap:Envelope>'
             
             self.send_response(200)
