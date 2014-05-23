@@ -1,5 +1,7 @@
 import logging
 import BaseHTTPServer
+import cgi
+import urlparse
 import sqlite3
 import xml.dom.minidom as minidom
 
@@ -11,6 +13,7 @@ logger_name = "StorageServer"
 logger_filename = "storage_server.log"
 logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
+# Paths to ProxyPass: /SakeStorageServer, /SakeFileServer
 address = ("127.0.0.1", 8000)
 
 class StorageServer(object):
@@ -218,8 +221,30 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             logger.log(logging.DEBUG, ret)
             self.wfile.write(ret)
         
+        elif self.path.startswith("/SakeFileServer/upload.aspx?"):
+            params = urlparse.parse_qs(self.path[self.path.find('?')+1:])
+
+            gameid = int(params['gameid'][0])
+            playerid = int(params['pid'][0])
+            
+            logger.log(logging.DEBUG, "SakeFileServer Upload Request in game %s, user %s", gameid, playerid)
+            
+            ctype, pdict = cgi.parse_header(self.headers['Content-Type'])
+            filedata = cgi.parse_multipart(self.rfile, pdict) 
+            
+            # TODO: Actually store file.
+            fileid = 12345
+            
+            self.send_response(200)
+            self.send_header('Sake-File-Id', str(fileid)) # TODO: Replace with real one.
+            self.send_header('Sake-File-Result', '0')
+            self.end_headers()
+            
+            logger.log(logging.DEBUG, "SakeFileServer Upload Reply Sake-File-Id %s", fileid)
+            self.wfile.write('')
+
         else:
-            logger.log(logging.INFO, "Got request %s from %s", self.path, self.client_address)
+            logger.log(logging.INFO, "[NOT IMPLEMENTED] Got request %s from %s", self.path, self.client_address)
 
 if __name__ == "__main__":
     storage_server = StorageServer()
