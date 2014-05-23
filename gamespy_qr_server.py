@@ -329,3 +329,7 @@ class GameSpyQRServer(object):
                 del self.sessions[session_id]
 
             time.sleep(15.0)
+
+if __name__ == "__main__":
+    qr_server = GameSpyQRServer()
+    qr_server.start()
