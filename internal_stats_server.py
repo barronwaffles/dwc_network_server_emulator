@@ -4,6 +4,8 @@ from twisted.internet.error import ReactorAlreadyRunning
 from multiprocessing.managers import BaseManager
 import time
 import datetime
+from contextlib import contextmanager
+
 
 class GameSpyServerDatabase(BaseManager):
     pass
@@ -17,31 +19,38 @@ class StatsPage(resource.Resource):
         self.stats = stats
 
     def render_GET(self, request):
-        # TODO: Make this easier to modify later
+
+        output = ""
+        def put(s):
+            output += str(s)
+
+        @contextmanager
+        def tag(name, **kwargs):
+            put("<" + name)
+            for arg in kwargs:
+                put(" %s='%s'" % (arg, kwargs[arg]))
+            put(">")
+            yield
+            put("</%s>" % name)
 
         server_list = stats.get_server_list()
 
-        output = "<html>"
-        output += "<table border='1'>"
-        output += "<tr>"
-        output += "<td>Game ID</td><td># Players</td>"
-        output += "</tr>"
+        with tag("html"):
+            with tag("table", border="1"):
+                with tag("tr"):
+                    with tag("td"): put("Game ID")
+                    with tag("td"): put("# Players")
+                if server_list != None:
+                    for game in server_list:
+                        if len(server_list[game]) == 0:
+                            continue
+                        with tag("tr"):
+                            with tag("td"): put(game)
+                            with tag("td") with tag("center"): put(len(server_list[game]))
 
-        if server_list != None:
-            for game in server_list:
-                if len(server_list[game]) == 0:
-                    continue
-
-                output += "<tr>"
-                output += "<td>" + game + "</td>"
-                output += "<td><center>%d</center></td>" % (len(server_list[game]))
-                output += "</tr>"
-
-        output += "</table>"
-
-        output += "<br>"
-        output += "<i>Last updated: %s</i><br>" % (stats.get_last_update_time())
-        output += "</html>"
+            put("<br>")
+            with tag("i"): put("Last updated: %s" % (stats.get_last_update_time())
+            put("<br>")
 
         return output
 
