@@ -125,7 +125,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             ret += '<' + shortaction + 'Result>Success</' + shortaction + 'Result>'
             
             # TODO: Actually make GetMyRecords only return *my* records
-            if action == '"http://gamespy.net/sake/SearchForRecords"' or action == '"http://gamespy.net/sake/GetMyRecords"':
+            if shortaction == 'SearchForRecords' or shortaction == 'GetMyRecords' or shortaction == 'GetSpecificRecords':
                 columndata = data.getElementsByTagName('ns1:fields')[0].getElementsByTagName('ns1:string')
                 try:
                     columns = self.confirm_columns(columndata, table)
@@ -139,6 +139,17 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 for c in columns[1:]:
                     statement += ',' + c
                 statement += ' FROM ' + table
+                
+                if shortaction == 'GetSpecificRecords':
+                    recordids = data.getElementsByTagName('ns1:recordids')[0].getElementsByTagName('ns1:int')
+                    
+                    # limit to requested records
+                    id = int(recordids[0].firstChild.data)
+                    statement += ' WHERE recordid = ' + str(id)
+                    for r in recordids[1:]:
+                        id = int(r.firstChild.data)
+                        statement += ' OR recordid = ' + str(id)
+                        
                     
                 cursor = self.server.db.cursor()
                 cursor.execute(statement)
@@ -168,7 +179,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     ret += '<values/>'
                 
                 
-            elif action == '"http://gamespy.net/sake/GetRecordCount"':
+            elif shortaction == 'GetRecordCount':
                 statement = 'SELECT COUNT(1) FROM ' + table
                     
                 cursor = self.server.db.cursor()
@@ -177,8 +188,8 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 
                 ret += '<count>' + str(count) + '</count>'                
             
-            elif action == '"http://gamespy.net/sake/UpdateRecord"':
-                recordid = str(int(data.getElementsByTagName('ns1:recordid')[0].firstChild.data))
+            elif shortaction == 'UpdateRecord':
+                recordid = int(data.getElementsByTagName('ns1:recordid')[0].firstChild.data)
                 
                 columndata = []
                 values = data.getElementsByTagName('ns1:values')[0]
@@ -193,21 +204,26 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     return
                     
                 rowdata = []
-                for rf in recordfields:
-                    cn = rf.getElementsByTagName('ns1:value')[0].childNodes
-                    # circumvent checking for <intValue> and so on by just taking whatever is there
-                    rowdata.append( cn[len(cn)/2].getElementsByTagName('ns1:value')[0].firstChild.data )
+                for i, rf in enumerate(recordfields):
+                    type = self.server.get_typedata(table, columns[i])
+                    value = rf.getElementsByTagName('ns1:value')[0].getElementsByTagName('ns1:' + type)[0].getElementsByTagName('ns1:value')[0].firstChild.data
+                    if type == 'intValue' or type == 'booleanValue':
+                        rowdata.append( int(value) )
+                    elif type == 'floatValue':
+                        rowdata.append( float(value) )
+                    else:
+                        rowdata.append( value )
                     
                 statement = 'UPDATE ' + table + ' SET '
                 
                 statement += columns[0] + ' = ?'
                 for c in columns[1:]:
-                    statement += ' AND ' + c + ' = ?'
+                    statement += ', ' + c + ' = ?'
                 statement += ' WHERE recordid = ?'
                 rowdata.append( recordid )
                 
                 cursor = self.server.db.cursor()
-                cursor.execute(statement, rowdata)
+                cursor.execute(statement, tuple(rowdata))
                 self.server.db.commit()
             
             ret += '</' + shortaction + 'Response>'
