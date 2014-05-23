@@ -425,3 +425,7 @@ class Session(LineReceiver):
                 self.log(logging.DEBUG, "Forwarded data to %s:%s directly (potential error occurred)..." % (forward_client[0], forward_client[1]))
                 client_s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 client_s.sendto(output, forward_client)
+                
+if __name__ == "__main__":
+    server_browser = GameSpyServerBrowserServer()
+    server_browser.start()
