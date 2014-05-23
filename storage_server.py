@@ -54,6 +54,14 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
         exists = cursor.fetchone()[0]
         return True if exists else False
     
+    def get_typedata(self, table, column):
+        try:
+            cursor = self.db.cursor()
+            cursor.execute("SELECT type FROM typedata WHERE tbl=? AND col=?", (table,column))
+            return cursor.fetchone()[0]
+        except TypeError:
+            return 'UNKNOWN'
+    
 class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_POST(self):
         # Alright, in case anyone is wondering: Yes, I am faking a SOAP service
@@ -68,31 +76,77 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             post = self.rfile.read(length)
             logger.log(logging.DEBUG, "SakeStorageServer SOAPAction %s", action)
             
+            shortaction = action[action.rfind('/')+1:-1]
+            
             ret = '<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><soap:Body>'
             
+            dom = minidom.parseString(post)
+            data = dom.getElementsByTagName('SOAP-ENV:Body')[0].getElementsByTagName('ns1:' + shortaction)[0]
+            gameid = str(int(data.getElementsByTagName('ns1:gameid')[0].firstChild.data))
+            tableid = data.getElementsByTagName('ns1:tableid')[0].firstChild.data
+            
+            table = 'g' + gameid + '_' + tableid
+            
+            if not self.server.table_exists(table):
+                logger.log(logging.WARNING, "Unknown table access '%s' in %s by %s", table, shortaction, self.client_address)
+                return
+            
             if action == '"http://gamespy.net/sake/SearchForRecords"':
-                dom = minidom.parseString(post)
-                data = dom.getElementsByTagName('SOAP-ENV:Body')[0].getElementsByTagName('ns1:SearchForRecords')[0]
-                gameid = str(int(data.getElementsByTagName('ns1:gameid')[0].firstChild.data))
-                tableid = data.getElementsByTagName('ns1:tableid')[0].firstChild.data
-                
-                table = 'g' + gameid + '_' + tableid
-                
-                if not self.server.table_exists(table):
-                    logger.log(logging.WARNING, "Unknown table access '%s' in SearchForRecords by %s", (table, self.client_address))
-                    return
-                
                 columndata = data.getElementsByTagName('ns1:fields')[0].getElementsByTagName('ns1:string')
+                columns = []
                 
                 for c in columndata:
                     if not c.firstChild.data in self.server.tables[table]:
-                        logger.log(logging.WARNING, "Unknown column access '%s' in table '%s' in SearchForRecords by %s", (c.firstChild.data, table, self.client_address))
+                        logger.log(logging.WARNING, "Unknown column access '%s' in table '%s' in %s by %s", c.firstChild.data, table, shortaction, self.client_address)
                         return
+                    columns.append(c.firstChild.data)
                 
+                ret += '<SearchForRecordsResponse xmlns="http://gamespy.net/sake">'
+                ret += '<SearchForRecordsResult>Success</SearchForRecordsResult>'
+
+                # build SELECT statement, yes I know one shouldn't do this but I cross-checked the table name and all the columns above so it should be fine
+                statement = 'SELECT '
+                statement += columns[0]
+                for c in columns[1:]:
+                    statement += ',' + c
+                statement += ' FROM ' + table
+                    
+                cursor = self.server.db.cursor()
+                cursor.execute(statement)
+                rows = cursor.fetchall()
                 
+                if rows:
+                    ret += '<values>'
+                    for r in rows:
+                        ret += '<ArrayOfRecordValue>'
+                        for i, c in enumerate(r):
+                            ret += '<RecordValue>'
+                            ret += '<' + self.server.get_typedata(table, columns[i]) + '>'
+                            if c:
+                                ret += '<value>' + str(c) + '</value>'
+                            else:
+                                ret += '<value/>'
+                            ret += '</' + self.server.get_typedata(table, columns[i]) + '>'
+                            ret += '</RecordValue>'
+                        ret += '</ArrayOfRecordValue>'
+                    ret += '</values>'
+                else:
+                    ret += '<values/>'
+                
+                ret += '</SearchForRecordsResponse>'
                 
             elif action == '"http://gamespy.net/sake/GetRecordCount"':
-                pass
+                ret += '<GetRecordCountResponse xmlns="http://gamespy.net/sake">'
+                ret += '<GetRecordCountResult>Success</GetRecordCountResult>'
+                
+                statement = 'SELECT COUNT(1) FROM ' + table
+                    
+                cursor = self.server.db.cursor()
+                cursor.execute(statement)
+                count = cursor.fetchone()[0]
+                
+                ret += '<count>' + str(count) + '</count>'                
+                ret += '</GetRecordCountResponse>'
             
             ret += '</soap:Body></soap:Envelope>'
             
@@ -100,7 +154,8 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'text/xml; charset=utf-8')
             self.end_headers()
             
-            logger.log(logging.DEBUG, "%s response to %s", (action, self.client_address))
+            logger.log(logging.DEBUG, "%s response to %s", action, self.client_address)
+            logger.log(logging.DEBUG, ret)
             self.wfile.write(ret)
             
 
