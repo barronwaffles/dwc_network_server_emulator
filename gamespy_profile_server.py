@@ -68,21 +68,14 @@ class PlayerSession(LineReceiver):
         self.sesskey = ""
 
     def log(self, level, message):
-        if self.profileid == 0:
-            if self.gameid == "":
-                logger.log(level, "[%s:%d] %s", self.address.host, self.address.port,message)
-            else:
-                logger.log(level, "[%s:%d | %s] %s", self.address.host, self.address.port, self.gameid, message)
-        else:
-            if self.gameid == "":
-                logger.log(level, "[%s:%d | %d] %s", self.address.host, self.address.port, self.profileid, message)
-            else:
-                logger.log(level, "[%s:%d | %d | %s] %s", self.address.host, self.address.port, self.profileid, self.gameid, message)
+        profilepart = (" | "+self.profileid) if self.profileid else ""
+        gamepart = (" | "+self.gameid) if self.gameid else ""
+        logger.log(level, "[%s:%d%s%s] %s", self.address.host, self.address.port, profilepart, gamepart, message)
 
     def get_ip_as_int(self, address):
         ipaddress = 0
 
-        if address != None:
+        if address:
             for n in address.split('.'):
                 ipaddress = (ipaddress << 8) | int(n)
 
@@ -91,7 +84,7 @@ class PlayerSession(LineReceiver):
     def connectionMade(self):
         self.transport.setTcpKeepAlive(1)
 
-        self.log(logging.INFO, "Received connection from %s:%d" % (self.address.host, self.address.port))
+        self.log(logging.INFO, "Received connection from %s:%d", self.address.host, self.address.port)
 
         # Create new session id
         self.session = ""
@@ -100,14 +93,15 @@ class PlayerSession(LineReceiver):
         self.challenge = utils.generate_random_str(8, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
         # The first command sent to the client is always a login challenge containing the server challenge key.
-        msg_d = []
-        msg_d.append(('__cmd__', "lc"))
-        msg_d.append(('__cmd_val__', "1"))
-        msg_d.append(('challenge', self.challenge))
-        msg_d.append(('id', "1"))
+        msg_d = [
+            ('__cmd__', "lc"),
+            ('__cmd_val__', "1"),
+            ('challenge', self.challenge),
+            ('id', "1"),
+        ]
         msg = gs_query.create_gamespy_message(msg_d)
 
-        self.log(logging.DEBUG, "SENDING: '%s'..." % msg)
+        self.log(logging.DEBUG, "SENDING: '%s'...", msg)
         self.transport.write(bytes(msg))
 
     def connectionLost(self, reason):
@@ -122,10 +116,10 @@ class PlayerSession(LineReceiver):
             del self.sessions[self.session]
 
         self.db.delete_session(self.session)
-        self.log(logging.INFO, "Deleted session " + self.session)
+        self.log(logging.INFO, "Deleted session %s", self.session)
 
     def rawDataReceived(self, data):
-        self.log(logging.DEBUG, "RESPONSE: '%s'..." % data)
+        self.log(logging.DEBUG, "RESPONSE: '%s'...", data)
 
         # In the case where command string is too big to fit into one read, any parts that could not be successfully
         # parsed are stored in the variable remaining_message. On the next rawDataReceived command, the remaining
@@ -133,33 +127,25 @@ class PlayerSession(LineReceiver):
         data = self.remaining_message + data
         commands, self.remaining_message = gs_query.parse_gamespy_message(data)
 
-        for data_parsed in commands:
-            #self.log(-1, data_parsed)
-            self.log(logging.DEBUG, data_parsed)
+        cmdstrs = {
+            "login": self.perform_login,,
+            "logout": self.perform_logout,
+            "getprofile": self.perform_getprofile,
+            "updatepro": self.perform_updatepro,
+            "ka": self.perform_ka,
+            "status": self.perform_status,
+            "bm": self.perform_bm,
+            "addbuddy": self.perform_addbuddy,
+            "delbuddy": self.perform_delbuddy,
+            "authadd": self.perform_authadd,
+        }
+        def cmderr(d):
+            # Maybe write unknown commands to a separate file later so new data can be collected more easily?
+            self.log(logging.ERROR, "Found unknown command, don't know how to handle '%s'.", d['__cmd__'])
 
-            if data_parsed['__cmd__'] == "login":
-                self.perform_login(data_parsed)
-            elif data_parsed['__cmd__'] == "logout":
-                self.perform_logout(data_parsed)
-            elif data_parsed['__cmd__'] == "getprofile":
-                self.perform_getprofile(data_parsed)
-            elif data_parsed['__cmd__'] == "updatepro":
-                self.perform_updatepro(data_parsed)
-            elif data_parsed['__cmd__'] == "ka":
-                self.perform_ka(data_parsed)
-            elif data_parsed['__cmd__'] == "status":
-                self.perform_status(data_parsed)
-            elif data_parsed['__cmd__'] == "bm":
-                self.perform_bm(data_parsed)
-            elif data_parsed['__cmd__'] == "addbuddy":
-                self.perform_addbuddy(data_parsed)
-            elif data_parsed['__cmd__'] == "delbuddy":
-                self.perform_delbuddy(data_parsed)
-            elif data_parsed['__cmd__'] == "authadd":
-                self.perform_authadd(data_parsed)
-            else:
-                # Maybe write unknown commands to a separate file later so new data can be collected more easily?
-                self.log(logging.ERROR, "Found unknown command, don't know how to handle '%s'." % data_parsed['__cmd__'])
+        for data_parsed in commands:
+            self.log(logging.DEBUG, data_parsed)
+            cmdstrs.get(data_parsed['__cmd__'], cmderr)(data_parsed)
 
     def perform_login(self, data_parsed):
         authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'], self.db)
@@ -185,41 +171,30 @@ class PlayerSession(LineReceiver):
         email = uniquenick + "@nds" # The Wii also seems to use @nds.
 
         # Wii: Serial number
+        csnum = ""
         if "csnum" in authtoken_parsed:
             csnum = authtoken_parsed['csnum']
             console = 1
-        else:
-            csnum = ""
 
         # Wii: Friend code
+        cfc = ""
         if "cfc" in authtoken_parsed:
             cfc = authtoken_parsed['cfc']
             console = 1
-        else:
-            cfc = ""
 
         # NDS: Wifi network's BSSID
-        if "bssid" in authtoken_parsed:
-            bssid = authtoken_parsed['bssid']
-        else:
-            bssid = ""
+        bssid = authtoken_parsed.get('bssid', '')
 
         # NDS: Device name
-        if "devname" in authtoken_parsed:
-            devname = authtoken_parsed['devname']
-        else:
-            devname = ""
+        devname = authtoken_parsed.get('devname', '')
 
         # NDS: User's birthday
-        if "birth" in authtoken_parsed:
-            birth = authtoken_parsed['birth']
-        else:
-            birth = ""
+        birth = authtoken_parsed.get('birth', '')
 
         # Verify the client's response
         valid_response = gs_utils.generate_response(self.challenge, authtoken_parsed['challenge'], data_parsed['challenge'], data_parsed['authtoken'])
         if data_parsed['response'] != valid_response:
-            self.log(logging.ERROR, "ERROR: Got invalid response. Got %s, expected %s" % (data_parsed['response'], valid_response))
+            self.log(logging.ERROR, "ERROR: Got invalid response. Got %s, expected %s", data_parsed['response'], valid_response)
 
         proof = gs_utils.generate_proof(self.challenge, authtoken_parsed['challenge'], data_parsed['challenge'], data_parsed['authtoken'])
 
@@ -239,16 +214,18 @@ class PlayerSession(LineReceiver):
 
             self.sessions[profileid] = self
 
-            msg_d = []
-            msg_d.append(('__cmd__', "lc"))
-            msg_d.append(('__cmd_val__', "2"))
-            msg_d.append(('sesskey', self.sesskey))
-            msg_d.append(('proof', proof))
-            msg_d.append(('userid', userid))
-            msg_d.append(('profileid', profileid))
-            msg_d.append(('uniquenick', uniquenick))
-            msg_d.append(('lt', gs_utils.base64_encode(utils.generate_random_str(16)))) # Some kind of token... don't know it gets used or generated, but it doesn't seem to have any negative effects if it's not properly generated.
-            msg_d.append(('id', data_parsed['id']))
+            msg_d = [
+                ('__cmd__', "lc"),
+                ('__cmd_val__', "2"),
+                ('sesskey', self.sesskey),
+                ('proof', proof),
+                ('userid', userid),
+                ('profileid', profileid),
+                ('uniquenick', uniquenick),
+                # Some kind of token... don't know it gets used or generated, but it doesn't seem to have any negative effects if it's not properly generated.
+                ('lt', gs_utils.base64_encode(utils.generate_random_str(16))),
+                ('id', data_parsed['id']),
+            ]
             msg = gs_query.create_gamespy_message(msg_d)
 
             # Take the first 4 letters of gsbrcd instead of gamecd because they should be consistent across game
@@ -258,10 +235,10 @@ class PlayerSession(LineReceiver):
             # Japanese version (ATRJ) while the gamecd is region specific (ATRE for US and ATRJ for JP).
             # gameid is used to send all people on the player's friends list a status updates, so don't make it region
             # specific.
-            self.gameid = gsbrcd[0:4]
+            self.gameid = gsbrcd[:4]
             self.profileid = int(profileid)
 
-            self.log(logging.DEBUG, "SENDING: %s" % msg)
+            self.log(logging.DEBUG, "SENDING: %s", msg)
             self.transport.write(bytes(msg))
 
             self.buddies = self.db.get_buddy_list(self.profileid)
@@ -276,12 +253,12 @@ class PlayerSession(LineReceiver):
             self.send_status_to_friends()
 
             profile = self.db.get_profile_from_profileid(profileid)
-            if profile != None:
+            if profile:
                 self.statstring = profile['stat']
                 self.locstring = profile['loc']
 
     def perform_logout(self, data_parsed):
-        self.log(logging.INFO, "Session %s has logged off" % (data_parsed['sesskey']))
+        self.log(logging.INFO, "Session %s has logged off", data_parsed['sesskey'])
         self.db.delete_session(data_parsed['sesskey'])
 
         if self.session in self.sessions:
@@ -296,16 +273,17 @@ class PlayerSession(LineReceiver):
         # Wii example: \pi\\profileid\474888031\nick\5pde5vhn1WR9E2g1t533\userid\442778352\email\5pde5vhn1WR9E2g1t533@nds\sig\b126556e5ee62d4da9629dfad0f6b2a8\uniquenick\5pde5vhn1WR9E2g1t533\pid\11\lon\0.000000\lat\0.000000\loc\\id\2\final\
         sig = utils.generate_random_hex_str(32)
 
-        msg_d = []
-        msg_d.append(('__cmd__', "pi"))
-        msg_d.append(('__cmd_val__', ""))
-        msg_d.append(('profileid', profile['profileid']))
-        msg_d.append(('nick', profile['uniquenick']))
-        msg_d.append(('userid', profile['userid']))
-        msg_d.append(('email', profile['email']))
-        msg_d.append(('sig', sig))
-        msg_d.append(('uniquenick', profile['uniquenick']))
-        msg_d.append(('pid', profile['pid']))
+        msg_d = [
+            ('__cmd__', "pi"),
+            ('__cmd_val__', ""),
+            ('profileid', profile['profileid']),
+            ('nick', profile['uniquenick']),
+            ('userid', profile['userid']),
+            ('email', profile['email']),
+            ('sig', sig),
+            ('uniquenick', profile['uniquenick']),
+            ('pid', profile['pid']),
+        ]
 
         if profile['firstname'] != "":
             msg_d.append(('firstname', profile['firstname'])) # Wii gets a firstname
@@ -313,30 +291,26 @@ class PlayerSession(LineReceiver):
         if profile['lastname'] != "":
             msg_d.append(('lastname', profile['lastname']))
 
-        msg_d.append(('lon', profile['lon']))
-        msg_d.append(('lat', profile['lat']))
-        msg_d.append(('loc', profile['loc']))
-        msg_d.append(('id', data_parsed['id']))
+        msg_d.extend((
+            ('lon', profile['lon'])
+            ('lat', profile['lat'])
+            ('loc', profile['loc'])
+            ('id', data_parsed['id'])
+        ))
         msg = gs_query.create_gamespy_message(msg_d)
 
-        self.log(logging.DEBUG, "SENDING: %s" % msg)
+        self.log(logging.DEBUG, "SENDING: %s", msg)
         self.transport.write(bytes(msg))
 
     def perform_updatepro(self, data_parsed):
         # Wii example: \updatepro\\sesskey\199714190\firstname\Wii:2555151656076614@WR9E\partnerid\11\final\
 
         # Remove any fields not related to what we should be updating.
-        # To avoid any crashes, make sure the key is actually in the dictionary before removing it.
-        if "__cmd__" in data_parsed:
-            data_parsed.pop('__cmd__')
-        if "__cmd_val__" in data_parsed:
-            data_parsed.pop('__cmd_val__')
-        if "updatepro" in data_parsed:
-            data_parsed.pop('updatepro')
-        if "partnerid" in data_parsed:
-            data_parsed.pop('partnerid')
-        if "sesskey" in data_parsed:
-            data_parsed.pop('sesskey')
+        data_parsed.pop('__cmd__', None)
+        data_parsed.pop('__cmd_val__', None)
+        data_parsed.pop('updatepro', None)
+        data_parsed.pop('partnerid', None)
+        data_parsed.pop('sesskey', None)
 
         # Create a list of fields to be updated.
         for f in data_parsed:
@@ -346,9 +320,10 @@ class PlayerSession(LineReceiver):
     def perform_ka(self, data_parsed):
         self.keepalive = int(time.time())
 
-        msg_d = []
-        msg_d.append(('__cmd__', "ka"))
-        msg_d.append(('__cmd_val__', ""))
+        msg_d = [
+            ('__cmd__', "ka"),
+            ('__cmd_val__', ""),
+        ]
         msg = gs_query.create_gamespy_message(msg_d)
         self.transport.write(msg)
 
@@ -358,13 +333,14 @@ class PlayerSession(LineReceiver):
 
 
         self.status = data_parsed['__cmd_val__']
-        self.statstring =  data_parsed['statstring']
-        self.locstring =  data_parsed['locstring']
+        self.statstring = data_parsed['statstring']
+        self.locstring = data_parsed['locstring']
 
-        fields = []
-        #fields.append(("status", self.status))
-        fields.append(("stat", self.statstring))
-        fields.append(("loc", self.locstring))
+        fields = [
+            #("status", self.status),
+            ("stat", self.statstring),
+            ("loc", self.locstring),
+        ]
 
         for f in fields:
             self.db.update_profile(self.sesskey, f)
@@ -379,7 +355,7 @@ class PlayerSession(LineReceiver):
 
 
     def perform_bm(self, data_parsed):
-        if data_parsed['__cmd_val__'] == "1" or data_parsed['__cmd_val__'] == "5" or data_parsed['__cmd_val__'] == "102" or data_parsed['__cmd_val__'] == "103": # Message to/from clients?
+        if data_parsed['__cmd_val__'] in ("1", "5", "102", "103"): # Message to/from clients?
             if "t" in data_parsed:
                 # Send message to the profile id in "t"
                 dest_profileid = int(data_parsed['t'])
@@ -403,40 +379,43 @@ class PlayerSession(LineReceiver):
 
                 # Send error to user if they tried to send a message to someone who isn't a buddy.
                 if not_buddies:
-                    msg_d = []
-                    msg_d.append(('__cmd__', "error"))
-                    msg_d.append(('__cmd_val__', ""))
-                    msg_d.append(('err', 2305))
-                    msg_d.append(('errmsg', "The profile the message was to be sent to is not a buddy."))
-                    msg_d.append(('id', 1))
+                    msg_d = [
+                        ('__cmd__', "error"),
+                        ('__cmd_val__', ""),
+                        ('err', 2305),
+                        ('errmsg', "The profile the message was to be sent to is not a buddy."),
+                        ('id', 1),
+                    ]
                     msg = gs_query.create_gamespy_message(msg_d)
                     logger.debug("Trying to send message to someone who isn't a buddy: %s" % msg)
                     self.transport.write(msg)
                     return
 
-                msg_d = []
-                msg_d.append(('__cmd__', "bm"))
-                msg_d.append(('__cmd_val__', "1"))
-                msg_d.append(('f', self.profileid))
-                msg_d.append(('msg', dest_msg))
+                msg_d = [
+                    ('__cmd__', "bm"),
+                    ('__cmd_val__', "1"),
+                    ('f', self.profileid),
+                    ('msg', dest_msg),
+                ]
                 msg = gs_query.create_gamespy_message(msg_d)
 
                 if dest_profileid in self.sessions:
-                    self.log(logging.DEBUG, "SENDING TO %s:%s: %s" % (self.sessions[dest_profileid].address.host, self.sessions[dest_profileid].address.port, msg))
+                    self.log(logging.DEBUG, "SENDING TO %s:%s: %s", self.sessions[dest_profileid].address.host, self.sessions[dest_profileid].address.port, msg)
                     self.sessions[dest_profileid].transport.write(bytes(msg))
                 else:
                     if data_parsed['__cmd_val__'] == "1":
-                        self.log(logging.DEBUG, "Saving message to %d: %s" % (dest_profileid, msg))
+                        self.log(logging.DEBUG, "Saving message to %d: %s", dest_profileid, msg)
                         self.db.save_pending_message(self.profileid, dest_profileid, msg)
                     else:
-                        msg_d = []
-                        msg_d.append(('__cmd__', "error"))
-                        msg_d.append(('__cmd_val__', ""))
-                        msg_d.append(('err', 2307))
-                        msg_d.append(('errmsg', "The buddy to send a message to is offline."))
-                        msg_d.append(('id', 1))
+                        msg_d = [
+                            ('__cmd__', "error"),
+                            ('__cmd_val__', ""),
+                            ('err', 2307),
+                            ('errmsg', "The buddy to send a message to is offline."),
+                            ('id', 1),
+                        ]
                         msg = gs_query.create_gamespy_message(msg_d)
-                        logger.debug("Trying to send message to someone who isn't online: %s" % msg)
+                        logger.debug("Trying to send message to someone who isn't online: %s", msg)
                         self.transport.write(msg)
 
 
@@ -478,17 +457,17 @@ class PlayerSession(LineReceiver):
         # TODO: Cache buddy list so we don't have to query the database every time
         self.buddies = self.db.get_buddy_list(self.profileid)
 
-        if self.status == "0" and self.statstring == "Offline":
-            # Going offline, don't need to send the other information.
-            status_msg = "|s|%s|ss|%s" % (self.status, self.statstring)
-        else:
-            status_msg = "|s|%s|ss|%s|ls|%s|ip|%d|p|0|qm|0" % (self.status, self.statstring, self.locstring, self.get_ip_as_int(self.address.host))
+        status_msg = "|s|%s|ss|%s" % (self.status, self.statstring)
+        # Not going offline, need to send the other information.
+        if not (self.status == "0" and self.statstring == "Offline"):
+            status_msg += "|ls|%s|ip|%d|p|0|qm|0" % (self.locstring, self.get_ip_as_int(self.address.host))
 
-        msg_d = []
-        msg_d.append(('__cmd__', "bm"))
-        msg_d.append(('__cmd_val__', "100"))
-        msg_d.append(('f', self.profileid))
-        msg_d.append(('msg', status_msg))
+        msg_d = [
+            ('__cmd__', "bm"),
+            ('__cmd_val__', "100"),
+            ('f', self.profileid),
+            ('msg', status_msg),
+        ]
         msg = gs_query.create_gamespy_message(msg_d)
 
         for buddy in self.buddies:
@@ -509,11 +488,12 @@ class PlayerSession(LineReceiver):
             else:
                 status_msg = "|s|0|ss|Offline"
 
-            msg_d = []
-            msg_d.append(('__cmd__', "bm"))
-            msg_d.append(('__cmd_val__', "100"))
-            msg_d.append(('f', buddy['buddyProfileId']))
-            msg_d.append(('msg', status_msg))
+            msg_d = [
+                ('__cmd__', "bm"),
+                ('__cmd_val__', "100"),
+                ('f', buddy['buddyProfileId']),
+                ('msg', status_msg),
+            ]
             msg = gs_query.create_gamespy_message(msg_d)
 
             self.transport.write(bytes(msg))
@@ -522,11 +502,12 @@ class PlayerSession(LineReceiver):
         buddies = self.db.buddy_need_auth_message(self.profileid)
 
         for buddy in buddies:
-            msg_d = []
-            msg_d.append(('__cmd__', "bm"))
-            msg_d.append(('__cmd_val__', "1"))
-            msg_d.append(('f', buddy['userProfileId']))
-            msg_d.append(('msg', "I have authorized your request to add me to your list"))
+            msg_d = [
+                ('__cmd__', "bm"),
+                ('__cmd_val__', "1"),
+                ('f', buddy['userProfileId']),
+                ('msg', "I have authorized your request to add me to your list"),
+            ]
             msg = gs_query.create_gamespy_message(msg_d)
 
             self.transport.write(bytes(msg))
@@ -544,15 +525,15 @@ class PlayerSession(LineReceiver):
         msg = "\r\n\r\n"
         msg += "|signed|" + sig
 
-        if senttime == None:
-            senttime = int(time.time())
+        senttime = senttime or int(time.time())
 
-        msg_d = []
-        msg_d.append(('__cmd__', "bm"))
-        msg_d.append(('__cmd_val__', "2"))
-        msg_d.append(('f', profileid))
-        msg_d.append(('date', senttime))
-        msg_d.append(('msg', msg))
+        msg_d = [
+            ('__cmd__', "bm"),
+            ('__cmd_val__', "2"),
+            ('f', profileid),
+            ('date', senttime),
+            ('msg', msg),
+        ]
         msg = gs_query.create_gamespy_message(msg_d)
 
         session.transport.write(bytes(msg))
