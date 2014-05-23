@@ -15,11 +15,14 @@ logger_output_to_console = True
 logger_output_to_file = True
 logger_name = "GameSpyPlayerSearchServer"
 logger_filename = "gamespy_player_search_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+logger = utils.create_logger(
+    logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
 address = ("0.0.0.0", 29901)
 
+
 class GameSpyPlayerSearchServer(object):
+
     def __init__(self):
         pass
 
@@ -35,6 +38,7 @@ class GameSpyPlayerSearchServer(object):
 
 
 class PlayerSearchFactory(Factory):
+
     def __init__(self):
         logger.info("Now listening for player search connections on %s:%d...", address[0], address[1])
 
@@ -43,6 +47,7 @@ class PlayerSearchFactory(Factory):
 
 
 class PlayerSearch(LineReceiver):
+
     def __init__(self, address):
         self.setRawMode()
         self.db = gs_database.GamespyDatabase()
@@ -101,4 +106,3 @@ class PlayerSearch(LineReceiver):
 if __name__ == "__main__":
     gsps = GameSpyPlayerSearchServer()
     gsps.start()
-

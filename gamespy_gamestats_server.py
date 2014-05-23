@@ -17,11 +17,14 @@ logger_output_to_console = True
 logger_output_to_file = True
 logger_name = "GameSpyGamestatsServer"
 logger_filename = "gamespy_gamestats_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+logger = utils.create_logger(
+    logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
 address = ("0.0.0.0", 29920)
 
+
 class GameSpyGamestatsServer(object):
+
     def start(self):
         endpoint_search = serverFromString(reactor, "tcp:%d:interface=%s" % (address[1], address[0]))
         conn_search = endpoint_search.listen(GamestatsFactory())
@@ -43,14 +46,17 @@ class GamestatsFactory(Factory):
 
 
 class Gamestats(LineReceiver):
+
     def __init__(self, sessions, address):
-        self.setRawMode() # We're dealing with binary data so set to raw mode
+        self.setRawMode()  # We're dealing with binary data so set to raw mode
 
         self.db = gs_database.GamespyDatabase()
 
         self.sessions = sessions
         self.address = address
-        self.remaining_message = "" # Stores any unparsable/incomplete commands until the next rawDataReceived
+        # Stores any unparsable/incomplete commands until the next
+        # rawDataReceived
+        self.remaining_message = ""
 
         self.session = ""
         self.gameid = ""
@@ -58,9 +64,10 @@ class Gamestats(LineReceiver):
         self.lid = "0"
 
     def log(self, level, message, *args):
-        gameid = (" | %s"%self.gameid) if self.gameid else ""
-        sessid = (" | %s"%self.session) if self.gameid else ""
-        logger.log(level, "[%s:%d%s%s] %s", self.address.host, self.address.port, sessid, gameid, message % args)
+        gameid = (" | %s" % self.gameid) if self.gameid else ""
+        sessid = (" | %s" % self.session) if self.gameid else ""
+        logger.log(level, "[%s:%d%s%s] %s", self.address.host,
+                   self.address.port, sessid, gameid, message % args)
 
     def connectionMade(self):
         self.log(logging.INFO, "Received connection from %s:%d", self.address.host, self.address.port)
@@ -68,7 +75,8 @@ class Gamestats(LineReceiver):
         # Generate a random challenge string
         self.challenge = utils.generate_random_str(10, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-        # The first command sent to the client is always a login challenge containing the server challenge key.
+        # The first command sent to the client is always a login challenge
+        # containing the server challenge key.
         msg_d = [
             ('__cmd__', "lc"),
             ('__cmd_val__', "1"),
@@ -142,12 +150,13 @@ class Gamestats(LineReceiver):
 
         # Track what console is connecting and save it in the database during user creation just in case we can use
         # the information in the future.
-        console = 0 # 0 = NDS, 1 = Wii
+        console = 0  # 0 = NDS, 1 = Wii
 
         # get correct information
         userid = authtoken_parsed['userid']
 
-        # The Wii does not use passwd, so take another uniquely generated string as the password.
+        # The Wii does not use passwd, so take another uniquely generated
+        # string as the password.
         if "passwd" in authtoken_parsed:
             password = authtoken_parsed['passwd']
         else:
@@ -157,7 +166,7 @@ class Gamestats(LineReceiver):
         gsbrcd = authtoken_parsed['gsbrcd']
         gameid = gsbrcd[:4]
         uniquenick = utils.base32_encode(int(userid)) + gsbrcd
-        email = uniquenick + "@nds" # The Wii also seems to use @nds.
+        email = uniquenick + "@nds"  # The Wii also seems to use @nds.
 
         # Wii: Serial number
         csnum = ""
@@ -190,7 +199,8 @@ class Gamestats(LineReceiver):
                 self.log(logging.ERROR, "Invalid password")
 
         if profileid != None:
-            # Successfully logged in or created account, continue creating session.
+            # Successfully logged in or created account, continue creating
+            # session.
             sesskey = self.db.create_session(profileid)
 
             self.sessions[profileid] = self
@@ -289,9 +299,6 @@ class Gamestats(LineReceiver):
 
         self.log(logging.DEBUG, "SENDING: '%s'..." % msg)
 
-
-
-
     def perform_newgame(self, data_parsed):
         # No op
         return
@@ -317,4 +324,3 @@ class Gamestats(LineReceiver):
 if __name__ == "__main__":
     gsss = GameSpyGamestatsServer()
     gsss.start()
-

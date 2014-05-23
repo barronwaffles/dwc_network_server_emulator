@@ -18,10 +18,14 @@ logger_output_to_console = True
 logger_output_to_file = True
 logger_name = "GameSpyProfileServer"
 logger_filename = "gamespy_profile_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+logger = utils.create_logger(
+    logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
 address = ("0.0.0.0", 29900)
+
+
 class GameSpyProfileServer(object):
+
     def __init__(self):
         pass
 
@@ -35,24 +39,32 @@ class GameSpyProfileServer(object):
         except ReactorAlreadyRunning:
             pass
 
+
 class PlayerFactory(Factory):
+
     def __init__(self):
-        # Instead of storing the sessions in the database, it might make more sense to store them in the PlayerFactory.
-        logger.info("Now listening for connections on %s:%d...", address[0], address[1])
+        # Instead of storing the sessions in the database, it might make more
+        # sense to store them in the PlayerFactory.
+        logger.info(
+            "Now listening for connections on %s:%d...", address[0], address[1])
         self.sessions = {}
 
     def buildProtocol(self, address):
         return PlayerSession(self.sessions, address)
 
+
 class PlayerSession(LineReceiver):
+
     def __init__(self, sessions, address):
-        self.setRawMode() # We're dealing with binary data so set to raw mode
+        self.setRawMode()  # We're dealing with binary data so set to raw mode
 
         self.db = gs_database.GamespyDatabase()
 
         self.sessions = sessions
         self.address = address
-        self.remaining_message = "" # Stores any unparsable/incomplete commands until the next rawDataReceived
+        # Stores any unparsable/incomplete commands until the next
+        # rawDataReceived
+        self.remaining_message = ""
 
         self.profileid = 0
         self.gameid = ""
@@ -68,9 +80,10 @@ class PlayerSession(LineReceiver):
         self.sesskey = ""
 
     def log(self, level, message, *args):
-        profilepart = (" | "+self.profileid) if self.profileid else ""
-        gamepart = (" | "+self.gameid) if self.gameid else ""
-        logger.log(level, "[%s:%d%s%s] %s", self.address.host, self.address.port, profilepart, gamepart, message % args)
+        profilepart = (" | " + self.profileid) if self.profileid else ""
+        gamepart = (" | " + self.gameid) if self.gameid else ""
+        logger.log(level, "[%s:%d%s%s] %s", self.address.host,
+                   self.address.port, profilepart, gamepart, message % args)
 
     def get_ip_as_int(self, address):
         ipaddress = 0
@@ -92,7 +105,8 @@ class PlayerSession(LineReceiver):
         # Generate a random challenge string
         self.challenge = utils.generate_random_str(8, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-        # The first command sent to the client is always a login challenge containing the server challenge key.
+        # The first command sent to the client is always a login challenge
+        # containing the server challenge key.
         msg_d = [
             ('__cmd__', "lc"),
             ('__cmd_val__', "1"),
@@ -128,7 +142,7 @@ class PlayerSession(LineReceiver):
         commands, self.remaining_message = gs_query.parse_gamespy_message(data)
 
         cmdstrs = {
-            "login": self.perform_login,,
+            "login": self.perform_login,
             "logout": self.perform_logout,
             "getprofile": self.perform_getprofile,
             "updatepro": self.perform_updatepro,
@@ -153,12 +167,13 @@ class PlayerSession(LineReceiver):
 
         # Track what console is connecting and save it in the database during user creation just in case we can use
         # the information in the future.
-        console = 0 # 0 = NDS, 1 = Wii
+        console = 0  # 0 = NDS, 1 = Wii
 
         # get correct information
         userid = authtoken_parsed['userid']
 
-        # The Wii does not use passwd, so take another uniquely generated string as the password.
+        # The Wii does not use passwd, so take another uniquely generated
+        # string as the password.
         if "passwd" in authtoken_parsed:
             password = authtoken_parsed['passwd']
         else:
@@ -168,7 +183,7 @@ class PlayerSession(LineReceiver):
         gsbrcd = authtoken_parsed['gsbrcd']
         gameid = gsbrcd[:4]
         uniquenick = utils.base32_encode(int(userid)) + gsbrcd
-        email = uniquenick + "@nds" # The Wii also seems to use @nds.
+        email = uniquenick + "@nds"  # The Wii also seems to use @nds.
 
         # Wii: Serial number
         csnum = ""
@@ -222,7 +237,9 @@ class PlayerSession(LineReceiver):
                 ('userid', userid),
                 ('profileid', profileid),
                 ('uniquenick', uniquenick),
-                # Some kind of token... don't know it gets used or generated, but it doesn't seem to have any negative effects if it's not properly generated.
+                # Some kind of token... don't know it gets used or generated,
+                # but it doesn't seem to have any negative effects if it's not
+                # properly generated.
                 ('lt', gs_utils.base64_encode(utils.generate_random_str(16))),
                 ('id', data_parsed['id']),
             ]
@@ -248,7 +265,8 @@ class PlayerSession(LineReceiver):
             self.get_pending_messages()
 
             # Send any friend statuses when the user logs in.
-            # This will allow the user to see if their friends are hosting a game as soon as they log in.
+            # This will allow the user to see if their friends are hosting a
+            # game as soon as they log in.
             self.get_status_from_friends()
             self.send_status_to_friends()
 
@@ -286,7 +304,8 @@ class PlayerSession(LineReceiver):
         ]
 
         if profile['firstname'] != "":
-            msg_d.append(('firstname', profile['firstname'])) # Wii gets a firstname
+            # Wii gets a firstname
+            msg_d.append(('firstname', profile['firstname']))
 
         if profile['lastname'] != "":
             msg_d.append(('lastname', profile['lastname']))
@@ -316,7 +335,6 @@ class PlayerSession(LineReceiver):
         for f in data_parsed:
             self.db.update_profile(self.profileid, (f, data_parsed[f]))
 
-
     def perform_ka(self, data_parsed):
         self.keepalive = int(time.time())
 
@@ -327,10 +345,8 @@ class PlayerSession(LineReceiver):
         msg = gs_query.create_gamespy_message(msg_d)
         self.transport.write(msg)
 
-
     def perform_status(self, data_parsed):
         self.sesskey = data_parsed['sesskey']
-
 
         self.status = data_parsed['__cmd_val__']
         self.statstring = data_parsed['statstring']
@@ -353,9 +369,9 @@ class PlayerSession(LineReceiver):
 
         self.send_status_to_friends()
 
-
     def perform_bm(self, data_parsed):
-        if data_parsed['__cmd_val__'] in ("1", "5", "102", "103"): # Message to/from clients?
+        # Message to/from clients?
+        if data_parsed['__cmd_val__'] in ("1", "5", "102", "103"):
             if "t" in data_parsed:
                 # Send message to the profile id in "t"
                 dest_profileid = int(data_parsed['t'])
@@ -364,7 +380,8 @@ class PlayerSession(LineReceiver):
 
                 not_buddies = False
 
-                # Check if the user is buddies with the target user before sending message.
+                # Check if the user is buddies with the target user before
+                # sending message.
                 if not_buddies:
                     for buddy in self.buddies:
                         if buddy['userProfileId'] == dest_profileid:
@@ -377,7 +394,8 @@ class PlayerSession(LineReceiver):
                             not_buddies = True
                             break
 
-                # Send error to user if they tried to send a message to someone who isn't a buddy.
+                # Send error to user if they tried to send a message to someone
+                # who isn't a buddy.
                 if not_buddies:
                     msg_d = [
                         ('__cmd__', "error"),
@@ -520,7 +538,7 @@ class PlayerSession(LineReceiver):
         for buddy in buddies:
             self.send_buddy_request(self, buddy['userProfileId'], buddy['time'])
 
-    def send_buddy_request(self, session, profileid, senttime = None):
+    def send_buddy_request(self, session, profileid, senttime=None):
         sig = utils.generate_random_hex_str(32)
         msg = "\r\n\r\n"
         msg += "|signed|" + sig

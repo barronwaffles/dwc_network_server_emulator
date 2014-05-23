@@ -12,6 +12,7 @@ class GameSpyServerDatabase(BaseManager):
 
 GameSpyServerDatabase.register("get_server_list")
 
+
 class StatsPage(resource.Resource):
     isLeaf = True
 
@@ -21,6 +22,7 @@ class StatsPage(resource.Resource):
     def render_GET(self, request):
 
         output = ""
+
         def put(s):
             output += str(s)
 
@@ -38,15 +40,19 @@ class StatsPage(resource.Resource):
         with tag("html"):
             with tag("table", border="1"):
                 with tag("tr"):
-                    with tag("td"): put("Game ID")
-                    with tag("td"): put("# Players")
+                    with tag("td"):
+                        put("Game ID")
+                    with tag("td"):
+                        put("# Players")
                 if server_list != None:
                     for game in server_list:
                         if len(server_list[game]) == 0:
                             continue
                         with tag("tr"):
-                            with tag("td"): put(game)
-                            with tag("td") with tag("center"): put(len(server_list[game]))
+                            with tag("td"):
+                                put(game)
+                            with tag("td"), tag("center"):
+                                put(len(server_list[game]))
 
             put("<br>")
             with tag("i"): put("Last updated: %s" % (stats.get_last_update_time())
@@ -59,7 +65,8 @@ class InternalStatsServer(object):
         self.last_update = 0
         self.next_update = 0
         self.server_list = None
-        self.seconds_per_update = 60 # The number of seconds to wait before updating the server list
+        # The number of seconds to wait before updating the server list
+        self.seconds_per_update = 60
 
     def start(self):
         manager_address = ("127.0.0.1", 27500)

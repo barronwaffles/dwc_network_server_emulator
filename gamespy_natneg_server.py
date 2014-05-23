@@ -1,5 +1,6 @@
 # Server emulator for *.available.gs.nintendowifi.net and *.master.gs.nintendowifi.net
-# Query and Reporting: http://docs.poweredbygamespy.com/wiki/Query_and_Reporting_Overview
+# Query and Reporting:
+# http://docs.poweredbygamespy.com/wiki/Query_and_Reporting_Overview
 
 import logging
 import socket
@@ -14,7 +15,9 @@ logger_output_to_console = True
 logger_output_to_file = True
 logger_name = "GameSpyNatNegServer"
 logger_filename = "gamespy_natneg_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+logger = utils.create_logger(
+    logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+
 
 class GameSpyServerDatabase(BaseManager):
     pass

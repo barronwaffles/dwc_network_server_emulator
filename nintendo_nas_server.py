@@ -30,7 +30,6 @@ gamecodes_return_random_file = [
 address = ("127.0.0.1", 9000)
 
 
-
 def filter_list(data, attr1=None, attr2=None, attr3=None):
     if attr1 == None and attr2 == None and attr3 == None:
         # Nothing to filter, just return the input data
@@ -99,6 +98,7 @@ class NintendoNasHTTPServer(BaseHTTPServer.HTTPServer):
         self.db = gs_database.GamespyDatabase()
         BaseHTTPServer.HTTPServer.__init__(
             self, server_address, RequestHandlerClass)
+
 
 class NintendoNasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 

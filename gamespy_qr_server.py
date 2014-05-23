@@ -1,5 +1,6 @@
 # Server emulator for *.available.gs.nintendowifi.net and *.master.gs.nintendowifi.net
-# Query and Reporting: http://docs.poweredbygamespy.com/wiki/Query_and_Reporting_Overview
+# Query and Reporting:
+# http://docs.poweredbygamespy.com/wiki/Query_and_Reporting_Overview
 
 import logging
 import socket
@@ -20,17 +21,22 @@ logger_output_to_console = True
 logger_output_to_file = True
 logger_name = "GameSpyQRServer"
 logger_filename = "gamespy_qr_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+logger = utils.create_logger(
+    logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+
 
 class GameSpyServerDatabase(BaseManager):
     pass
 
+
 class GameSpyQRServer(object):
+
     class Session(object):
+
         def __init__(self, address):
             self.session = ""
             self.challenge = ""
-            self.secretkey = "" # Parse gslist.cfg later
+            self.secretkey = ""  # Parse gslist.cfg later
             self.sent_challenge = False
             self.address = address
             self.console = 0
@@ -39,12 +45,12 @@ class GameSpyQRServer(object):
             self.gamename = ""
             self.keepalive = -1
 
-
     def __init__(self):
         self.sessions = {}
 
         # Generate a dictionary "secret_key_list" containing the secret game keys associated with their game IDs.
-        # The dictionary key will be the game's ID, and the value will be the secret key.
+        # The dictionary key will be the game's ID, and the value will be the
+        # secret key.
         self.secret_key_list = gs_utils.generate_secret_keys("gslist.cfg")
         #self.log(logging.DEBUG, address, "Generated list of secret game keys...")
 
@@ -167,7 +173,8 @@ class GameSpyQRServer(object):
             # Use as reference.
 
             if recv_data[0] != '\x09':
-                # Don't add a session if the client is trying to check if the game is available or not
+                # Don't add a session if the client is trying to check if the
+                # game is available or not
                 session_id = struct.unpack("<I", recv_data[1:5])[0]
                 session_id_raw = recv_data[1:5]
                 if session_id not in self.sessions:
@@ -309,7 +316,8 @@ class GameSpyQRServer(object):
             for session_id in self.sessions:
                 now = int(time.time())
                 delta = now - self.sessions[session_id].keepalive
-                timeout = 60 # Remove clients that haven't responded in 60 seconds
+                # Remove clients that haven't responded in 60 seconds
+                timeout = 60
 
                 if delta < 0 or delta >= timeout:
                     pruned.append(session_id)

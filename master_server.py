@@ -32,7 +32,8 @@ if __name__ == "__main__":
     ]
 
     def start_server(server):
-        return lambda:server().start()
+        return lambda: server().start()
+
     def server_thread(server):
         return threading.Thread(target=start_server(server))
 

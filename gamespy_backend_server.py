@@ -16,7 +16,8 @@
 #
 # qr_server and server_browser both will act as clients to gs_server_database.
 # qr_server will send an add and/or delete to add or remove servers from the server list.
-# server_browser will send a request with the game name followed by optional search parameters to get a list of servers.
+# server_browser will send a request with the game name followed by
+# optional search parameters to get a list of servers.
 
 import logging
 import time
@@ -25,6 +26,7 @@ import ast
 from multiprocessing.managers import BaseManager
 from multiprocessing import freeze_support
 import other.utils as utils
+
 
 class TokenType:
     UNKNOWN = 0
@@ -38,7 +40,9 @@ logger_output_to_console = True
 logger_output_to_file = True
 logger_name = "GamespyBackendServer"
 logger_filename = "gamespy_backend_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+logger = utils.create_logger(
+    logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+
 
 def get_token(filters):
     # Complex example from Dungeon Explorer: Warriors of Ancient Arts
@@ -93,23 +97,24 @@ def get_token(filters):
             # String literal
             token_type = TokenType.STRING
 
-            i += 1 # Skip quotation mark
+            i += 1  # Skip quotation mark
             while i < len(filters) and filters[i] != "'":
                 i += 1
 
             if i < len(filters) and filters[i] == "'":
-                i += 1 # Skip quotation mark
+                i += 1  # Skip quotation mark
 
         elif filters[i] == "\"":
-            # I don't know if it's in the spec or not, but I added "" string literals as well just in case.
+            # I don't know if it's in the spec or not, but I added "" string
+            # literals as well just in case.
             token_type = TokenType.STRING
 
-            i += 1 # Skip quotation mark
+            i += 1  # Skip quotation mark
             while i < len(filters) and filters[i] != "\"":
                 i += 1
 
             if i < len(filters) and filters[i] == "\"":
-                i += 1 # Skip quotation mark
+                i += 1  # Skip quotation mark
 
         elif i + 1 < len(filters) and filters[i] == '-' and filters[i + 1].isdigit():
             # Negative number
@@ -133,6 +138,7 @@ def get_token(filters):
 
     return token, i, token_type
 
+
 def translate_expression(filters):
     output = []
     variables = []
@@ -142,7 +148,8 @@ def translate_expression(filters):
         filters = filters[i:]
 
         if token_type == TokenType.TOKEN:
-            # Python uses == instead of = for comparisons, so replace it with the proper token for compilation.
+            # Python uses == instead of = for comparisons, so replace it with
+            # the proper token for compilation.
             if token == "=":
                 token = "=="
 
@@ -154,6 +161,7 @@ def translate_expression(filters):
 
     return output, variables
 
+
 def validate_ast(node, num_literal_only):
     # This function tries to verify that the expression is a valid expression before it gets evaluated.
     # Anything besides the whitelisted things below are strictly forbidden:
@@ -164,7 +172,7 @@ def validate_ast(node, num_literal_only):
     #
     # Anything such as variables or arrays or function calls are NOT VALID.
     # Never run the expression received from the client before running this function on the expression first.
-    #print type(node)
+    # print type(node)
 
     # Only allow literals, comparisons, and math operations
     valid_node = False
@@ -241,10 +249,9 @@ class GameSpyBackendServer(object):
 
         logger.info("Started server on %s:%d..." % (address[0], address[1]))
 
-        manager = GameSpyServerDatabase(address = address, authkey = password)
+        manager = GameSpyServerDatabase(address=address, authkey=password)
         server = manager.get_server()
         server.serve_forever()
-
 
     def find_servers(self, gameid, filters, fields, max_count):
         matched_servers = []
@@ -316,7 +323,8 @@ class GameSpyBackendServer(object):
                 result['localip' + str(i)] = server['localip' + str(i)]
                 i += 1
 
-            allkeys = ('localport', 'localport', 'natneg', 'publicip', 'publicport', '__session__', '__console__')
+            allkeys = ('localport', 'localport', 'natneg',
+                       'publicip', 'publicport', '__session__', '__console__')
             for key in allkeys:
                 if key in server:
                     result[key] = server[key]
@@ -362,7 +370,7 @@ class GameSpyBackendServer(object):
         count -= len(self.server_list[gameid])
         logger.debug("Deleted %d %s servers where session = %d" % (count, gameid, session))
 
-    def find_server_by_address(self, ip, port, gameid = None):
+    def find_server_by_address(self, ip, port, gameid=None):
         if gameid == None:
             # Search all servers
             for gid in self.server_list:
@@ -374,7 +382,7 @@ class GameSpyBackendServer(object):
                 if server['publicip'] == ip and server['publicport'] == str(port):
                     return server
 
-    def find_server_by_local_address(self, publicip, localaddr, gameid = None):
+    def find_server_by_local_address(self, publicip, localaddr, gameid=None):
         localip = localaddr[0]
         localport = localaddr[1]
         localip_int_le = localaddr[2]
@@ -403,7 +411,7 @@ class GameSpyBackendServer(object):
                 logger.debug("publicip 3: %s == %s ? %d", server['publicip'], publicip, server['publicip'] == publicip)
                 if server['publicip'] == publicip and (server['localport'] == str(localport) or server['publicport'] == str(localport)):
                     for x in range(10):
-                        if server.get('localip%d'%x, None) == localip:
+                        if server.get('localip%d' % x, None) == localip:
                             return server
 
     def add_natneg_server(self, cookie, server):

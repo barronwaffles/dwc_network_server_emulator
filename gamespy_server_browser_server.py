@@ -17,6 +17,7 @@ import other.utils as utils
 
 from multiprocessing.managers import BaseManager
 
+
 class ServerListFlags:
     UNSOLICITED_UDP_FLAG = 1
     PRIVATE_IP_FLAG = 2
@@ -32,7 +33,9 @@ logger_output_to_console = True
 logger_output_to_file = True
 logger_name = "GameSpyServerBrowserServer"
 logger_filename = "gamespy_server_browser_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+logger = utils.create_logger(
+    logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+
 
 class GameSpyServerDatabase(BaseManager):
     pass
@@ -46,8 +49,11 @@ GameSpyServerDatabase.register("get_natneg_server")
 GameSpyServerDatabase.register("delete_natneg_server")
 
 address = ("0.0.0.0", 28910)
+
+
 class GameSpyServerBrowserServer(object):
-    def __init__(self, qr = None):
+
+    def __init__(self, qr=None):
         self.qr = qr
 
     def start(self):
@@ -351,8 +357,9 @@ class Session(LineReceiver):
             #     self.server_cache[str(server['publicip']) + str(server['publicport'])] = server
 
     def find_server_in_cache(self, addr, port, console):
-        getint = [utils.get_int, utiils.get_int_be][console != 0] # Use BE for Wii
-        ip = str(ctypes.c_int32(getint(bytearray([int(x) for x in addr.split('.')]), 0)).value) # Wii
+        # Use BE for Wii
+        getint = [utils.get_int, utiils.get_int_be][console != 0]
+        ip = str(ctypes.c_int32(getint(bytearray([int(x) for x in addr.split('.')]), 0)).value)
 
         self.log(logging.DEBUG, "IP: %s, Console: %d", ip, console)
 
@@ -391,7 +398,9 @@ class Session(LineReceiver):
         self.log(logging.DEBUG, "%s %s", ip, server['publicip'])
         if server['publicip'] == ip and server['publicport'] == str(self.forward_client[1]):
             # Send command to server to get it to connect to natneg
-            cookie = int(utils.generate_random_hex_str(8), 16) # Quick and lazy way to get a random 32bit integer. Replace with something else later
+            # Quick and lazy way to get a random 32bit integer. Replace with
+            # something else later
+            cookie = int(utils.generate_random_hex_str(8), 16)
 
             if len(data) == 10 and bytearray(data)[0:6] == bytearray([0xfd, 0xfc, 0x1e, 0x66, 0x6a, 0xb2]):
                 natneg_session = utils.get_int(data,6)
