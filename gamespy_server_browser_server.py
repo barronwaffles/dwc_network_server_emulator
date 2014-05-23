@@ -320,7 +320,7 @@ class Session(LineReceiver):
 
     def find_server(self, query_game, filter, fields, max_servers, game_name, challenge):
         # Get dictionary from master server list server.
-        self.log(logging.DEBUG, "Searching for server matching '%s' with the fields '%s'" % (filter, fields))
+        self.log(logging.DEBUG, "Searching for server matching '%s' with the fields '%s'", filter, fields)
 
         self.server_list = self.server_manager.find_servers(query_game, filter, fields, max_servers)._getvalue()
 
@@ -351,7 +351,7 @@ class Session(LineReceiver):
 
             # Send to client
             self.transport.write(bytes(data))
-            self.log(logging.DEBUG, "Sent server list message to %s:%s..." % (self.address.host, self.address.port))
+            self.log(logging.DEBUG, "Sent server list message to %s:%s...", self.address.host, self.address.port)
 
             # if "publicip" in server and "publicport" in server:
             #     self.server_cache[str(server['publicip']) + str(server['publicport'])] = server
@@ -366,7 +366,7 @@ class Session(LineReceiver):
         # Get server based on ip/port
         # server = None
         # self.log(logging.DEBUG, self.server_cache)
-        # self.log(logging.DEBUG, "Searching for: %s %s" % (ip + str(port), addr))
+        # self.log(logging.DEBUG, "Searching for: %s %s", ip + str(port), addr)
         # if (str(ip) + str(port)) in self.server_cache:
         #     server = self.server_cache[ip + str(port)]
         #     #self.server_cache.pop((publicip + str(self.forward_client[1])))
@@ -410,7 +410,7 @@ class Session(LineReceiver):
                 # if self.qr != None:
                 #     own_server = self.qr.get_own_server()
                 #
-                #     self.log(logging.DEBUG, "Adding %d to natneg server list: %s" % (natneg_session, own_server))
+                #     self.log(logging.DEBUG, "Adding %d to natneg server list: %s", natneg_session, own_server)
                 #     self.server_manager.add_natneg_server(natneg_session, own_server) # Store info in backend so we can get it later in natneg
 
             output = bytearray([0xfe, 0xfd, 0x06])

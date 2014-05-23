@@ -297,7 +297,7 @@ class Gamestats(LineReceiver):
         ]
         msg = gs_query.create_gamespy_message(msg_d)
 
-        self.log(logging.DEBUG, "SENDING: '%s'..." % msg)
+        self.log(logging.DEBUG, "SENDING: '%s'...", msg)
 
     def perform_newgame(self, data_parsed):
         # No op

@@ -220,7 +220,7 @@ class GameSpyQRServer(object):
                 # It may be safe to ignore "unknown" keys because the proper key names get filled in later...
                 k = {}
                 for i in range(0, len(d), 2):
-                    #self.log(logging.DEBUG, address, "%s = %s" % (d[i], d[i+1]))
+                    #self.log(logging.DEBUG, address, "%s = %s", d[i], d[i+1])
                     k[d[i]] = d[i+1]
 
                 if "gamename" in k:
@@ -310,7 +310,7 @@ class GameSpyQRServer(object):
 
     def keepalive_check(self):
         while 1:
-            #self.log(logging.DEBUG, None, "Keep alive check on %d sessions" % (len(self.sessions)))
+            #self.log(logging.DEBUG, None, "Keep alive check on %d sessions", len(self.sessions))
 
             pruned = []
             for session_id in self.sessions:
