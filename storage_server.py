@@ -30,9 +30,20 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
         
         if not self.table_exists('typedata'):
             cursor.execute('CREATE TABLE typedata (tbl TEXT, col TEXT, type TEXT)')
+            
+        if not self.table_exists('g2050_box_us_eu'):
+            cursor.execute('CREATE TABLE g2050_box_us_eu (recordid INT, ownerid INT, m_enable INT, m_type INT, m_index INT, m_file_id INT, m_header TEXT, m_file_id___size INT, m_file_id___create_time DATETIME, m_file_id___downloads INT)')
+            cursor.execute('INSERT INTO typedata VALUES ("g2050_box_us_eu", "recordid", "intValue"), ("g2050_box_us_eu", "ownerid", "intValue"), ("g2050_box_us_eu", "m_enable", "booleanValue"), ("g2050_box_us_eu", "m_type", "intValue"), ("g2050_box_us_eu", "m_index", "intValue"), ("g2050_box_us_eu", "m_file_id", "intValue"), ("g2050_box_us_eu", "m_header", "binaryDataValue"), ("g2050_box_us_eu", "m_file_id___size", "intValue"), ("g2050_box_us_eu", "m_file_id___create_time", "dateAndTimeValue"), ("g2050_box_us_eu", "m_file_id___downloads", "intValue")')
+        
         if not self.table_exists('g2649_bbdx_player'):
             cursor.execute('CREATE TABLE g2649_bbdx_player (recordid INT, stat INT)')
             cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_player", "recordid", "intValue"), ("g2649_bbdx_player", "stat", "intValue")')
+        if not self.table_exists('g2649_bbdx_info'):
+            cursor.execute('CREATE TABLE g2649_bbdx_info (serialid INT, stat INT, message TEXT)')
+            cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_info", "serialid", "intValue"), ("g2649_bbdx_info", "stat", "intValue"), ("g2649_bbdx_info", "message", "unicodeStringValue")')
+        if not self.table_exists('g2649_bbdx_search'):
+            cursor.execute('CREATE TABLE g2649_bbdx_search (song_name TEXT, creator_name TEXT, average_rating REAL, serialid INT, recordid INT, filestore INT, is_lyric INT, num_ratings INT)')
+            cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_search", "song_name", "asciiStringValue"), ("g2649_bbdx_search", "creator_name", "asciiStringValue"), ("g2649_bbdx_search", "average_rating", "floatValue"), ("g2649_bbdx_search", "serialid", "intValue"), ("g2649_bbdx_search", "recordid", "intValue"), ("g2649_bbdx_search", "filestore", "intValue"), ("g2649_bbdx_search", "is_lyric", "booleanValue"), ("g2649_bbdx_search", "num_ratings", "intValue")')
         
         # load column info into memory, unfortunately there's no simple way
         # to check for column-existence so get that data in advance
@@ -61,8 +72,23 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             return cursor.fetchone()[0]
         except TypeError:
             return 'UNKNOWN'
+
+class IllegalColumnAccessException(Exception):
+    pass
     
 class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    def confirm_columns(self, columndata, table):
+        '''Check if the columns the user wants to access actually exist, which should prevent SQL Injection'''
+        columns = []
+        
+        for c in columndata:
+            colname = c.firstChild.data.replace('.', '___') # fake the attributes that the actual sake databases have
+            if not colname in self.server.tables[table]:
+                raise IllegalColumnAccessException("Unknown column access '%s' in table '%s'" % (colname, table))
+            columns.append(colname)
+        
+        return columns
+
     def do_POST(self):
         # Alright, in case anyone is wondering: Yes, I am faking a SOAP service
         # instead of using an actual one. That's because I've tried to do this
@@ -91,16 +117,15 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.log(logging.WARNING, "Unknown table access '%s' in %s by %s", table, shortaction, self.client_address)
                 return
             
-            if action == '"http://gamespy.net/sake/SearchForRecords"':
+            # TODO: Actually make GetMyRecords only return *my* records
+            if action == '"http://gamespy.net/sake/SearchForRecords"' or action == '"http://gamespy.net/sake/GetMyRecords"':
                 columndata = data.getElementsByTagName('ns1:fields')[0].getElementsByTagName('ns1:string')
-                columns = []
-                
-                for c in columndata:
-                    if not c.firstChild.data in self.server.tables[table]:
-                        logger.log(logging.WARNING, "Unknown column access '%s' in table '%s' in %s by %s", c.firstChild.data, table, shortaction, self.client_address)
-                        return
-                    columns.append(c.firstChild.data)
-                
+                try:
+                    columns = self.confirm_columns(columndata, table)
+                except IllegalColumnAccessException as e:
+                    logger.log(logging.WARNING, "IllegalColumnAccess: %s in %s by %s", e.message, shortaction, self.client_address)
+                    return
+                    
                 ret += '<SearchForRecordsResponse xmlns="http://gamespy.net/sake">'
                 ret += '<SearchForRecordsResult>Success</SearchForRecordsResult>'
 
@@ -157,7 +182,9 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             logger.log(logging.DEBUG, "%s response to %s", action, self.client_address)
             logger.log(logging.DEBUG, ret)
             self.wfile.write(ret)
-            
+        
+        else:
+            logger.log(logging.INFO, "Got request %s from %s", self.path, self.client_address)
 
 if __name__ == "__main__":
     storage_server = StorageServer()
