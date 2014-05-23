@@ -74,7 +74,7 @@ class GameSpyQRServer(object):
 
         # Dependencies! I don't really like this solution but it's easier than trying to manage it another way.
         server_browser_server = GameSpyServerBrowserServer(self)
-        server_browser_server_thread = threading.Thread(target=server_browser_server.start())
+        server_browser_server_thread = threading.Thread(target=server_browser_server.start)
         server_browser_server_thread.start()
 
         threading.Timer(1, self.keepalive_check).start()
