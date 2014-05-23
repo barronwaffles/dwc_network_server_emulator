@@ -53,11 +53,8 @@ class GameSpyQRServer(object):
         GameSpyServerDatabase.register("update_server_list")
         GameSpyServerDatabase.register("delete_server")
 
-    def log(self, level, address, message):
-        if address == None:
-            logger.log(level, "%s", message)
-        else:
-            logger.log(level, "[%s:%d] %s", address[0], address[1], message)
+    def log(self, level, address, message, *args):
+        logger.log(level, "%s%s", ("[%s:%d ]"%(address[0], address[1])) if address else "", message, *args)
 
     def start(self):
         manager_address = ("127.0.0.1", 27500)
@@ -72,7 +69,7 @@ class GameSpyQRServer(object):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(address)
 
-        logger.info("Server is now listening on %s:%s..." % (address[0], address[1]))
+        logger.info("Server is now listening on %s:%s...", address[0], address[1])
 
         # Dependencies! I don't really like this solution but it's easier than trying to manage it another way.
         server_browser_server = GameSpyServerBrowserServer(self)
@@ -181,10 +178,10 @@ class GameSpyQRServer(object):
 
             # Handle commands
             if recv_data[0] == '\x00': # Query
-                self.log(logging.DEBUG, address, "NOT IMPLEMENTED! Received query from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
+                self.log(logging.DEBUG, address, "NOT IMPLEMENTED! Received query from %s:%s... %s", address[0], address[1], recv_data[5:])
 
             elif recv_data[0] == '\x01': # Challenge
-                self.log(logging.DEBUG, address, "Received challenge from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
+                self.log(logging.DEBUG, address, "Received challenge from %s:%s... %s", address[0], address[1], recv_data[5:])
 
                 # Prepare the challenge sent from the server to be compared
                 challenge = gs_utils.prepare_rc4_base64(self.sessions[session_id].secretkey, self.sessions[session_id].challenge)
@@ -198,17 +195,17 @@ class GameSpyQRServer(object):
                     packet = bytearray([0xfe, 0xfd, 0x0a]) # Send client registered command
                     packet.extend(session_id_raw) # Get the session ID
                     self.socket.sendto(packet, address)
-                    self.log(logging.DEBUG, address, "Sent client registered to %s:%s..." % (address[0], address[1]))
+                    self.log(logging.DEBUG, address, "Sent client registered to %s:%s...", address[0], address[1])
                 else:
                     # Failed the challenge, request another during the next heartbeat
                     self.sessions[session_id].sent_challenge = False
 
             elif recv_data[0] == '\x02': # Echo
-                self.log(logging.DEBUG, address, "NOT IMPLEMENTED! Received echo from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
+                self.log(logging.DEBUG, address, "NOT IMPLEMENTED! Received echo from %s:%s... %s", address[0], address[1], recv_data[5:])
 
             elif recv_data[0] == '\x03': # Heartbeat
                 data = recv_data[5:]
-                self.log(logging.DEBUG, address, "Received heartbeat from %s:%s... %s" % (address[0], address[1], data))
+                self.log(logging.DEBUG, address, "Received heartbeat from %s:%s... %s", address[0], address[1], data)
 
                 # Parse information from heartbeat here
                 d = data.rstrip('\0').split('\0')
@@ -235,7 +232,7 @@ class GameSpyQRServer(object):
 
 
                 if self.sessions[session_id].sent_challenge == False:
-                    addr_hex =  ''.join(["%02X" % int(x) for x in address[0].split('.')])
+                    addr_hex =  ''.join("%02X" % int(x) for x in address[0].split('.'))
                     port_hex = "%04X" % int(address[1])
                     server_challenge = utils.generate_random_str(8) + addr_hex + port_hex
 
@@ -247,15 +244,13 @@ class GameSpyQRServer(object):
                     packet.extend('\x00')
 
                     self.socket.sendto(packet, address)
-                    self.log(logging.DEBUG, address, "Sent challenge to %s:%s..." % (address[0], address[1]))
+                    self.log(logging.DEBUG, address, "Sent challenge to %s:%s...", address[0], address[1])
 
                     self.sessions[session_id].sent_challenge = True
 
                 if 'publicip' in k and k['publicip'] == "0": #and k['dwc_hoststate'] == "2": # When dwc_hoststate == 2 then it doesn't send an IP, so calculate it ourselves
-                    if self.sessions[session_id].console != 0:
-                        k['publicip'] = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in address[0].split('.')]), 0)).value) # Wii
-                    else:
-                        k['publicip'] = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in address[0].split('.')]), 0)).value) # DS
+                    getint = [utils.get_int, utils.get_int_be][self.sessions[session_id].console != 0] # Use BE for Wii
+                    k['publicip'] = str(ctypes.c_int32(getint(bytearray([int(x) for x in address[0].split('.')]), 0)).value)
 
                 if "statechanged" in k:
                     if k['statechanged'] == "1": # Create server
@@ -273,39 +268,37 @@ class GameSpyQRServer(object):
                             self.sessions[session_id].gamename = k['gamename']
                     elif k['statechanged'] == "2": # Close server
                         self.server_manager.delete_server(k['gamename'] , session_id)
-
-                        if session_id in self.sessions:
-                            self.sessions.pop(session_id)
+                        self.sessions.pop(session_id, None)
 
 
             elif recv_data[0] == '\x04': # Add Error
-                self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received add error from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
+                self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received add error from %s:%s... %s", address[0], address[1], recv_data[5:])
 
             elif recv_data[0] == '\x05': # Echo Response
-                self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received echo response from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
+                self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received echo response from %s:%s... %s", address[0], address[1], recv_data[5:])
 
             elif recv_data[0] == '\x06': # Client Message
-                self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received echo from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
+                self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received echo from %s:%s... %s", address[0], address[1], recv_data[5:])
 
             elif recv_data[0] == '\x07': # Client Message Ack
-                #self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received client message ack from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
-                self.log(logging.DEBUG, address, "Received client message ack from %s:%s..." % (address[0], address[1]))
+                #self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received client message ack from %s:%s... %s", address[0], address[1], recv_data[5:])
+                self.log(logging.DEBUG, address, "Received client message ack from %s:%s...", address[0], address[1])
 
             elif recv_data[0] == '\x08': # Keep Alive
-                self.log(logging.DEBUG, address, "Received keep alive from %s:%s..." % (address[0], address[1]))
+                self.log(logging.DEBUG, address, "Received keep alive from %s:%s...", address[0], address[1])
                 self.sessions[session_id].keepalive = int(time.time())
 
             elif recv_data[0] == '\x09': # Available
                 # Availability check only sent to *.available.gs.nintendowifi.net
-                self.log(logging.DEBUG, address, "Received availability request for '%s' from %s:%s..." % (recv_data[5: -1], address[0], address[1]))
+                self.log(logging.DEBUG, address, "Received availability request for '%s' from %s:%s...", recv_data[5: -1], address[0], address[1])
                 self.socket.sendto(bytearray([0xfe, 0xfd, 0x09, 0x00, 0x00, 0x00, 0x00]), address)
 
             elif recv_data[0] == '\x0a': # Client Registered
                 # Only sent to client, never received?
-                self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received client registered from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
+                self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received client registered from %s:%s... %s", address[0], address[1], recv_data[5:])
 
             else:
-                self.log(logging.ERROR, address, "Unknown request from %s:%s:" % (address[0], address[1]))
+                self.log(logging.ERROR, address, "Unknown request from %s:%s:", address[0], address[1])
                 self.log(logging.DEBUG, address, utils.pretty_print_hex(recv_data))
 
     def keepalive_check(self):
@@ -321,7 +314,7 @@ class GameSpyQRServer(object):
                 if delta < 0 or delta >= timeout:
                     pruned.append(session_id)
                     self.server_manager.delete_server(self.sessions[session_id].gamename, self.sessions[session_id].session)
-                    self.log(logging.DEBUG, None, "Keep alive check removed %s:%s for game %s" % (self.sessions[session_id].address[0], self.sessions[session_id].address[1], self.sessions[session_id].gamename))
+                    self.log(logging.DEBUG, None, "Keep alive check removed %s:%s for game %s", self.sessions[session_id].address[0], self.sessions[session_id].address[1], self.sessions[session_id].gamename)
 
             for session_id in pruned:
                 del self.sessions[session_id]
