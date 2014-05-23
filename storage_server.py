@@ -35,18 +35,18 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             cursor.execute('CREATE TABLE typedata (tbl TEXT, col TEXT, type TEXT)')
             
         if not self.table_exists('g2050_box_us_eu'):
-            cursor.execute('CREATE TABLE g2050_box_us_eu (recordid INT, ownerid INT, m_enable INT, m_type INT, m_index INT, m_file_id INT, m_header TEXT, m_file_id___size INT, m_file_id___create_time DATETIME, m_file_id___downloads INT)')
+            cursor.execute('CREATE TABLE g2050_box_us_eu (recordid INT PRIMARY KEY AUTOINCREMENT, ownerid INT, m_enable INT, m_type INT, m_index INT, m_file_id INT, m_header TEXT, m_file_id___size INT, m_file_id___create_time DATETIME, m_file_id___downloads INT)')
             cursor.execute('INSERT INTO typedata VALUES ("g2050_box_us_eu", "recordid", "intValue"), ("g2050_box_us_eu", "ownerid", "intValue"), ("g2050_box_us_eu", "m_enable", "booleanValue"), ("g2050_box_us_eu", "m_type", "intValue"), ("g2050_box_us_eu", "m_index", "intValue"), ("g2050_box_us_eu", "m_file_id", "intValue"), ("g2050_box_us_eu", "m_header", "binaryDataValue"), ("g2050_box_us_eu", "m_file_id___size", "intValue"), ("g2050_box_us_eu", "m_file_id___create_time", "dateAndTimeValue"), ("g2050_box_us_eu", "m_file_id___downloads", "intValue")')
         
         if not self.table_exists('g2649_bbdx_player'):
-            cursor.execute('CREATE TABLE g2649_bbdx_player (recordid INT, stat INT)')
+            cursor.execute('CREATE TABLE g2649_bbdx_player (recordid INT PRIMARY KEY AUTOINCREMENT, stat INT)')
             cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_player", "recordid", "intValue"), ("g2649_bbdx_player", "stat", "intValue")')
         if not self.table_exists('g2649_bbdx_info'):
             cursor.execute('CREATE TABLE g2649_bbdx_info (serialid INT, stat INT, message TEXT)')
             cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_info", "serialid", "intValue"), ("g2649_bbdx_info", "stat", "intValue"), ("g2649_bbdx_info", "message", "unicodeStringValue")')
         if not self.table_exists('g2649_bbdx_search'):
-            cursor.execute('CREATE TABLE g2649_bbdx_search (song_name TEXT, creator_name TEXT, average_rating REAL, serialid INT, recordid INT, filestore INT, is_lyric INT, num_ratings INT)')
-            cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_search", "song_name", "asciiStringValue"), ("g2649_bbdx_search", "creator_name", "asciiStringValue"), ("g2649_bbdx_search", "average_rating", "floatValue"), ("g2649_bbdx_search", "serialid", "intValue"), ("g2649_bbdx_search", "recordid", "intValue"), ("g2649_bbdx_search", "filestore", "intValue"), ("g2649_bbdx_search", "is_lyric", "booleanValue"), ("g2649_bbdx_search", "num_ratings", "intValue")')
+            cursor.execute('CREATE TABLE g2649_bbdx_search (recordid INT PRIMARY KEY AUTOINCREMENT, song_name TEXT, creator_name TEXT, average_rating REAL, serialid INT, filestore INT, is_lyric INT, num_ratings INT)')
+            cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_search", "recordid", "intValue"), ("g2649_bbdx_search", "song_name", "asciiStringValue"), ("g2649_bbdx_search", "creator_name", "asciiStringValue"), ("g2649_bbdx_search", "average_rating", "floatValue"), ("g2649_bbdx_search", "serialid", "intValue"), ("g2649_bbdx_search", "filestore", "intValue"), ("g2649_bbdx_search", "is_lyric", "booleanValue"), ("g2649_bbdx_search", "num_ratings", "intValue")')
         
         # load column info into memory, unfortunately there's no simple way
         # to check for column-existence so get that data in advance
@@ -125,6 +125,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             ret += '<' + shortaction + 'Result>Success</' + shortaction + 'Result>'
             
             # TODO: Actually make GetMyRecords only return *my* records
+            # ownerid == profileid, ask profile server via login ticket
             if shortaction == 'SearchForRecords' or shortaction == 'GetMyRecords' or shortaction == 'GetSpecificRecords':
                 columndata = data.getElementsByTagName('ns1:fields')[0].getElementsByTagName('ns1:string')
                 try:
@@ -188,8 +189,9 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 
                 ret += '<count>' + str(count) + '</count>'                
             
-            elif shortaction == 'UpdateRecord':
-                recordid = int(data.getElementsByTagName('ns1:recordid')[0].firstChild.data)
+            elif shortaction == 'UpdateRecord' or shortaction == 'CreateRecord':
+                if shortaction == 'UpdateRecord':
+                    recordid = int(data.getElementsByTagName('ns1:recordid')[0].firstChild.data)
                 
                 columndata = []
                 values = data.getElementsByTagName('ns1:values')[0]
@@ -214,16 +216,34 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     else:
                         rowdata.append( value )
                     
-                statement = 'UPDATE ' + table + ' SET '
-                
-                statement += columns[0] + ' = ?'
-                for c in columns[1:]:
-                    statement += ', ' + c + ' = ?'
-                statement += ' WHERE recordid = ?'
-                rowdata.append( recordid )
+                if shortaction == 'UpdateRecord':
+                    statement = 'UPDATE ' + table + ' SET '
+                    
+                    statement += columns[0] + ' = ?'
+                    for c in columns[1:]:
+                        statement += ', ' + c + ' = ?'
+                    statement += ' WHERE recordid = ?'
+                    rowdata.append( recordid )
+                elif shortaction == 'CreateRecord':
+                    statement = 'INSERT INTO ' + table + ' ('
+                    
+                    statement += columns[0]
+                    for c in columns[1:]:
+                        statement += ', ' + c
+                    statement += ') VALUES (?'
+                    for i in xrange(len(columns)-1):
+                        statement += ', ?'
+                    statement += ')'
+                else:
+                    logger.log(logging.ERROR, 'Illegal Action %s in database insert/update path!', shortaction)
+                    return
                 
                 cursor = self.server.db.cursor()
                 cursor.execute(statement, tuple(rowdata))
+                
+                if shortaction == 'CreateRecord':
+                    ret += '<recordid>' + str(cursor.lastrowid) + '</recordid>'
+                
                 self.server.db.commit()
             
             ret += '</' + shortaction + 'Response>'
