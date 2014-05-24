@@ -307,7 +307,39 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.wfile.write('')
 
         else:
-            logger.log(logging.INFO, "[NOT IMPLEMENTED] Got request %s from %s", self.path, self.client_address)
+            logger.log(logging.INFO, "[NOT IMPLEMENTED] Got POST request %s from %s", self.path, self.client_address)
+
+    def do_GET(self):
+        if self.path.startswith("/SakeFileServer/download.aspx?"):
+            params = urlparse.parse_qs(self.path[self.path.find('?')+1:])
+
+            fileid = int(params['fileid'][0])
+            gameid = int(params['gameid'][0])
+            playerid = int(params['pid'][0])
+
+            logger.log(logging.DEBUG, "SakeFileServer Download Request in game %s, user %s, file %s", gameid, playerid, fileid)
+
+            filename = 'usercontent/' + str(gameid) + '/' + str(playerid) + '/' + str(fileid)
+            if not os.path.exists(filename):
+                logger.log(logging.WARNING, "User is trying to access non-existing file!")
+                return
+
+            file = open(filename, 'rb')
+            ret = file.read()
+            file.close()
+            
+            self.send_response(200)
+            self.send_header('Sake-File-Result', '0')
+            self.send_header('Cache-Control', 'private')
+            self.send_header('Content-Type', 'text/html')
+            self.send_header('Content-Length', len(ret))
+            self.end_headers()
+            
+            self.wfile.write(ret)
+
+        else:
+            logger.log(logging.INFO, "[NOT IMPLEMENTED] Got GET request %s from %s", self.path, self.client_address)
+
 
 if __name__ == "__main__":
     storage_server = StorageServer()
