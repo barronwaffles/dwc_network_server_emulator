@@ -6,6 +6,7 @@ import sqlite3
 import xml.dom.minidom as minidom
 
 import other.utils as utils
+import gamespy.gs_database as gs_database
 
 logger_output_to_console = True
 logger_output_to_file = True
@@ -26,6 +27,8 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
     def __init__(self, server_address, RequestHandlerClass):
         BaseHTTPServer.HTTPServer.__init__(self, server_address, RequestHandlerClass)
         
+        self.gamespydb = gs_database.GamespyDatabase()
+        
         self.db = sqlite3.connect('storage.db')
         self.tables = {}
         
@@ -35,17 +38,19 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             cursor.execute('CREATE TABLE typedata (tbl TEXT, col TEXT, type TEXT)')
             
         if not self.table_exists('g2050_box_us_eu'):
-            cursor.execute('CREATE TABLE g2050_box_us_eu (recordid INT PRIMARY KEY AUTOINCREMENT, ownerid INT, m_enable INT, m_type INT, m_index INT, m_file_id INT, m_header TEXT, m_file_id___size INT, m_file_id___create_time DATETIME, m_file_id___downloads INT)')
+            cursor.execute('CREATE TABLE g2050_box_us_eu (recordid INTEGER PRIMARY KEY AUTOINCREMENT, ownerid INT, m_enable INT, m_type INT, m_index INT, m_file_id INT, m_header TEXT, m_file_id___size INT, m_file_id___create_time DATETIME, m_file_id___downloads INT)')
             cursor.execute('INSERT INTO typedata VALUES ("g2050_box_us_eu", "recordid", "intValue"), ("g2050_box_us_eu", "ownerid", "intValue"), ("g2050_box_us_eu", "m_enable", "booleanValue"), ("g2050_box_us_eu", "m_type", "intValue"), ("g2050_box_us_eu", "m_index", "intValue"), ("g2050_box_us_eu", "m_file_id", "intValue"), ("g2050_box_us_eu", "m_header", "binaryDataValue"), ("g2050_box_us_eu", "m_file_id___size", "intValue"), ("g2050_box_us_eu", "m_file_id___create_time", "dateAndTimeValue"), ("g2050_box_us_eu", "m_file_id___downloads", "intValue")')
+            cursor.execute('CREATE TRIGGER g2050ti_box_us_eu AFTER INSERT ON g2050_box_us_eu BEGIN UPDATE g2050_box_us_eu SET m_file_id___create_time = date(\'now\'), m_file_id___size = 0, m_file_id___downloads = 0 WHERE recordid = NEW.recordid; END')
+            cursor.execute('CREATE TRIGGER g2050tu_box_us_eu AFTER UPDATE ON g2050_box_us_eu BEGIN UPDATE g2050_box_us_eu SET m_file_id___create_time = date(\'now\') WHERE recordid = NEW.recordid; END')
         
         if not self.table_exists('g2649_bbdx_player'):
-            cursor.execute('CREATE TABLE g2649_bbdx_player (recordid INT PRIMARY KEY AUTOINCREMENT, stat INT)')
+            cursor.execute('CREATE TABLE g2649_bbdx_player (recordid INTEGER PRIMARY KEY AUTOINCREMENT, stat INT)')
             cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_player", "recordid", "intValue"), ("g2649_bbdx_player", "stat", "intValue")')
         if not self.table_exists('g2649_bbdx_info'):
             cursor.execute('CREATE TABLE g2649_bbdx_info (serialid INT, stat INT, message TEXT)')
             cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_info", "serialid", "intValue"), ("g2649_bbdx_info", "stat", "intValue"), ("g2649_bbdx_info", "message", "unicodeStringValue")')
         if not self.table_exists('g2649_bbdx_search'):
-            cursor.execute('CREATE TABLE g2649_bbdx_search (recordid INT PRIMARY KEY AUTOINCREMENT, song_name TEXT, creator_name TEXT, average_rating REAL, serialid INT, filestore INT, is_lyric INT, num_ratings INT)')
+            cursor.execute('CREATE TABLE g2649_bbdx_search (recordid INTEGER PRIMARY KEY AUTOINCREMENT, song_name TEXT, creator_name TEXT, average_rating REAL, serialid INT, filestore INT, is_lyric INT, num_ratings INT)')
             cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_search", "recordid", "intValue"), ("g2649_bbdx_search", "song_name", "asciiStringValue"), ("g2649_bbdx_search", "creator_name", "asciiStringValue"), ("g2649_bbdx_search", "average_rating", "floatValue"), ("g2649_bbdx_search", "serialid", "intValue"), ("g2649_bbdx_search", "filestore", "intValue"), ("g2649_bbdx_search", "is_lyric", "booleanValue"), ("g2649_bbdx_search", "num_ratings", "intValue")')
         
         # load column info into memory, unfortunately there's no simple way
@@ -114,6 +119,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             data = dom.getElementsByTagName('SOAP-ENV:Body')[0].getElementsByTagName('ns1:' + shortaction)[0]
             gameid = str(int(data.getElementsByTagName('ns1:gameid')[0].firstChild.data))
             tableid = data.getElementsByTagName('ns1:tableid')[0].firstChild.data
+            loginticket = data.getElementsByTagName('ns1:loginTicket')[0].firstChild.data
             
             table = 'g' + gameid + '_' + tableid
             
@@ -124,8 +130,6 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             ret += '<' + shortaction + 'Response xmlns="http://gamespy.net/sake">'
             ret += '<' + shortaction + 'Result>Success</' + shortaction + 'Result>'
             
-            # TODO: Actually make GetMyRecords only return *my* records
-            # ownerid == profileid, ask profile server via login ticket
             if shortaction == 'SearchForRecords' or shortaction == 'GetMyRecords' or shortaction == 'GetSpecificRecords':
                 columndata = data.getElementsByTagName('ns1:fields')[0].getElementsByTagName('ns1:string')
                 try:
@@ -140,8 +144,12 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 for c in columns[1:]:
                     statement += ',' + c
                 statement += ' FROM ' + table
+
+                if shortaction == 'GetMyRecords':
+                    profileid = self.server.gamespydb.get_profileid_from_loginticket(loginticket)
+                    statement += ' WHERE ownerid = ' + str(profileid)
                 
-                if shortaction == 'GetSpecificRecords':
+                elif shortaction == 'GetSpecificRecords':
                     recordids = data.getElementsByTagName('ns1:recordids')[0].getElementsByTagName('ns1:int')
                     
                     # limit to requested records
@@ -193,6 +201,8 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 if shortaction == 'UpdateRecord':
                     recordid = int(data.getElementsByTagName('ns1:recordid')[0].firstChild.data)
                 
+                profileid = self.server.gamespydb.get_profileid_from_loginticket(loginticket)
+
                 columndata = []
                 values = data.getElementsByTagName('ns1:values')[0]
                 recordfields = values.getElementsByTagName('ns1:RecordField')
@@ -222,22 +232,23 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     statement += columns[0] + ' = ?'
                     for c in columns[1:]:
                         statement += ', ' + c + ' = ?'
-                    statement += ' WHERE recordid = ?'
+                    statement += ' WHERE recordid = ? AND ownerid = ?'
                     rowdata.append( recordid )
+                    rowdata.append( profileid )
                 elif shortaction == 'CreateRecord':
                     statement = 'INSERT INTO ' + table + ' ('
                     
-                    statement += columns[0]
-                    for c in columns[1:]:
-                        statement += ', ' + c
-                    statement += ') VALUES (?'
-                    for i in xrange(len(columns)-1):
-                        statement += ', ?'
-                    statement += ')'
+                    for c in columns:
+                        statement += c + ', '
+                    statement += 'ownerid) VALUES ('
+                    for i in xrange(len(columns)):
+                        statement += '?, '
+                    statement += '?)'
+                    rowdata.append( profileid )
                 else:
                     logger.log(logging.ERROR, 'Illegal Action %s in database insert/update path!', shortaction)
                     return
-                
+
                 cursor = self.server.db.cursor()
                 cursor.execute(statement, tuple(rowdata))
                 

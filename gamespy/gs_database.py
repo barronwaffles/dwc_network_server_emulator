@@ -35,7 +35,7 @@ class GamespyDatabase(object):
             logger.log(-1, q)
             c.execute(q)
 
-            q = "CREATE TABLE sessions (session TEXT, profileid INT)"
+            q = "CREATE TABLE sessions (session TEXT, profileid INT, loginticket TEXT)"
             logger.log(-1, q)
             c.execute(q)
 
@@ -294,6 +294,18 @@ class GamespyDatabase(object):
         c.close()
         return profileid
 
+    def get_profileid_from_loginticket(self, loginticket):
+        q = "SELECT profileid FROM sessions WHERE loginticket = ?"
+        logger.log(-1, q.replace("?", "%s") % (loginticket))
+
+        c = self.conn.cursor()
+        c.execute(q, (loginticket,))
+
+        profileid = int(c.fetchone()[0])
+
+        c.close()
+        return profileid
+
     def get_profile_from_session_key(self, session_key):
         profileid = self.get_profileid_from_session_key(session_key)
 
@@ -333,7 +345,7 @@ class GamespyDatabase(object):
         c.execute(q, [profileid])
         self.conn.commit()
 
-    def create_session(self, profileid):
+    def create_session(self, profileid, loginticket):
         if profileid != None and self.check_profile_exists(profileid) == False:
             return None
 
@@ -343,12 +355,12 @@ class GamespyDatabase(object):
         # Create new session
         session_key = self.generate_session_key(8)
 
-        q ="INSERT INTO sessions VALUES (?, ?)"
-        q2 = q.replace("?", "%s") % (session_key, profileid)
+        q ="INSERT INTO sessions VALUES (?, ?, ?)"
+        q2 = q.replace("?", "%s") % (session_key, profileid, loginticket)
         logger.log(-1, q2)
 
         c = self.conn.cursor()
-        c.execute(q, [session_key, profileid])
+        c.execute(q, [session_key, profileid, loginticket])
         self.conn.commit()
 
         return session_key

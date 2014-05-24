@@ -213,7 +213,7 @@ class Gamestats(LineReceiver):
 
         if profileid != None:
             # Successfully logged in or created account, continue creating session.
-            sesskey = self.db.create_session(profileid)
+            sesskey = self.db.create_session(profileid, '')
 
             self.sessions[profileid] = self
 

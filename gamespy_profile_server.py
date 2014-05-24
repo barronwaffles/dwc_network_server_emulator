@@ -235,7 +235,8 @@ class PlayerSession(LineReceiver):
 
         if profileid != None:
             # Successfully logged in or created account, continue creating session.
-            self.sesskey = self.db.create_session(profileid)
+            loginticket = gs_utils.base64_encode(utils.generate_random_str(16))
+            self.sesskey = self.db.create_session(profileid, loginticket)
 
             self.sessions[profileid] = self
 
@@ -247,7 +248,7 @@ class PlayerSession(LineReceiver):
             msg_d.append(('userid', userid))
             msg_d.append(('profileid', profileid))
             msg_d.append(('uniquenick', uniquenick))
-            msg_d.append(('lt', gs_utils.base64_encode(utils.generate_random_str(16)))) # Some kind of token... don't know it gets used or generated, but it doesn't seem to have any negative effects if it's not properly generated.
+            msg_d.append(('lt', loginticket)) # Some kind of token... don't know it gets used or generated, but it doesn't seem to have any negative effects if it's not properly generated.
             msg_d.append(('id', data_parsed['id']))
             msg = gs_query.create_gamespy_message(msg_d)
 
