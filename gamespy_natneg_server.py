@@ -7,6 +7,7 @@ import ctypes
 import struct
 import threading
 import time
+import Queue
 import gamespy.gs_utility as gs_utils
 import other.utils as utils
 
@@ -45,21 +46,32 @@ class GameSpyNatNegServer(object):
         # Start natneg server
         address = ('0.0.0.0', 27901)  # accessible to outside connections (use this if you don't know what you're doing)
 
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.bind(address)
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.bind(address)
+
+        self.write_queue = Queue.Queue();
 
         logger.log(logging.INFO, "Server is now listening on %s:%s..." % (address[0], address[1]))
+        threading.Thread(target=self.write_queue_worker).start()
 
         while 1:
-            recv_data, addr = s.recvfrom(2048)
+            recv_data, addr = self.socket.recvfrom(2048)
 
-            packet_thread = threading.Thread(target=self.handle_packet, args=(s, recv_data, addr))
-            packet_thread.start()
+            self.handle_packet(recv_data, addr)
 
-    def handle_packet(self, s, recv_data, addr):
+    def write_queue_send(self, data, address):
+        time.sleep(0.05)
+        self.socket.sendto(data, address)
+
+    def write_queue_worker(self):
+        while 1:
+            data, address = self.write_queue.get()
+            threading.Thread(target=self.write_queue_send, args=(data, address)).start()
+            self.write_queue.task_done()
+
+    def handle_packet(self, recv_data, addr):
         logger.log(logging.DEBUG, "Connection from %s:%d..." % (addr[0], addr[1]))
         logger.log(logging.DEBUG, utils.pretty_print_hex(recv_data))
-        time.sleep(0.05)
 
         # Make sure it's a legal packet
         if recv_data[0:6] != bytearray([0xfd, 0xfc, 0x1e, 0x66, 0x6a, 0xb2]):
@@ -75,7 +87,7 @@ class GameSpyNatNegServer(object):
             output = bytearray(recv_data[0:14])
             output += bytearray([0xff, 0xff, 0x6d, 0x16, 0xb5, 0x7d, 0xea ]) # Checked with Tetris DS, Mario Kart DS, and Metroid Prime Hunters, and this seems to be the standard response to 0x00
             output[7] = 0x01 # Initialization response
-            s.sendto(output, addr)
+            self.write_queue.put((output, addr))
 
             # Try to connect to the server
             gameid = utils.get_string(recv_data, 0x15)
@@ -126,8 +138,8 @@ class GameSpyNatNegServer(object):
 
                     output += bytearray([0x42, 0x00]) # Unknown, always seems to be \x42\x00
                     output[7] = 0x05
-                    #s.sendto(output, (self.session_list[session_id][client_id]['addr']))
-                    s.sendto(output, (self.session_list[session_id][client_id]['addr'][0], self.session_list[session_id][client_id]['addr'][1]))
+                    #self.write_queue.put((output, (self.session_list[session_id][client_id]['addr'])))
+                    self.write_queue.put((output, (self.session_list[session_id][client_id]['addr'][0], self.session_list[session_id][client_id]['addr'][1])))
 
                     logger.log(logging.DEBUG, "Sent connection request to %s:%d..." % (self.session_list[session_id][client_id]['addr'][0], self.session_list[session_id][client_id]['addr'][1]))
                     logger.log(logging.DEBUG, utils.pretty_print_hex(output))
@@ -154,8 +166,8 @@ class GameSpyNatNegServer(object):
 
                     output += bytearray([0x42, 0x00]) # Unknown, always seems to be \x42\x00
                     output[7] = 0x05
-                    #s.sendto(output, (self.session_list[session_id][client]['addr']))
-                    s.sendto(output, (self.session_list[session_id][client]['addr'][0], self.session_list[session_id][client]['addr'][1]))
+                    #self.write_queue.put((output, (self.session_list[session_id][client]['addr'])))
+                    self.write_queue.put((output, (self.session_list[session_id][client]['addr'][0], self.session_list[session_id][client]['addr'][1])))
 
                     logger.log(logging.DEBUG, "Sent connection request to %s:%d..." % (self.session_list[session_id][client]['addr'][0], self.session_list[session_id][client]['addr'][1]))
                     logger.log(logging.DEBUG, utils.pretty_print_hex(output))
@@ -181,7 +193,7 @@ class GameSpyNatNegServer(object):
             output += bytearray(recv_data[len(output):])
 
             output[7] = 0x0b
-            s.sendto(output, addr)
+            self.write_queue.put((output, addr))
 
             logger.log(logging.DEBUG, "Sent address check response to %s:%d..." % (addr[0], addr[1]))
             logger.log(logging.DEBUG, utils.pretty_print_hex(output))
@@ -192,7 +204,7 @@ class GameSpyNatNegServer(object):
 
             output = bytearray(recv_data)
             output[7] = 0x02 # ERT Test
-            s.sendto(output, addr)
+            self.write_queue.put((output, addr))
 
             logger.log(logging.DEBUG, "Sent natify response to %s:%d..." % (addr[0], addr[1]))
             logger.log(logging.DEBUG, utils.pretty_print_hex(output))
@@ -204,7 +216,7 @@ class GameSpyNatNegServer(object):
 
             output = bytearray(recv_data)
             output[7] = 0x0e # Report response
-            s.sendto(recv_data, addr)
+            self.write_queue.put((recv_data, addr))
 
         else: # Was able to connect
             logger.log(logging.DEBUG, "Received unknown command %02x from %s:%s..." % (ord(recv_data[7]), addr[0], addr[1]))
