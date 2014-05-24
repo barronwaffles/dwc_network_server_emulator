@@ -1,3 +1,5 @@
+import os
+import random
 import logging
 import BaseHTTPServer
 import cgi
@@ -42,7 +44,10 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             cursor.execute('INSERT INTO typedata VALUES ("g2050_box_us_eu", "recordid", "intValue"), ("g2050_box_us_eu", "ownerid", "intValue"), ("g2050_box_us_eu", "m_enable", "booleanValue"), ("g2050_box_us_eu", "m_type", "intValue"), ("g2050_box_us_eu", "m_index", "intValue"), ("g2050_box_us_eu", "m_file_id", "intValue"), ("g2050_box_us_eu", "m_header", "binaryDataValue"), ("g2050_box_us_eu", "m_file_id___size", "intValue"), ("g2050_box_us_eu", "m_file_id___create_time", "dateAndTimeValue"), ("g2050_box_us_eu", "m_file_id___downloads", "intValue")')
             cursor.execute('CREATE TRIGGER g2050ti_box_us_eu AFTER INSERT ON g2050_box_us_eu BEGIN UPDATE g2050_box_us_eu SET m_file_id___create_time = date(\'now\'), m_file_id___size = 0, m_file_id___downloads = 0 WHERE recordid = NEW.recordid; END')
             cursor.execute('CREATE TRIGGER g2050tu_box_us_eu AFTER UPDATE ON g2050_box_us_eu BEGIN UPDATE g2050_box_us_eu SET m_file_id___create_time = date(\'now\') WHERE recordid = NEW.recordid; END')
-        
+        if not self.table_exists('g2050_contest_us'):
+            cursor.execute('CREATE TABLE g2050_contest_us (recordid INTEGER PRIMARY KEY AUTOINCREMENT, ownerid INT, m_no INT, m_file_id INT)')
+            cursor.execute('INSERT INTO typedata VALUES ("g2050_contest_us", "recordid", "intValue"), ("g2050_contest_us", "ownerid", "intValue"), ("g2050_contest_us", "m_no", "intValue"), ("g2050_contest_us", "m_file_id", "intValue")')
+
         if not self.table_exists('g2649_bbdx_player'):
             cursor.execute('CREATE TABLE g2649_bbdx_player (recordid INTEGER PRIMARY KEY AUTOINCREMENT, stat INT)')
             cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_player", "recordid", "intValue"), ("g2649_bbdx_player", "stat", "intValue")')
@@ -279,11 +284,22 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             ctype, pdict = cgi.parse_header(self.headers['Content-Type'])
             filedata = cgi.parse_multipart(self.rfile, pdict) 
             
-            # TODO: Actually store file.
-            fileid = 12345
+            # each user gets his own directory
+            userdir = 'usercontent/' + str(gameid) + '/' + str(playerid)
+            if not os.path.exists(userdir):
+                os.makedirs(userdir)
+            
+            # filename is the storage database's file_id (at least in WarioWare DIY)
+            fileid = random.randint(0, 2147483647)
+            while os.path.exists(userdir + '/' + str(fileid)):
+                fileid = random.randint(0, 2147483647)
+            
+            file = open(userdir + '/' + str(fileid), 'wb')
+            file.write(filedata['data'][0])
+            file.close()
             
             self.send_response(200)
-            self.send_header('Sake-File-Id', str(fileid)) # TODO: Replace with real one.
+            self.send_header('Sake-File-Id', str(fileid))
             self.send_header('Sake-File-Result', '0')
             self.end_headers()
             
