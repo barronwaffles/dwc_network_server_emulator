@@ -572,7 +572,7 @@ class PlayerSession(LineReceiver):
 
         for message in messages:
             if message['sourceid'] not in self.blocked:
-                self.transport(message['msg'])
+                self.transport.write(message['msg'])
 
 if __name__ == "__main__":
     gsps = GameSpyProfileServer()
