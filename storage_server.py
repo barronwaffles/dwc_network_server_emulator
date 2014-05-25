@@ -6,7 +6,6 @@ import cgi
 import urlparse
 import sqlite3
 import xml.dom.minidom as minidom
-import xml.sax.saxutils as saxutils
 
 import other.utils as utils
 import gamespy.gs_database as gs_database
@@ -19,6 +18,14 @@ logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_
 
 # Paths to ProxyPass: /SakeStorageServer, /SakeFileServer
 address = ("127.0.0.1", 8000)
+
+def escape_xml(s):
+    s = s.replace( "&", "&amp;" )
+    s = s.replace( '"', "&quot;" )
+    s = s.replace( "'", "&apos;" )
+    s = s.replace( "<", "&lt;" )
+    s = s.replace( ">", "&gt;" )
+    return s
 
 class StorageServer(object):
     def start(self):
@@ -69,7 +76,17 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
         if not self.table_exists('g2649_bbdx_search'):
             cursor.execute('CREATE TABLE g2649_bbdx_search (recordid INTEGER PRIMARY KEY AUTOINCREMENT, song_name TEXT, creator_name TEXT, average_rating REAL, serialid INT, filestore INT, is_lyric INT, num_ratings INT, song_code TEXT, artist_name TEXT)')
             cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_search", "recordid", "intValue"), ("g2649_bbdx_search", "song_name", "asciiStringValue"), ("g2649_bbdx_search", "creator_name", "asciiStringValue"), ("g2649_bbdx_search", "average_rating", "floatValue"), ("g2649_bbdx_search", "serialid", "intValue"), ("g2649_bbdx_search", "filestore", "intValue"), ("g2649_bbdx_search", "is_lyric", "booleanValue"), ("g2649_bbdx_search", "num_ratings", "intValue"), ("g2649_bbdx_search", "song_code", "asciiStringValue"), ("g2649_bbdx_search", "artist_name", "asciiStringValue")')
-        
+
+        if not self.table_exists('g1443_bbdx_player'):
+            cursor.execute('CREATE TABLE g1443_bbdx_player (recordid INTEGER PRIMARY KEY AUTOINCREMENT, stat INT)')
+            cursor.execute('INSERT INTO typedata VALUES ("g1443_bbdx_player", "recordid", "intValue"), ("g1443_bbdx_player", "stat", "intValue")')
+        if not self.table_exists('g1443_bbdx_info'):
+            cursor.execute('CREATE TABLE g1443_bbdx_info (serialid INT, stat INT, message TEXT)')
+            cursor.execute('INSERT INTO typedata VALUES ("g1443_bbdx_info", "serialid", "intValue"), ("g1443_bbdx_info", "stat", "intValue"), ("g1443_bbdx_info", "message", "unicodeStringValue")')
+        if not self.table_exists('g1443_bbdx_search'):
+            cursor.execute('CREATE TABLE g1443_bbdx_search (recordid INTEGER PRIMARY KEY AUTOINCREMENT, song_name TEXT, creator_name TEXT, average_rating REAL, serialid INT, filestore INT, is_lyric INT, num_ratings INT, jasrac_code TEXT, artist_name TEXT)')
+            cursor.execute('INSERT INTO typedata VALUES ("g1443_bbdx_search", "recordid", "intValue"), ("g1443_bbdx_search", "song_name", "asciiStringValue"), ("g1443_bbdx_search", "creator_name", "asciiStringValue"), ("g1443_bbdx_search", "average_rating", "floatValue"), ("g1443_bbdx_search", "serialid", "intValue"), ("g1443_bbdx_search", "filestore", "intValue"), ("g1443_bbdx_search", "is_lyric", "booleanValue"), ("g1443_bbdx_search", "num_ratings", "intValue"), ("g1443_bbdx_search", "jasrac_code", "asciiStringValue"), ("g1443_bbdx_search", "artist_name", "asciiStringValue")')
+            
         # load column info into memory, unfortunately there's no simple way
         # to check for column-existence so get that data in advance
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -214,7 +231,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                                 if type == 'booleanValue':
                                     ret += '<value>' + ('true' if c else 'false') + '</value>'
                                 else:
-                                    ret += '<value>' + saxutils.escape(str(c)) + '</value>'
+                                    ret += '<value>' + escape_xml(str(c)) + '</value>'
                             else:
                                 ret += '<value/>'
                             ret += '</' + type + '>'
@@ -317,7 +334,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.end_headers()
             
             logger.log(logging.DEBUG, "%s response to %s", action, self.client_address)
-            logger.log(logging.DEBUG, ret)
+            #logger.log(logging.DEBUG, ret)
             self.wfile.write(ret)
         
         elif self.path.startswith("/SakeFileServer/upload.aspx?"):
@@ -331,19 +348,25 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             ctype, pdict = cgi.parse_header(self.headers['Content-Type'])
             filedata = cgi.parse_multipart(self.rfile, pdict) 
             
-            # each user gets his own directory
-            userdir = 'usercontent/' + str(gameid) + '/' + str(playerid)
-            if not os.path.exists(userdir):
-                os.makedirs(userdir)
-            
-            # filename is the storage database's file_id (at least in WarioWare DIY)
-            fileid = random.randint(1, 2147483647)
-            while os.path.exists(userdir + '/' + str(fileid)):
+            # make sure users don't upload huge files, dunno what an actual sensible maximum is
+            # but 64 KB seems reasonable for what I've seen in WarioWare
+            if len(filedata['data'][0]) <= 65536:
+                # each user gets his own directory
+                userdir = 'usercontent/' + str(gameid) + '/' + str(playerid)
+                if not os.path.exists(userdir):
+                    os.makedirs(userdir)
+                
+                # filename is the storage database's file_id (at least in WarioWare DIY)
                 fileid = random.randint(1, 2147483647)
-            
-            file = open(userdir + '/' + str(fileid), 'wb')
-            file.write(filedata['data'][0])
-            file.close()
+                while os.path.exists(userdir + '/' + str(fileid)):
+                    fileid = random.randint(1, 2147483647)
+                
+                file = open(userdir + '/' + str(fileid), 'wb')
+                file.write(filedata['data'][0])
+                file.close()
+            else:
+                logger.log(logging.WARNING, "Tried to upload big file, rejected. (%s bytes)", len(filedata['data'][0]))
+                fileid = 0
             
             self.send_response(200)
             self.send_header('Sake-File-Id', str(fileid))
