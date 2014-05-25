@@ -150,7 +150,16 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     statement += ',' + c
                 statement += ' FROM ' + table
 
-                if shortaction == 'GetMyRecords':
+                if shortaction == 'SearchForRecords':
+                    # this is ugly as hell but SearchForRecords can request specific ownerids like this
+                    owneriddata = data.getElementsByTagName('ns1:ownerids')
+                    if owneriddata:
+                        oids = owneriddata[0].getElementsByTagName('ns1:int')
+                        statement += ' WHERE ownerid = ' + str(int(oids[0].firstChild.data))
+                        for oid in oids[1:]:
+                            statement += ' OR ownerid = ' + str(int(oid.firstChild.data))
+
+                elif shortaction == 'GetMyRecords':
                     profileid = self.server.gamespydb.get_profileid_from_loginticket(loginticket)
                     statement += ' WHERE ownerid = ' + str(profileid)
                 
@@ -256,9 +265,24 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
                 cursor = self.server.db.cursor()
                 cursor.execute(statement, tuple(rowdata))
+                recordid = cursor.lastrowid
                 
                 if shortaction == 'CreateRecord':
-                    ret += '<recordid>' + str(cursor.lastrowid) + '</recordid>'
+                    ret += '<recordid>' + str(recordid) + '</recordid>'
+
+                # Alright, so this kinda sucks, but we have no good way of automatically inserting
+                # or updating the file's .size attribute, so we have to manually check if any column
+                # has that, and update it accordingly.
+                # I have no idea if this will work with all games but it seems to work in WarioWare.
+                for i, col in enumerate(columns):
+                    attrcol = col + '___size'
+                    if attrcol in self.server.tables[table]:
+                        if rowdata[i] == 0: # is a delete command, just set filesize to 0
+                            filesize = 0
+                        else:
+                            filename = 'usercontent/' + str(gameid) + '/' + str(profileid) + '/' + str(rowdata[i])
+                            filesize = os.path.getsize(filename)
+                        cursor.execute('UPDATE ' + table + ' SET ' + attrcol + ' = ? WHERE recordid = ?', (filesize, recordid))
                 
                 self.server.db.commit()
             
@@ -290,9 +314,9 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 os.makedirs(userdir)
             
             # filename is the storage database's file_id (at least in WarioWare DIY)
-            fileid = random.randint(0, 2147483647)
+            fileid = random.randint(1, 2147483647)
             while os.path.exists(userdir + '/' + str(fileid)):
-                fileid = random.randint(0, 2147483647)
+                fileid = random.randint(1, 2147483647)
             
             file = open(userdir + '/' + str(fileid), 'wb')
             file.write(filedata['data'][0])
@@ -330,7 +354,6 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             
             self.send_response(200)
             self.send_header('Sake-File-Result', '0')
-            self.send_header('Cache-Control', 'private')
             self.send_header('Content-Type', 'text/html')
             self.send_header('Content-Length', len(ret))
             self.end_headers()
