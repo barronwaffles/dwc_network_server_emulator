@@ -7,6 +7,7 @@ from gamespy_server_browser_server import GameSpyServerBrowserServer
 from gamespy_gamestats_server import GameSpyGamestatsServer
 from nas_server import NasServer
 from internal_stats_server import InternalStatsServer
+from storage_server import StorageServer
 
 import gamespy.gs_database as gs_database
 
@@ -47,6 +48,10 @@ def start_nas_server():
 def start_stats_server():
     stats_server = InternalStatsServer()
     stats_server.start()
+    
+def start_storage_server():
+    storage_server = StorageServer()
+    storage_server.start()
 
 if __name__ == "__main__":
     # Let database initialize before starting any servers.
@@ -80,3 +85,6 @@ if __name__ == "__main__":
 
 #    stats_server_thread = threading.Thread(target=start_stats_server)
 #    stats_server_thread.start()
+
+    storage_server_thread = threading.Thread(target=start_storage_server)
+    storage_server_thread.start()
