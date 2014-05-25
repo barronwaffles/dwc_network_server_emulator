@@ -118,8 +118,8 @@ class PlayerSession(LineReceiver):
         self.locstring = ""
         self.send_status_to_friends()
 
-        if self.session in self.sessions:
-            del self.sessions[self.session]
+        if self.profileid in self.sessions:
+            del self.sessions[self.profileid]
 
         self.db.delete_session(self.session)
         self.log(logging.INFO, "Deleted session " + self.session)
@@ -285,8 +285,8 @@ class PlayerSession(LineReceiver):
         self.log(logging.INFO, "Session %s has logged off" % (data_parsed['sesskey']))
         self.db.delete_session(data_parsed['sesskey'])
 
-        if self.session in self.sessions:
-            del self.sessions[self.session]
+        if self.profileid in self.sessions:
+            del self.sessions[self.profileid]
 
         self.transport.loseConnection()
 
