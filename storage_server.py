@@ -67,8 +67,8 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             cursor.execute('CREATE TABLE g2649_bbdx_info (serialid INT, stat INT, message TEXT)')
             cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_info", "serialid", "intValue"), ("g2649_bbdx_info", "stat", "intValue"), ("g2649_bbdx_info", "message", "unicodeStringValue")')
         if not self.table_exists('g2649_bbdx_search'):
-            cursor.execute('CREATE TABLE g2649_bbdx_search (recordid INTEGER PRIMARY KEY AUTOINCREMENT, song_name TEXT, creator_name TEXT, average_rating REAL, serialid INT, filestore INT, is_lyric INT, num_ratings INT)')
-            cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_search", "recordid", "intValue"), ("g2649_bbdx_search", "song_name", "asciiStringValue"), ("g2649_bbdx_search", "creator_name", "asciiStringValue"), ("g2649_bbdx_search", "average_rating", "floatValue"), ("g2649_bbdx_search", "serialid", "intValue"), ("g2649_bbdx_search", "filestore", "intValue"), ("g2649_bbdx_search", "is_lyric", "booleanValue"), ("g2649_bbdx_search", "num_ratings", "intValue")')
+            cursor.execute('CREATE TABLE g2649_bbdx_search (recordid INTEGER PRIMARY KEY AUTOINCREMENT, song_name TEXT, creator_name TEXT, average_rating REAL, serialid INT, filestore INT, is_lyric INT, num_ratings INT, song_code TEXT, artist_name TEXT)')
+            cursor.execute('INSERT INTO typedata VALUES ("g2649_bbdx_search", "recordid", "intValue"), ("g2649_bbdx_search", "song_name", "asciiStringValue"), ("g2649_bbdx_search", "creator_name", "asciiStringValue"), ("g2649_bbdx_search", "average_rating", "floatValue"), ("g2649_bbdx_search", "serialid", "intValue"), ("g2649_bbdx_search", "filestore", "intValue"), ("g2649_bbdx_search", "is_lyric", "booleanValue"), ("g2649_bbdx_search", "num_ratings", "intValue"), ("g2649_bbdx_search", "song_code", "asciiStringValue"), ("g2649_bbdx_search", "artist_name", "asciiStringValue")')
         
         # load column info into memory, unfortunately there's no simple way
         # to check for column-existence so get that data in advance
@@ -367,19 +367,22 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             logger.log(logging.DEBUG, "SakeFileServer Download Request in game %s, user %s, file %s", gameid, playerid, fileid)
 
             filename = 'usercontent/' + str(gameid) + '/' + str(playerid) + '/' + str(fileid)
-            if not os.path.exists(filename):
+            if os.path.exists(filename):
+                file = open(filename, 'rb')
+                ret = file.read()
+                file.close()
+            else:
                 logger.log(logging.WARNING, "User is trying to access non-existing file!")
-                return
-
-            file = open(filename, 'rb')
-            ret = file.read()
-            file.close()
+                ret = '1234' # apparently some games use the download command just to increment the "downloads" counter, and get the actual file from dls1
             
+            filelen = len(ret)
             self.send_response(200)
             self.send_header('Sake-File-Result', '0')
             self.send_header('Content-Type', 'text/html')
-            self.send_header('Content-Length', len(ret))
+            self.send_header('Content-Length', filelen)
             self.end_headers()
+            
+            logger.log(logging.DEBUG, "Returning download request with file of %s bytes", filelen)
             
             self.wfile.write(ret)
 
