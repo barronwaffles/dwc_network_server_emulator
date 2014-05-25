@@ -338,6 +338,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.wfile.write(ret)
         
         elif self.path.startswith("/SakeFileServer/upload.aspx?"):
+            retcode = 0
             params = urlparse.parse_qs(self.path[self.path.find('?')+1:])
 
             gameid = int(params['gameid'][0])
@@ -367,10 +368,14 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             else:
                 logger.log(logging.WARNING, "Tried to upload big file, rejected. (%s bytes)", len(filedata['data'][0]))
                 fileid = 0
+                retcode = 1
             
             self.send_response(200)
-            self.send_header('Sake-File-Id', str(fileid))
-            self.send_header('Sake-File-Result', '0')
+
+            if retcode == 0:
+                self.send_header('Sake-File-Id', str(fileid))
+
+            self.send_header('Sake-File-Result', str(retcode))
             self.end_headers()
             
             logger.log(logging.DEBUG, "SakeFileServer Upload Reply Sake-File-Id %s", fileid)
@@ -382,30 +387,37 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/SakeFileServer/download.aspx?"):
             params = urlparse.parse_qs(self.path[self.path.find('?')+1:])
+            retcode = 0
 
-            fileid = int(params['fileid'][0])
-            gameid = int(params['gameid'][0])
-            playerid = int(params['pid'][0])
-
-            logger.log(logging.DEBUG, "SakeFileServer Download Request in game %s, user %s, file %s", gameid, playerid, fileid)
-
-            filename = 'usercontent/' + str(gameid) + '/' + str(playerid) + '/' + str(fileid)
-            if os.path.exists(filename):
-                file = open(filename, 'rb')
-                ret = file.read()
-                file.close()
+            if 'pid' not in params or 'fileid' not in params or 'gamepid' not in params:
+                logger.log(logging.DEBUG, "Could not find expected parameters")
+                ret = ''
+                retcode = 3
             else:
-                logger.log(logging.WARNING, "User is trying to access non-existing file!")
-                ret = '1234' # apparently some games use the download command just to increment the "downloads" counter, and get the actual file from dls1
-            
-            filelen = len(ret)
-            self.send_response(200)
-            self.send_header('Sake-File-Result', '0')
-            self.send_header('Content-Type', 'text/html')
-            self.send_header('Content-Length', filelen)
-            self.end_headers()
-            
-            logger.log(logging.DEBUG, "Returning download request with file of %s bytes", filelen)
+                fileid = int(params['fileid'][0])
+                gameid = int(params['gameid'][0])
+                playerid = int(params['pid'][0])
+
+                logger.log(logging.DEBUG, "SakeFileServer Download Request in game %s, user %s, file %s", gameid, playerid, fileid)
+
+                filename = 'usercontent/' + str(gameid) + '/' + str(playerid) + '/' + str(fileid)
+                if os.path.exists(filename):
+                    file = open(filename, 'rb')
+                    ret = file.read()
+                    file.close()
+                else:
+                    logger.log(logging.WARNING, "User is trying to access non-existing file!")
+                    ret = '1234' # apparently some games use the download command just to increment the "downloads" counter, and get the actual file from dls1
+                    #retcode = 4
+
+                filelen = len(ret)
+                self.send_response(200)
+                self.send_header('Sake-File-Result', int(retcode))
+                self.send_header('Content-Type', 'text/html')
+                self.send_header('Content-Length', filelen)
+                self.end_headers()
+
+                logger.log(logging.DEBUG, "Returning download request with file of %s bytes", filelen)
             
             self.wfile.write(ret)
 
