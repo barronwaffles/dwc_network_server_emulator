@@ -389,7 +389,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             params = urlparse.parse_qs(self.path[self.path.find('?')+1:])
             retcode = 0
 
-            if 'pid' not in params or 'fileid' not in params or 'gamepid' not in params:
+            if 'pid' not in params or 'fileid' not in params or 'gameid' not in params:
                 logger.log(logging.DEBUG, "Could not find expected parameters")
                 ret = ''
                 retcode = 3
