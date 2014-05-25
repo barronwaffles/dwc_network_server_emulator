@@ -6,6 +6,7 @@ import cgi
 import urlparse
 import sqlite3
 import xml.dom.minidom as minidom
+import xml.sax.saxutils as saxutils
 
 import other.utils as utils
 import gamespy.gs_database as gs_database
@@ -164,7 +165,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 if shortaction == 'SearchForRecords':
                     # this is ugly as hell but SearchForRecords can request specific ownerids like this
                     owneriddata = data.getElementsByTagName('ns1:ownerids')
-                    if owneriddata:
+                    if owneriddata and owneriddata[0] and owneriddata[0].firstChild:
                         oids = owneriddata[0].getElementsByTagName('ns1:int')
                         statement += ' WHERE ownerid = ' + str(int(oids[0].firstChild.data))
                         for oid in oids[1:]:
@@ -184,7 +185,18 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         id = int(r.firstChild.data)
                         statement += ' OR recordid = ' + str(id)
                         
-                    
+                # if only a subset of the data is wanted
+                limit_offset_data = data.getElementsByTagName('ns1:offset')
+                limit_max_data = data.getElementsByTagName('ns1:max')
+                limits = []
+                if limit_offset_data and limit_offset_data[0] and limit_offset_data[0].firstChild:
+                    limits.append(str(int(limit_offset_data[0].firstChild.data)))
+                if limit_max_data and limit_max_data[0] and limit_max_data[0].firstChild:
+                    limits.append(str(int(limit_max_data[0].firstChild.data)))
+                if limits:
+                    statement += ' LIMIT ' + ','.join(limits)
+                
+                logger.log(logging.DEBUG, statement)
                 cursor = self.server.db.cursor()
                 cursor.execute(statement)
                 rows = cursor.fetchall()
@@ -202,7 +214,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                                 if type == 'booleanValue':
                                     ret += '<value>' + ('true' if c else 'false') + '</value>'
                                 else:
-                                    ret += '<value>' + str(c) + '</value>'
+                                    ret += '<value>' + saxutils.escape(str(c)) + '</value>'
                             else:
                                 ret += '<value/>'
                             ret += '</' + type + '>'
@@ -220,7 +232,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 cursor.execute(statement)
                 count = cursor.fetchone()[0]
                 
-                ret += '<count>' + str(count) + '</count>'                
+                ret += '<count>' + str(count) + '</count>'
             
             elif shortaction == 'UpdateRecord' or shortaction == 'CreateRecord':
                 if shortaction == 'UpdateRecord':
