@@ -131,6 +131,15 @@ class PlayerSession(LineReceiver):
         # parsed are stored in the variable remaining_message. On the next rawDataReceived command, the remaining
         # message and the data are combined to create a full command.
         data = self.remaining_message + data
+
+        # Check to make sure the data buffer starts with a valid command.
+        if len(data) > 0 and data[0] != '\\':
+            # There is data in the buffer but it doesn't start with a \ so there's no chance of it being valid.
+            # Look for the first instance of \final\ and remove everything before it.
+            # If \final\ is not in the command string then ignore it.
+            final = "\\final\\"
+            data = data[data.index(final) + len(final):] if final in data else ""
+
         commands, self.remaining_message = gs_query.parse_gamespy_message(data)
 
         for data_parsed in commands:
