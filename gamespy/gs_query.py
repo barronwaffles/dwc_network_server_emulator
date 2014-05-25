@@ -5,10 +5,6 @@ def parse_gamespy_message(message):
     messages = {}
     msg = message
 
-    if len(msg) == 0 or msg[0] != '\\':
-        # bad command, return nothing
-        return "", ""
-
     while len(msg) > 0 and msg[0] == '\\' and "\\final\\" in msg:
         # Find the command
         # Don't search for more commands if there isn't a \final\, save the left over for the next packet
