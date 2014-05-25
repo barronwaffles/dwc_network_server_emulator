@@ -412,7 +412,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
                 filelen = len(ret)
                 self.send_response(200)
-                self.send_header('Sake-File-Result', int(retcode))
+                self.send_header('Sake-File-Result', str(retcode))
                 self.send_header('Content-Type', 'text/html')
                 self.send_header('Content-Length', filelen)
                 self.end_headers()
