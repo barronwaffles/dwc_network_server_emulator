@@ -36,6 +36,15 @@ class NasHTTPServer(BaseHTTPServer.HTTPServer):
         BaseHTTPServer.HTTPServer.__init__(self, server_address, RequestHandlerClass)
 
 class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    def do_GET(self):
+        # conntest server
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.send_header("X-Organization", "Nintendo")
+        self.send_header("Server", "BigIP")
+        self.end_headers()
+        self.wfile.write("ok")
+
     def do_POST(self):
         length = int(self.headers['content-length'])
         post = self.str_to_dict(self.rfile.read(length))
