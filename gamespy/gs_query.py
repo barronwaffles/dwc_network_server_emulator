@@ -5,7 +5,7 @@ def parse_gamespy_message(message):
     messages = {}
     msg = message
 
-    while len(msg) > 0 and "\\final\\" in msg:
+    while len(msg) > 0 and msg[0] == '\\' and "\\final\\" in msg:
         # Find the command
         # Don't search for more commands if there isn't a \final\, save the left over for the next packet
         found_command = False
