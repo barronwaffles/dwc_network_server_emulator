@@ -39,14 +39,25 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
         if not self.table_exists('typedata'):
             cursor.execute('CREATE TABLE typedata (tbl TEXT, col TEXT, type TEXT)')
             
+        if not self.table_exists('g2050_box'):
+            cursor.execute('CREATE TABLE g2050_box (recordid INTEGER PRIMARY KEY AUTOINCREMENT, ownerid INT, m_enable INT, m_type INT, m_index INT, m_file_id INT, m_header TEXT, m_file_id___size INT, m_file_id___create_time DATETIME, m_file_id___downloads INT)')
+            cursor.execute('INSERT INTO typedata VALUES ("g2050_box", "recordid", "intValue"), ("g2050_box", "ownerid", "intValue"), ("g2050_box", "m_enable", "booleanValue"), ("g2050_box", "m_type", "intValue"), ("g2050_box", "m_index", "intValue"), ("g2050_box", "m_file_id", "intValue"), ("g2050_box", "m_header", "binaryDataValue"), ("g2050_box", "m_file_id___size", "intValue"), ("g2050_box", "m_file_id___create_time", "dateAndTimeValue"), ("g2050_box", "m_file_id___downloads", "intValue")')
+            cursor.execute('CREATE TRIGGER g2050ti_box AFTER INSERT ON g2050_box BEGIN UPDATE g2050_box SET m_file_id___create_time = strftime(\'%Y-%m-%dT%H:%M:%f\', \'now\'), m_file_id___size = 0, m_file_id___downloads = 0 WHERE recordid = NEW.recordid; END')
+            cursor.execute('CREATE TRIGGER g2050tu_box AFTER UPDATE ON g2050_box BEGIN UPDATE g2050_box SET m_file_id___create_time = strftime(\'%Y-%m-%dT%H:%M:%f\', \'now\') WHERE recordid = NEW.recordid; END')
         if not self.table_exists('g2050_box_us_eu'):
             cursor.execute('CREATE TABLE g2050_box_us_eu (recordid INTEGER PRIMARY KEY AUTOINCREMENT, ownerid INT, m_enable INT, m_type INT, m_index INT, m_file_id INT, m_header TEXT, m_file_id___size INT, m_file_id___create_time DATETIME, m_file_id___downloads INT)')
             cursor.execute('INSERT INTO typedata VALUES ("g2050_box_us_eu", "recordid", "intValue"), ("g2050_box_us_eu", "ownerid", "intValue"), ("g2050_box_us_eu", "m_enable", "booleanValue"), ("g2050_box_us_eu", "m_type", "intValue"), ("g2050_box_us_eu", "m_index", "intValue"), ("g2050_box_us_eu", "m_file_id", "intValue"), ("g2050_box_us_eu", "m_header", "binaryDataValue"), ("g2050_box_us_eu", "m_file_id___size", "intValue"), ("g2050_box_us_eu", "m_file_id___create_time", "dateAndTimeValue"), ("g2050_box_us_eu", "m_file_id___downloads", "intValue")')
             cursor.execute('CREATE TRIGGER g2050ti_box_us_eu AFTER INSERT ON g2050_box_us_eu BEGIN UPDATE g2050_box_us_eu SET m_file_id___create_time = strftime(\'%Y-%m-%dT%H:%M:%f\', \'now\'), m_file_id___size = 0, m_file_id___downloads = 0 WHERE recordid = NEW.recordid; END')
             cursor.execute('CREATE TRIGGER g2050tu_box_us_eu AFTER UPDATE ON g2050_box_us_eu BEGIN UPDATE g2050_box_us_eu SET m_file_id___create_time = strftime(\'%Y-%m-%dT%H:%M:%f\', \'now\') WHERE recordid = NEW.recordid; END')
+        if not self.table_exists('g2050_contest'):
+            cursor.execute('CREATE TABLE g2050_contest (recordid INTEGER PRIMARY KEY AUTOINCREMENT, ownerid INT, m_no INT, m_file_id INT)')
+            cursor.execute('INSERT INTO typedata VALUES ("g2050_contest", "recordid", "intValue"), ("g2050_contest", "ownerid", "intValue"), ("g2050_contest", "m_no", "intValue"), ("g2050_contest", "m_file_id", "intValue")')
         if not self.table_exists('g2050_contest_us'):
             cursor.execute('CREATE TABLE g2050_contest_us (recordid INTEGER PRIMARY KEY AUTOINCREMENT, ownerid INT, m_no INT, m_file_id INT)')
             cursor.execute('INSERT INTO typedata VALUES ("g2050_contest_us", "recordid", "intValue"), ("g2050_contest_us", "ownerid", "intValue"), ("g2050_contest_us", "m_no", "intValue"), ("g2050_contest_us", "m_file_id", "intValue")')
+        if not self.table_exists('g2050_contest_eu'):
+            cursor.execute('CREATE TABLE g2050_contest_eu (recordid INTEGER PRIMARY KEY AUTOINCREMENT, ownerid INT, m_no INT, m_file_id INT)')
+            cursor.execute('INSERT INTO typedata VALUES ("g2050_contest_eu", "recordid", "intValue"), ("g2050_contest_eu", "ownerid", "intValue"), ("g2050_contest_eu", "m_no", "intValue"), ("g2050_contest_eu", "m_file_id", "intValue")')
 
         if not self.table_exists('g2649_bbdx_player'):
             cursor.execute('CREATE TABLE g2649_bbdx_player (recordid INTEGER PRIMARY KEY AUTOINCREMENT, stat INT)')
