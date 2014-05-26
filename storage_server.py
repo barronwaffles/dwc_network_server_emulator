@@ -96,10 +96,7 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
         for t in tabledata:
             cursor.execute("PRAGMA table_info(%s)" % t[0]) # yeah I know but parameters don't work in pragmas, and inserting table names like that should be safe
             columns = cursor.fetchall()
-            columndata = []
-            for c in columns:
-                columndata.append(c[1])
-            self.tables[t[0]] = columndata
+            self.tables[t[0]] = [c[1] for c in columns]
         
         self.db.commit()
         
@@ -127,7 +124,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         
         for c in columndata:
             colname = c.firstChild.data.replace('.', '___') # fake the attributes that the actual sake databases have
-            if not colname in self.server.tables[table]:
+            if colname not in self.server.tables[table]:
                 raise IllegalColumnAccessException("Unknown column access '%s' in table '%s'" % (colname, table))
             columns.append(colname)
         
@@ -176,9 +173,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     
                 # build SELECT statement, yes I know one shouldn't do this but I cross-checked the table name and all the columns above so it should be fine
                 statement = 'SELECT '
-                statement += columns[0]
-                for c in columns[1:]:
-                    statement += ',' + c
+                statement += ",".join(columns)
                 statement += ' FROM ' + table
 
                 if shortaction == 'SearchForRecords':
@@ -186,9 +181,8 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     owneriddata = data.getElementsByTagName('ns1:ownerids')
                     if owneriddata and owneriddata[0] and owneriddata[0].firstChild:
                         oids = owneriddata[0].getElementsByTagName('ns1:int')
-                        statement += ' WHERE ownerid = ' + str(int(oids[0].firstChild.data))
-                        for oid in oids[1:]:
-                            statement += ' OR ownerid = ' + str(int(oid.firstChild.data))
+                        statement += ' WHERE '
+                        statement += ' OR '.join('ownerid = '+str(int(oid.firstChild.data)) for oid in oids)
 
                 elif shortaction == 'GetMyRecords':
                     profileid = self.server.gamespydb.get_profileid_from_loginticket(loginticket)
@@ -198,11 +192,8 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     recordids = data.getElementsByTagName('ns1:recordids')[0].getElementsByTagName('ns1:int')
                     
                     # limit to requested records
-                    id = int(recordids[0].firstChild.data)
-                    statement += ' WHERE recordid = ' + str(id)
-                    for r in recordids[1:]:
-                        id = int(r.firstChild.data)
-                        statement += ' OR recordid = ' + str(id)
+                    statement += ' WHERE '
+                    statement += ' OR '.join('recordid = '+str(int(r.firstChild.data)) for r in recordids)
                         
                 # if only a subset of the data is wanted
                 limit_offset_data = data.getElementsByTagName('ns1:offset')
@@ -259,11 +250,10 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 
                 profileid = self.server.gamespydb.get_profileid_from_loginticket(loginticket)
 
-                columndata = []
                 values = data.getElementsByTagName('ns1:values')[0]
                 recordfields = values.getElementsByTagName('ns1:RecordField')
-                for rf in recordfields:
-                    columndata.append( rf.getElementsByTagName('ns1:name')[0] )
+                columndata = [rf.getElementsByTagName('ns1:name')[0]
+                              for rf in recordfields]
                     
                 try:
                     columns = self.confirm_columns(columndata, table)
@@ -285,20 +275,16 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 if shortaction == 'UpdateRecord':
                     statement = 'UPDATE ' + table + ' SET '
                     
-                    statement += columns[0] + ' = ?'
-                    for c in columns[1:]:
-                        statement += ', ' + c + ' = ?'
+                    statement += ', '.join(c+' = ?' for c in columns)
                     statement += ' WHERE recordid = ? AND ownerid = ?'
                     rowdata.append( recordid )
                     rowdata.append( profileid )
                 elif shortaction == 'CreateRecord':
                     statement = 'INSERT INTO ' + table + ' ('
                     
-                    for c in columns:
-                        statement += c + ', '
-                    statement += 'ownerid) VALUES ('
-                    for i in xrange(len(columns)):
-                        statement += '?, '
+                    statement += ', '.join(columns)
+                    statement += ', ownerid) VALUES ('
+                    statement += '?, '*len(columns)
                     statement += '?)'
                     rowdata.append( profileid )
                 else:
