@@ -413,7 +413,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.log(logging.DEBUG, "SakeFileServer Download Request in game %s, user %s, file %s", gameid, playerid, fileid)
 
                 cursor = self.server.db.cursor()
-                cursor.execute('SELECT path FROM filepaths WHERE fileid = ?', (fileid))
+                cursor.execute('SELECT path FROM filepaths WHERE fileid = ?', (fileid,))
                 
                 try:
                     filename = cursor.fetchone()[0]
