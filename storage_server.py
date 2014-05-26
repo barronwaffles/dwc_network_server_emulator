@@ -46,6 +46,8 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
         
         if not self.table_exists('typedata'):
             cursor.execute('CREATE TABLE typedata (tbl TEXT, col TEXT, type TEXT)')
+        if not self.table_exists('filepaths'):
+            cursor.execute('CREATE TABLE filepaths (fileid INTEGER PRIMARY KEY AUTOINCREMENT, gameid INT, playerid INT, path TEXT)')
             
         if not self.table_exists('g2050_box'):
             cursor.execute('CREATE TABLE g2050_box (recordid INTEGER PRIMARY KEY AUTOINCREMENT, ownerid INT, m_enable INT, m_type INT, m_index INT, m_file_id INT, m_header TEXT, m_file_id___size INT, m_file_id___create_time DATETIME, m_file_id___downloads INT)')
@@ -320,8 +322,13 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         if rowdata[i] == 0: # is a delete command, just set filesize to 0
                             filesize = 0
                         else:
-                            filename = 'usercontent/' + str(gameid) + '/' + str(profileid) + '/' + str(rowdata[i])
-                            filesize = os.path.getsize(filename)
+                            cursor.execute('SELECT path FROM filepaths WHERE fileid = ?', (int(rowdata[i]),))
+                
+                            try:
+                                filename = cursor.fetchone()[0]
+                                filesize = os.path.getsize(filename)
+                            except:
+                                filesize = 0
                         cursor.execute('UPDATE ' + table + ' SET ' + attrcol + ' = ? WHERE recordid = ?', (filesize, recordid))
                 
                 self.server.db.commit()
@@ -352,17 +359,22 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             # make sure users don't upload huge files, dunno what an actual sensible maximum is
             # but 64 KB seems reasonable for what I've seen in WarioWare
             if len(filedata['data'][0]) <= 65536:
-                # each user gets his own directory
+                # Apparently the real Sake doesn't care about the gameid/playerid, just the fileid
+                # but for better categorization I think I'm still gonna leave folder-per-game/player thing
+
                 userdir = 'usercontent/' + str(gameid) + '/' + str(playerid)
                 if not os.path.exists(userdir):
                     os.makedirs(userdir)
                 
-                # filename is the storage database's file_id (at least in WarioWare DIY)
-                fileid = random.randint(1, 2147483647)
-                while os.path.exists(userdir + '/' + str(fileid)):
-                    fileid = random.randint(1, 2147483647)
+                # get next fileid from database
+                cursor = self.server.db.cursor()
+                cursor.execute('INSERT INTO filepaths (gameid, playerid) VALUES (?, ?)', (gameid, playerid))
+                fileid = cursor.lastrowid
                 
-                file = open(userdir + '/' + str(fileid), 'wb')
+                path = userdir + '/' + str(fileid)
+                cursor.execute('UPDATE filepaths SET path = ? WHERE fileid = ?', (path, fileid))
+                
+                file = open(path, 'wb')
                 file.write(filedata['data'][0])
                 file.close()
             else:
@@ -388,10 +400,10 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         if self.path.startswith("/SakeFileServer/download.aspx?"):
             params = urlparse.parse_qs(self.path[self.path.find('?')+1:])
             retcode = 0
+            ret = ''
 
             if 'pid' not in params or 'fileid' not in params or 'gameid' not in params:
                 logger.log(logging.DEBUG, "Could not find expected parameters")
-                ret = ''
                 retcode = 3
             else:
                 fileid = int(params['fileid'][0])
@@ -400,24 +412,31 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
                 logger.log(logging.DEBUG, "SakeFileServer Download Request in game %s, user %s, file %s", gameid, playerid, fileid)
 
-                filename = 'usercontent/' + str(gameid) + '/' + str(playerid) + '/' + str(fileid)
-                if os.path.exists(filename):
-                    file = open(filename, 'rb')
-                    ret = file.read()
-                    file.close()
-                else:
+                cursor = self.server.db.cursor()
+                cursor.execute('SELECT path FROM filepaths WHERE fileid = ?', (fileid))
+                
+                try:
+                    filename = cursor.fetchone()[0]
+
+                    if os.path.exists(filename):
+                        file = open(filename, 'rb')
+                        ret = file.read()
+                        file.close()
+                    else:
+                        logger.log(logging.ERROR, "User is trying to access file that should exist according to DB, but doesn't! (%s)", filename)
+                except:
                     logger.log(logging.WARNING, "User is trying to access non-existing file!")
                     ret = '1234' # apparently some games use the download command just to increment the "downloads" counter, and get the actual file from dls1
                     #retcode = 4
 
-                filelen = len(ret)
-                self.send_response(200)
-                self.send_header('Sake-File-Result', str(retcode))
-                self.send_header('Content-Type', 'text/html')
-                self.send_header('Content-Length', filelen)
-                self.end_headers()
+            filelen = len(ret)
+            self.send_response(200)
+            self.send_header('Sake-File-Result', str(retcode))
+            self.send_header('Content-Type', 'text/html')
+            self.send_header('Content-Length', filelen)
+            self.end_headers()
 
-                logger.log(logging.DEBUG, "Returning download request with file of %s bytes", filelen)
+            logger.log(logging.DEBUG, "Returning download request with file of %s bytes", filelen)
             
             self.wfile.write(ret)
 
