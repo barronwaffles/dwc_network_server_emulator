@@ -36,6 +36,9 @@ class NasHTTPServer(BaseHTTPServer.HTTPServer):
         BaseHTTPServer.HTTPServer.__init__(self, server_address, RequestHandlerClass)
 
 class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    def version_string(self):
+        return "Nintendo Wii (http)"
+
     def do_GET(self):
         # conntest server
         self.send_response(200)
@@ -48,6 +51,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def do_POST(self):
         length = int(self.headers['content-length'])
         post = self.str_to_dict(self.rfile.read(length))
+        ret = ''
 
         if self.path == "/ac":
             logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
@@ -58,9 +62,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             action = post["action"]
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
-            self.send_header("Server", "Nintendo Wii (http)")
-            self.send_header("NODE", "wifiappe3")
-            self.end_headers()
+            self.send_header("NODE", "wifiappe1")
 
             if action == "acctcreate":
                 # TODO: test for duplicate accounts
@@ -69,7 +71,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.log(logging.DEBUG, "acctcreate response to %s", self.client_address)
                 logger.log(logging.DEBUG, ret)
 
-                self.wfile.write(self.dict_to_str(ret))
+                ret = self.dict_to_str(ret)
 
             elif action == "login":
                 ret["returncd"] = "001"
@@ -83,7 +85,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.log(logging.DEBUG, "login response to %s", self.client_address)
                 logger.log(logging.DEBUG, ret)
 
-                self.wfile.write(self.dict_to_str(ret))
+                ret = self.dict_to_str(ret)
 
             elif action == "SVCLOC" or action == "svcloc": # Get service based on service id number
                 ret["returncd"] = "007"
@@ -110,8 +112,10 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.log(logging.DEBUG, "svcloc response to %s", self.client_address)
                 logger.log(logging.DEBUG, ret)
 
-                self.wfile.write(self.dict_to_str(ret))
-
+                ret = self.dict_to_str(ret)
+            else:
+                logger.log(logging.WARNING, "Unknown action request %s from %s!", self.path, self.client_address)
+                ret = ''
 
 
         elif self.path == "/pr":
@@ -133,14 +137,12 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
-            self.send_header("Server", "Nintendo Wii (http)")
-            self.send_header("NODE", "wifiappe3")
-            self.end_headers()
+            self.send_header("NODE", "wifiappe1")
 
             logger.log(logging.DEBUG, "pr response to %s", self.client_address)
             logger.log(logging.DEBUG, ret)
 
-            self.wfile.write(self.dict_to_str(ret))
+            ret = self.dict_to_str(ret)
 
         elif self.path == "/download":
             logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
@@ -213,21 +215,23 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_response(200)
 
             if dlc_contenttype == True:
-                self.send_header("Content-Length", str(len(ret)))
                 self.send_header("Content-type", "application/x-dsdl")
                 self.send_header("Content-Disposition", "attachment; filename=\"" + post["contents"] + "\"")
             else:
                 self.send_header("Content-type", "text/plain")
 
             self.send_header("X-DLS-Host", "http://127.0.0.1/")
-            self.end_headers()
 
             logger.log(logging.DEBUG, "download response to %s", self.client_address)
 
             #if dlc_contenttype == False:
             #    logger.log(logging.DEBUG, ret)
+        else:
+            logger.log(logging.WARNING, "Unknown path request %s from %s!", self.path, self.client_address)
 
-            self.wfile.write(ret)
+        self.send_header("Content-Length", str(len(ret)))
+        self.end_headers()
+        self.wfile.write(ret)
 
     def str_to_dict(self, str):
         ret = urlparse.parse_qs(str)
