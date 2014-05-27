@@ -33,4 +33,4 @@ if __name__ == "__main__":
         StorageServer,
     ]
     for server in servers:
-        threading.Thread(target=lambda:server().start()).start()
+        threading.Thread(target=server().start).start()
