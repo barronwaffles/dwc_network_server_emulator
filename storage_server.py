@@ -48,6 +48,10 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             cursor.execute('CREATE TABLE typedata (tbl TEXT, col TEXT, type TEXT)')
         if not self.table_exists('filepaths'):
             cursor.execute('CREATE TABLE filepaths (fileid INTEGER PRIMARY KEY AUTOINCREMENT, gameid INT, playerid INT, path TEXT)')
+
+        if not self.table_exists('g1687_FriendInfo'):
+            cursor.execute('CREATE TABLE g1687_FriendInfo (recordid INTEGER PRIMARY KEY AUTOINCREMENT, info TEXT)')
+            cursor.execute('INSERT INTO typedata VALUES ("g1687_FriendInfo", "recordid", "intValue"), ("g1687_FriendInfo", "info", "binaryDataValue")')
             
         if not self.table_exists('g2050_box'):
             cursor.execute('CREATE TABLE g2050_box (recordid INTEGER PRIMARY KEY AUTOINCREMENT, ownerid INT, m_enable INT, m_type INT, m_index INT, m_file_id INT, m_header TEXT, m_file_id___size INT, m_file_id___create_time DATETIME, m_file_id___downloads INT)')
