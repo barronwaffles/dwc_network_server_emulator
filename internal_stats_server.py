@@ -29,7 +29,7 @@ class StatsPage(resource.Resource):
 
         if server_list != None:
             for game in server_list:
-                if len(server_list[game]) == 0:
+                if not server_list[game]:
                     continue
 
                 output += "<tr>"
