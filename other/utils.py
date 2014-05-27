@@ -1,14 +1,18 @@
-import random
 import logging
+import random
+import string
 
-def generate_random_str(len, set = "abcdefghjiklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"):
-    return ''.join(random.choice(set) for _ in range(len))
+def generate_random_str_from_set(ln, chs):
+    return ''.join(random.choice(chs) for _ in range(ln))
 
-def generate_random_number_str(len):
-    return ''.join(random.choice("1234567890") for _ in range(len))
+def generate_random_str(ln, chs=""):
+    return generate_random_str_from_set(ln, chs or (string.ascii_letters + string.digits))
 
-def generate_random_hex_str(len):
-    return ''.join(random.choice("1234567890abcdef") for _ in range(len))
+def generate_random_number_str(ln):
+    return generate_random_str_from_set(ln, string.digits)
+
+def generate_random_hex_str(ln):
+    return generate_random_str_from_set(ln, string.hexdigits.lower())
 
 # Code: Tetris DS @ 020573F4
 def calculate_crc8(input):
