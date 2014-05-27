@@ -254,7 +254,7 @@ class GameSpyQRServer(object):
             if self.sessions[session_id].sent_challenge == False:
                 addr_hex =  ''.join(["%02X" % int(x) for x in address[0].split('.')])
                 port_hex = "%04X" % int(address[1])
-                server_challenge = utils.generate_random_str(8) + addr_hex + port_hex
+                server_challenge = utils.generate_random_str(6) + '00' + addr_hex + port_hex
 
                 self.sessions[session_id].challenge = server_challenge
 
