@@ -154,6 +154,15 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             dlcpath = "dlc/" + post["gamecd"]
             dlc_contenttype = False
 
+            def safeloadfi(fn, mode='rb'):
+                '''
+                safeloadfi : string -> string
+
+                Safely load contents of a file, given a filename, and closing the file afterward
+                '''
+                with open(os.path.join(dlcpath, fn), mode) as fi:
+                    return fi.read()
+
             if action == "count":
                 if post["gamecd"] in gamecodes_return_random_file:
                     ret = "1"
@@ -173,10 +182,10 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             attr3 = None
                             if "attr3" in post:
                                 attr3 = post["attr3"]
-                            list = open(dlcpath + "/_list.txt", "rb").read()
-                            list = self.filter_list(list, attr1, attr2, attr3)
 
-                            count = self.get_file_count(list)
+                            lst = safeloadfi("_list.txt")
+                            lst = self.filter_list(dlcfi.read(), attr1, attr2, attr3)
+                            count = self.get_file_count(lst)
 
                     ret = "%d" % count
 
@@ -197,9 +206,8 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 if os.path.exists(dlcpath):
                     # Look for a list file first.
                     # If the list file exists, send the entire thing back to the client.
-                    if os.path.isfile(dlcpath + "/_list.txt"):
-                        ret = open(dlcpath + "/_list.txt", "rb").read()
-                        ret = self.filter_list(ret, attr1, attr2, attr3)
+                    if os.path.isfile(os.path.join(dlcpath, "_list.txt")):
+                        ret = self.filter_list(safeloadfi("_list.txt"), attr1, attr2, attr3)
 
                         if post["gamecd"] in gamecodes_return_random_file:
                             ret = self.filter_list_random_files(ret, 1)
@@ -208,9 +216,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 # Get only the base filename just in case there is a path involved somewhere in the filename string.
                 dlc_contenttype = True
                 contents = os.path.basename(post["contents"])
-
-                if os.path.isfile(dlcpath + "/" + contents):
-                    ret = open(dlcpath + "/" + contents, "rb").read()
+                ret = safeloadfi(contents)
 
             self.send_response(200)
 

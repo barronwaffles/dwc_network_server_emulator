@@ -374,9 +374,8 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 path = userdir + '/' + str(fileid)
                 cursor.execute('UPDATE filepaths SET path = ? WHERE fileid = ?', (path, fileid))
                 
-                file = open(path, 'wb')
-                file.write(filedata['data'][0])
-                file.close()
+                with open(path, 'wb') as fi:
+                    fi.write(filedata['data'][0])
             else:
                 logger.log(logging.WARNING, "Tried to upload big file, rejected. (%s bytes)", len(filedata['data'][0]))
                 fileid = 0
@@ -419,9 +418,8 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     filename = cursor.fetchone()[0]
 
                     if os.path.exists(filename):
-                        file = open(filename, 'rb')
-                        ret = file.read()
-                        file.close()
+                        with open(filename, 'rb') as fi:
+                            ret = fi.read()
                     else:
                         logger.log(logging.ERROR, "User is trying to access file that should exist according to DB, but doesn't! (%s)", filename)
                 except:

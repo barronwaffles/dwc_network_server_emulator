@@ -5,15 +5,14 @@ import time
 import other.utils as utils
 
 def generate_secret_keys(filename="gslist.cfg"):
-    key_file = open(filename)
-
     secret_key_list = {}
-    for line in key_file.readlines():
-        #name = line[:54].strip() # Probably won't do anything with the name for now.
-        id = line[54:54+19].strip()
-        key = line[54+19:].strip()
+    with open(filename) as key_file:
+        for line in key_file.readlines():
+            #name = line[:54].strip() # Probably won't do anything with the name for now.
+            id = line[54:54+19].strip()
+            key = line[54+19:].strip()
 
-        secret_key_list[id] = key
+            secret_key_list[id] = key
 
     return secret_key_list
 
