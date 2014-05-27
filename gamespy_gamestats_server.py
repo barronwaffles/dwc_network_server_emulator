@@ -284,15 +284,15 @@ class Gamestats(LineReceiver):
         if profile != None and 'data' in profile:
             profile_data = gs_query.parse_gamespy_message("\\prof\\" + profile['data'] + "\\final\\")
 
+        data = ""
         if profile_data != None:
             profile_data = profile_data[0][0]
 
-        data = ""
-        for key in (key for key in keys if key not in ("__cmd__", "__cmd_val__", "")):
-            data += "\\" + key + "\\"
-            # this WILL error if profile_data isn't properly set above
-            if key in profile_data:
-                data += profile_data[key]
+            for key in (key for key in keys if key not in ("__cmd__", "__cmd_val__", "")):
+                data += "\\" + key + "\\"
+                # this WILL error if profile_data isn't properly set above
+                if key in profile_data:
+                    data += profile_data[key]
 
         modified = int(time.time())
 
