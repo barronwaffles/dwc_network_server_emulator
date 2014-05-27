@@ -149,8 +149,14 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             action = post["action"]
 
             ret = ""
-            dlcpath = "dlc/" + post["gamecd"]
+            dlcdir = os.path.abspath('dlc')
+            dlcpath = os.path.abspath("dlc/" + post["gamecd"])
             dlc_contenttype = False
+            
+            if os.path.commonprefix([dlcdir, dlcpath]) != dlcdir:
+                logging.log(logging.WARNING, 'Attempted directory traversal attack "%s", cancelling.', dlcpath)
+                self.send_response(403)
+                return
 
             def safeloadfi(fn, mode='rb'):
                 '''
