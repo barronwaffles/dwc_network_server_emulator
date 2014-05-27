@@ -98,10 +98,9 @@ class Gamestats(LineReceiver):
 
     def rawDataReceived(self, data):
         # Decrypt packet
-        data = self.remaining_message + data
-        msg = str(self.crypt(data))
+        msg = self.remaining_message + str(self.crypt(data))
+        self.data = msg
 
-        #data = self.leftover + data
         commands, self.remaining_message = gs_query.parse_gamespy_message(msg)
         #logger.log(logging.DEBUG, "STATS RESPONSE: %s" % msg)
 
@@ -114,8 +113,6 @@ class Gamestats(LineReceiver):
                 "newgame": self.perform_newgame,
                 "updgame": self.perform_updgame,
         }
-
-        self.data = data
 
         def cmd_err(data_parsed):
             logger.log(logging.DEBUG, "Found unknown command, don't know how to handle '%s'.", data_parsed['__cmd__'])
@@ -276,8 +273,12 @@ class Gamestats(LineReceiver):
             # The length entire packet SHOULD always be greater than the data field, so this check should be fine.
             return
 
-        idx = data.index(data_str) + len(data_str)
-        data = data[idx:idx+length]
+        if data_str in data:
+            idx = data.index(data_str) + len(data_str)
+            data = data[idx:idx+length]
+        else:
+            logger.log(logging.ERROR, "ERROR: Could not find \data\ in setpd command: %s", data)
+            data = ""
 
         self.db.pd_insert(self.profileid, data_parsed['dindex'], data_parsed['ptype'], data)
 
