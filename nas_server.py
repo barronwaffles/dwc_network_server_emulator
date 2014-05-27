@@ -187,8 +187,8 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             if "attr3" in post:
                                 attr3 = post["attr3"]
 
-                            lst = safeloadfi("_list.txt")
-                            lst = self.filter_list(dlcfi.read(), attr1, attr2, attr3)
+                            dlcfi = safeloadfi("_list.txt")
+                            lst = self.filter_list(dlcfi, attr1, attr2, attr3)
                             count = self.get_file_count(lst)
 
                     ret = "%d" % count

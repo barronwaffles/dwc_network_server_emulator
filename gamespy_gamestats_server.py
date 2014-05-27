@@ -276,8 +276,12 @@ class Gamestats(LineReceiver):
             # The length entire packet SHOULD always be greater than the data field, so this check should be fine.
             return
 
-        idx = data.index(data_str) + len(data_str)
-        data = data[idx:idx+length]
+        if data_str in data:
+            idx = data.index(data_str) + len(data_str)
+            data = data[idx:idx+length]
+        else:
+            logger.log(logging.ERROR, "ERROR: Could not find \data\ in setpd command: %s", data)
+            data = ""
 
         self.db.pd_insert(self.profileid, data_parsed['dindex'], data_parsed['ptype'], data)
 
