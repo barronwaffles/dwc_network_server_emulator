@@ -405,7 +405,9 @@ class GamespyDatabase(object):
     def generate_authtoken(self, userid, data):
         # Since the auth token passed back to the game will be random, we can make it small enough that there
         # should never be a crash due to the size of the token.
-        size = 16
+        # ^ real authtoken is 80 + 3 bytes though and I want to figure out what's causing the 52200
+        # so I'm matching everything as closely as possible to the real thing
+        size = 80
         authtoken = "NDS" + utils.generate_random_str(size)
 
         q = "SELECT authtoken FROM nas_logins WHERE authtoken = ?"
