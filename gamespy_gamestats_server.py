@@ -98,10 +98,9 @@ class Gamestats(LineReceiver):
 
     def rawDataReceived(self, data):
         # Decrypt packet
-        data = self.remaining_message + data
-        msg = str(self.crypt(data))
+        msg = self.remaining_message + str(self.crypt(data))
+        self.data = msg
 
-        #data = self.leftover + data
         commands, self.remaining_message = gs_query.parse_gamespy_message(msg)
         #logger.log(logging.DEBUG, "STATS RESPONSE: %s" % msg)
 
@@ -114,8 +113,6 @@ class Gamestats(LineReceiver):
                 "newgame": self.perform_newgame,
                 "updgame": self.perform_updgame,
         }
-
-        self.data = data
 
         def cmd_err(data_parsed):
             logger.log(logging.DEBUG, "Found unknown command, don't know how to handle '%s'.", data_parsed['__cmd__'])
