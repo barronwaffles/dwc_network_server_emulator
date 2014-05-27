@@ -93,13 +93,11 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 authtoken = self.server.db.generate_authtoken(post["userid"], post)
 
                 if 'svc' in post:
-                    if post["svc"] == "9000" or post["svc"] == "9001": # DLC host = 9000
+                    if post["svc"] in ("9000", "9001"): # DLC host = 9000
                         ret["svchost"] = self.headers['host'] # in case the client's DNS isn't redirecting dls1.nintendowifi.net
 
                         # Brawl has 2 host headers which Apache chokes on, so only return the first one or else it won't work
-                        cindex = ret["svchost"].find(',')
-                        if cindex != -1:
-                            ret["svchost"] = ret["svchost"][:cindex]
+                        ret["svchost"] = ret["svchost"].split(',')[0]
 
                         if post["svc"] == 9000:
                             ret["token"] = authtoken
@@ -257,17 +255,8 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def filter_list_random_files(self, data, count):
         # Get [count] random files from the filelist
-        lines = data.splitlines()
-        samples = random.sample(lines, count)
-
-        output = ''
-        for sample in samples:
-            output += sample + '\r\n'
-
-        if output == '':
-            output = '\r\n'
-
-        return output
+        samples = random.sample(data.splitlines(), count)
+        return '\r\n'.join(samples) + '\r\n'
 
     def filter_list(self, data, attr1 = None, attr2 = None, attr3 = None):
         if attr1 == None and attr2 == None and attr3 == None:
@@ -275,7 +264,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             return data
 
         # Filter the list based on the attribute fields
-        output = ""
+        output = []
 
         for line in data.splitlines():
             s = line.split('\t')
@@ -301,22 +290,13 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         matched = False
 
                 if matched == True:
-                    output += line + '\r\n'
+                    output.append(line)
 
-        if output == '':
-            # if nothing matches, at least return a newline; Pokemon BW at least expects this and will error without it
-            output = '\r\n'
-
-        return output
+        # if nothing matches, at least return a newline; Pokemon BW at least expects this and will error without it
+        return '\r\n'.join(output) + '\r\n'
 
     def get_file_count(self, data):
-        file_count = 0
-
-        for line in data.splitlines():
-            if line:
-                file_count += 1
-
-        return file_count
+        return sum(1 for line in data.splitlines() if line)
 
 if __name__ == "__main__":
     nas = NasServer()
