@@ -328,7 +328,7 @@ class Session(LineReceiver):
 
         for _server in self.server_list:
             server = _server
-            if len(server) > 0 and len(fields) > 0 and 'requested' in server and server['requested'] == {}:
+            if server and fields and 'requested' in server and server['requested'] == {}:
                 # If the requested fields weren't found then don't return a server.
                 # This fixes a bug with Mario Kart DS.
                 #print "Requested was empty"
