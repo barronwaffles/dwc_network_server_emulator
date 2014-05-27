@@ -60,6 +60,8 @@ class Gamestats(LineReceiver):
 
         self.lid = "0"
 
+        self.data = ""
+
     def log(self, level, message):
         if self.session == "":
             if self.gameid == "":
@@ -112,6 +114,9 @@ class Gamestats(LineReceiver):
                 "newgame": self.perform_newgame,
                 "updgame": self.perform_updgame,
         }
+
+        self.data = data
+
         def cmd_err(data_parsed):
             logger.log(logging.DEBUG, "Found unknown command, don't know how to handle '%s'.", data_parsed['__cmd__'])
 
@@ -242,7 +247,9 @@ class Gamestats(LineReceiver):
         self.transport.write(bytes(msg))
         return
 
-    def perform_setpd(self, data_parsed, data):
+    def perform_setpd(self, data_parsed):
+        data = self.data
+
         msg = gs_query.create_gamespy_message([
             ('__cmd__', "setpdr"),
             ('__cmd_val__', 1),
