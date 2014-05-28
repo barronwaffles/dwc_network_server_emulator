@@ -1,5 +1,6 @@
 import logging
 import time
+import traceback
 
 from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import serverFromString
@@ -75,52 +76,58 @@ class Gamestats(LineReceiver):
                 logger.log(level, "[%s:%d | %s | %s] %s", self.address.host, self.address.port, self.session, self.gameid, message)
 
     def connectionMade(self):
-        self.log(logging.INFO, "Received connection from %s:%d" % (self.address.host, self.address.port))
+        try:
+            self.log(logging.INFO, "Received connection from %s:%d" % (self.address.host, self.address.port))
 
-        # Generate a random challenge string
-        self.challenge = utils.generate_random_str(10, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+            # Generate a random challenge string
+            self.challenge = utils.generate_random_str(10, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-        # The first command sent to the client is always a login challenge containing the server challenge key.
-        msg = gs_query.create_gamespy_message([
-            ('__cmd__', "lc"),
-            ('__cmd_val__', "1"),
-            ('challenge', self.challenge),
-            ('id', "1"),
-        ])
+            # The first command sent to the client is always a login challenge containing the server challenge key.
+            msg = gs_query.create_gamespy_message([
+                ('__cmd__', "lc"),
+                ('__cmd_val__', "1"),
+                ('challenge', self.challenge),
+                ('id', "1"),
+            ])
 
-        self.log(logging.DEBUG, "SENDING: '%s'..." % msg)
+            self.log(logging.DEBUG, "SENDING: '%s'..." % msg)
 
-        msg = self.crypt(msg)
-        self.transport.write(bytes(msg))
+            msg = self.crypt(msg)
+            self.transport.write(bytes(msg))
+        except:
+            self.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
     def connectionLost(self, reason):
         return
 
     def rawDataReceived(self, data):
-        # Decrypt packet
-        msg = self.remaining_message + str(self.crypt(data))
-        self.data = msg
+        try:
+            # Decrypt packet
+            msg = self.remaining_message + str(self.crypt(data))
+            self.data = msg
 
-        commands, self.remaining_message = gs_query.parse_gamespy_message(msg)
-        #logger.log(logging.DEBUG, "STATS RESPONSE: %s" % msg)
+            commands, self.remaining_message = gs_query.parse_gamespy_message(msg)
+            #logger.log(logging.DEBUG, "STATS RESPONSE: %s" % msg)
 
-        cmds = {
-                "auth":    self.perform_auth,
-                "authp":   self.perform_authp,
-                "ka":      self.perform_ka,
-                "setpd":   self.perform_setpd,
-                "getpd":   self.perform_getpd,
-                "newgame": self.perform_newgame,
-                "updgame": self.perform_updgame,
-        }
+            cmds = {
+                    "auth":    self.perform_auth,
+                    "authp":   self.perform_authp,
+                    "ka":      self.perform_ka,
+                    "setpd":   self.perform_setpd,
+                    "getpd":   self.perform_getpd,
+                    "newgame": self.perform_newgame,
+                    "updgame": self.perform_updgame,
+            }
 
-        def cmd_err(data_parsed):
-            logger.log(logging.DEBUG, "Found unknown command, don't know how to handle '%s'.", data_parsed['__cmd__'])
+            def cmd_err(data_parsed):
+                logger.log(logging.DEBUG, "Found unknown command, don't know how to handle '%s'.", data_parsed['__cmd__'])
 
-        for data_parsed in commands:
-            print(data_parsed)
+            for data_parsed in commands:
+                print(data_parsed)
 
-            cmds.get(data_parsed['__cmd__'], cmd_err)(data_parsed)
+                cmds.get(data_parsed['__cmd__'], cmd_err)(data_parsed)
+        except:
+            self.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
     def perform_auth(self, data_parsed):
         self.log(logging.DEBUG, "Parsing 'auth'...")

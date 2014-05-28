@@ -1,4 +1,5 @@
 import logging
+import traceback
 
 from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import serverFromString
@@ -57,18 +58,21 @@ class PlayerSearch(LineReceiver):
         pass
 
     def rawDataReceived(self, data):
-        logger.log(logging.DEBUG, "SEARCH RESPONSE: %s" % data)
+        try:
+            logger.log(logging.DEBUG, "SEARCH RESPONSE: %s" % data)
 
-        data = self.leftover + data
-        commands, self.leftover = gs_query.parse_gamespy_message(data)
+            data = self.leftover + data
+            commands, self.leftover = gs_query.parse_gamespy_message(data)
 
-        for data_parsed in commands:
-            print data_parsed
+            for data_parsed in commands:
+                print data_parsed
 
-            if data_parsed['__cmd__'] == "otherslist":
-                self.perform_otherslist(data_parsed)
-            else:
-                logger.log(logging.DEBUG, "Found unknown search command, don't know how to handle '%s'." % data_parsed['__cmd__'])
+                if data_parsed['__cmd__'] == "otherslist":
+                    self.perform_otherslist(data_parsed)
+                else:
+                    logger.log(logging.DEBUG, "Found unknown search command, don't know how to handle '%s'." % data_parsed['__cmd__'])
+        except:
+            logger.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
     def perform_otherslist(self, data_parsed):
         # Reference: http://wiki.tockdom.com/wiki/MKWii_Network_Protocol/Server/gpsp.gs.nintendowifi.net

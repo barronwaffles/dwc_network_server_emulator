@@ -4,6 +4,7 @@
 import logging
 import socket
 import ctypes
+import traceback
 
 from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import serverFromString
@@ -97,143 +98,146 @@ class Session(LineReceiver):
         logger.log(level, "[%s:%d] %s", self.address.host, self.address.port,message)
 
     def rawDataReceived(self, data):
-        # First 2 bytes are the packet size.
-        #
-        # Third byte is the command byte.
-        # According to Openspy-Core:
-        #   0x00 - Server list request
-        #   0x01 - Server info request
-        #   0x02 - Send message request
-        #   0x03 - Keep alive reply
-        #   0x04 - Map loop request (?)
-        #   0x05 - Player search request
-        #
-        # For Tetris DS, at the very least 0x00 and 0x02 need to be implemented.
-        if self.forward_to_client:
-            if self.forward_packet == None:
-                self.forward_packet = data
+        try:
+            # First 2 bytes are the packet size.
+            #
+            # Third byte is the command byte.
+            # According to Openspy-Core:
+            #   0x00 - Server list request
+            #   0x01 - Server info request
+            #   0x02 - Send message request
+            #   0x03 - Keep alive reply
+            #   0x04 - Map loop request (?)
+            #   0x05 - Player search request
+            #
+            # For Tetris DS, at the very least 0x00 and 0x02 need to be implemented.
+            if self.forward_to_client:
+                if self.forward_packet == None:
+                    self.forward_packet = data
+                else:
+                    self.forward_packet += data
+
+                if self.header_length + len(self.forward_packet) >= self.expected_packet_length:
+                    # Is it possible that multiple packets will need to be waited for?
+                    # Is it possible that more data will be in the last packet than expected?
+                    self.forward_data_to_client(self.forward_packet, self.forward_client)
+
+                    self.forward_to_client = False
+                    self.forward_client = None
+                    self.header_length = 0
+                    self.expected_packet_length = 0
+                    self.forward_packet = None
+                return
+
+            if data[2] == '\x00': # Server list request
+                self.log(logging.DEBUG, "Received server list request from %s:%s..." % (self.address.host, self.address.port))
+
+                # This code is so... not python. The C programmer in me is coming out strong.
+                # TODO: Rewrite this section later?
+                idx = 3
+                list_version = ord(data[idx])
+                idx += 1
+                encoding_version = ord(data[idx])
+                idx += 1
+                game_version = utils.get_int(data, idx)
+                idx += 4
+
+                query_game = utils.get_string(data, idx)
+                idx += len(query_game) + 1
+                game_name = utils.get_string(data, idx)
+                idx += len(game_name) + 1
+
+                challenge = data[idx:idx+8]
+                idx += 8
+
+                filter = utils.get_string(data, idx)
+                idx += len(filter) + 1
+                fields = utils.get_string(data, idx)
+                idx += len(fields) + 1
+
+                options = utils.get_int_be(data, idx)
+                idx += 4
+
+                source_ip = 0
+                max_servers = 0
+
+                NO_SERVER_LIST = 0x02
+                ALTERNATE_SOURCE_IP = 0x08
+                LIMIT_RESULT_COUNT = 0x80
+
+                send_ip = False
+                if (options & LIMIT_RESULT_COUNT):
+                    max_servers = utils.get_int(data, idx)
+                elif (options & ALTERNATE_SOURCE_IP):
+                    source_ip = utils.get_int(data, idx)
+                elif (options & NO_SERVER_LIST):
+                    send_ip = True
+
+                if '\\' in fields:
+                    fields = [x for x in fields.split('\\') if x and not x.isspace()]
+
+                #print "%02x %02x %08x" % (list_version, encoding_version, game_version)
+                #print "%s" % query_game
+                #print "%s" % game_name
+                #print "%s" % challenge
+                #print "%s" % filter
+                #print "%s" % fields
+
+                #print "%08x" % options
+                #print "%d %08x" % (max_servers, source_ip)
+
+                self.log(logging.DEBUG, "list version: %02x / encoding version: %02x / game version: %08x / query game: %s / game name: %s / challenge: %s / filter: %s / fields: %s / options: %08x / max servers: %d / source ip: %08x" % (list_version, encoding_version, game_version, query_game, game_name, challenge, filter, fields, options, max_servers, source_ip))
+
+                # Requesting ip and port of client, not server
+                if filter == "" or fields == "" or send_ip == True:
+                    output = bytearray([int(x) for x in self.address.host.split('.')])
+                    output += utils.get_bytes_from_short_be(6500) # Does this ever change?
+
+                    enc = gs_utils.EncTypeX()
+                    output_enc = enc.encrypt(self.secret_key_list[game_name], challenge, output)
+
+                    self.transport.write(bytes(output_enc))
+
+                    self.log(logging.DEBUG, "Responding with own IP and game port...")
+                    self.log(logging.DEBUG, utils.pretty_print_hex(output))
+                else:
+                    self.find_server(query_game, filter, fields, max_servers, game_name, challenge)
+
+
+
+            elif data[2] == '\x02': # Send message request
+                packet_len = utils.get_short_be(data, 0)
+                dest_addr = '.'.join(["%d" % ord(x) for x in data[3:7]])
+                dest_port = utils.get_short_be(data, 7) # What's the pythonic way to do this? unpack?
+                dest = (dest_addr, dest_port)
+
+                self.log(logging.DEBUG, "Received send message request from %s:%s to %s:%d... expecting %d byte packet." % (self.address.host, self.address.port, dest_addr, dest_port, packet_len))
+                self.log(logging.DEBUG, utils.pretty_print_hex(bytearray(data)))
+
+                if packet_len == len(data):
+                    # Contains entire packet, send immediately.
+                    self.forward_data_to_client(data[3:], dest)
+
+                    self.forward_to_client = False
+                    self.forward_client = None
+                    self.header_length = 0
+                    self.expected_packet_length = 0
+                    self.forward_packet = None
+                else:
+                    self.forward_to_client = True
+                    self.forward_client = dest
+                    self.header_length = len(data)
+                    self.expected_packet_length = packet_len
+
+            elif data[2] == '\x03': # Keep alive reply
+                self.log(logging.DEBUG, "Received keep alive from %s:%s..." % (self.address.host, self.address.port))
+
             else:
-                self.forward_packet += data
-
-            if self.header_length + len(self.forward_packet) >= self.expected_packet_length:
-                # Is it possible that multiple packets will need to be waited for?
-                # Is it possible that more data will be in the last packet than expected?
-                self.forward_data_to_client(self.forward_packet, self.forward_client)
-
-                self.forward_to_client = False
-                self.forward_client = None
-                self.header_length = 0
-                self.expected_packet_length = 0
-                self.forward_packet = None
-            return
-
-        if data[2] == '\x00': # Server list request
-            self.log(logging.DEBUG, "Received server list request from %s:%s..." % (self.address.host, self.address.port))
-
-            # This code is so... not python. The C programmer in me is coming out strong.
-            # TODO: Rewrite this section later?
-            idx = 3
-            list_version = ord(data[idx])
-            idx += 1
-            encoding_version = ord(data[idx])
-            idx += 1
-            game_version = utils.get_int(data, idx)
-            idx += 4
-
-            query_game = utils.get_string(data, idx)
-            idx += len(query_game) + 1
-            game_name = utils.get_string(data, idx)
-            idx += len(game_name) + 1
-
-            challenge = data[idx:idx+8]
-            idx += 8
-
-            filter = utils.get_string(data, idx)
-            idx += len(filter) + 1
-            fields = utils.get_string(data, idx)
-            idx += len(fields) + 1
-
-            options = utils.get_int_be(data, idx)
-            idx += 4
-
-            source_ip = 0
-            max_servers = 0
-
-            NO_SERVER_LIST = 0x02
-            ALTERNATE_SOURCE_IP = 0x08
-            LIMIT_RESULT_COUNT = 0x80
-
-            send_ip = False
-            if (options & LIMIT_RESULT_COUNT):
-                max_servers = utils.get_int(data, idx)
-            elif (options & ALTERNATE_SOURCE_IP):
-                source_ip = utils.get_int(data, idx)
-            elif (options & NO_SERVER_LIST):
-                send_ip = True
-
-            if '\\' in fields:
-                fields = [x for x in fields.split('\\') if x and not x.isspace()]
-
-            #print "%02x %02x %08x" % (list_version, encoding_version, game_version)
-            #print "%s" % query_game
-            #print "%s" % game_name
-            #print "%s" % challenge
-            #print "%s" % filter
-            #print "%s" % fields
-
-            #print "%08x" % options
-            #print "%d %08x" % (max_servers, source_ip)
-
-            self.log(logging.DEBUG, "list version: %02x / encoding version: %02x / game version: %08x / query game: %s / game name: %s / challenge: %s / filter: %s / fields: %s / options: %08x / max servers: %d / source ip: %08x" % (list_version, encoding_version, game_version, query_game, game_name, challenge, filter, fields, options, max_servers, source_ip))
-
-            # Requesting ip and port of client, not server
-            if filter == "" or fields == "" or send_ip == True:
-                output = bytearray([int(x) for x in self.address.host.split('.')])
-                output += utils.get_bytes_from_short_be(6500) # Does this ever change?
-
-                enc = gs_utils.EncTypeX()
-                output_enc = enc.encrypt(self.secret_key_list[game_name], challenge, output)
-
-                self.transport.write(bytes(output_enc))
-
-                self.log(logging.DEBUG, "Responding with own IP and game port...")
-                self.log(logging.DEBUG, utils.pretty_print_hex(output))
-            else:
-                self.find_server(query_game, filter, fields, max_servers, game_name, challenge)
-
-
-
-        elif data[2] == '\x02': # Send message request
-            packet_len = utils.get_short_be(data, 0)
-            dest_addr = '.'.join(["%d" % ord(x) for x in data[3:7]])
-            dest_port = utils.get_short_be(data, 7) # What's the pythonic way to do this? unpack?
-            dest = (dest_addr, dest_port)
-
-            self.log(logging.DEBUG, "Received send message request from %s:%s to %s:%d... expecting %d byte packet." % (self.address.host, self.address.port, dest_addr, dest_port, packet_len))
-            self.log(logging.DEBUG, utils.pretty_print_hex(bytearray(data)))
-
-            if packet_len == len(data):
-                # Contains entire packet, send immediately.
-                self.forward_data_to_client(data[3:], dest)
-                
-                self.forward_to_client = False
-                self.forward_client = None
-                self.header_length = 0
-                self.expected_packet_length = 0
-                self.forward_packet = None
-            else:
-                self.forward_to_client = True
-                self.forward_client = dest
-                self.header_length = len(data)
-                self.expected_packet_length = packet_len
-
-        elif data[2] == '\x03': # Keep alive reply
-            self.log(logging.DEBUG, "Received keep alive from %s:%s..." % (self.address.host, self.address.port))
-
-        else:
-            self.log(logging.DEBUG, "Received unknown command (%02x) from %s:%s..." % (ord(data[2]), self.address.host, self.address.port))
-            self.log(logging.DEBUG, utils.pretty_print_hex(bytearray(data)))
-            self.log(logging.DEBUG, utils.pretty_print_hex(data))
+                self.log(logging.DEBUG, "Received unknown command (%02x) from %s:%s..." % (ord(data[2]), self.address.host, self.address.port))
+                self.log(logging.DEBUG, utils.pretty_print_hex(bytearray(data)))
+                self.log(logging.DEBUG, utils.pretty_print_hex(data))
+        except:
+            self.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
     def get_game_id(self, data):
         game_id = data[5: -1]

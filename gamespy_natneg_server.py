@@ -10,6 +10,7 @@ import time
 import Queue
 import gamespy.gs_utility as gs_utils
 import other.utils as utils
+import traceback
 
 from multiprocessing.managers import BaseManager
 
@@ -43,21 +44,24 @@ class GameSpyNatNegServer(object):
         self.server_manager.connect()
 
     def start(self):
-        # Start natneg server
-        address = ('0.0.0.0', 27901)  # accessible to outside connections (use this if you don't know what you're doing)
+        try:
+            # Start natneg server
+            address = ('0.0.0.0', 27901)  # accessible to outside connections (use this if you don't know what you're doing)
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.bind(address)
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.socket.bind(address)
 
-        self.write_queue = Queue.Queue();
+            self.write_queue = Queue.Queue();
 
-        logger.log(logging.INFO, "Server is now listening on %s:%s..." % (address[0], address[1]))
-        threading.Thread(target=self.write_queue_worker).start()
+            logger.log(logging.INFO, "Server is now listening on %s:%s..." % (address[0], address[1]))
+            threading.Thread(target=self.write_queue_worker).start()
 
-        while 1:
-            recv_data, addr = self.socket.recvfrom(2048)
+            while 1:
+                recv_data, addr = self.socket.recvfrom(2048)
 
-            self.handle_packet(recv_data, addr)
+                self.handle_packet(recv_data, addr)
+        except:
+            logger.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
     def write_queue_send(self, data, address):
         time.sleep(0.05)

@@ -6,6 +6,7 @@ import urlparse
 import BaseHTTPServer
 import os
 import random
+import traceback
 
 import gamespy.gs_database as gs_database
 import gamespy.gs_utility as gs_utils
@@ -40,208 +41,214 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         return "Nintendo Wii (http)"
 
     def do_GET(self):
-        # conntest server
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.send_header("X-Organization", "Nintendo")
-        self.send_header("Server", "BigIP")
-        self.end_headers()
-        self.wfile.write("ok")
+        try:
+            # conntest server
+            self.send_response(200)
+            self.send_header("Content-type", "text/html")
+            self.send_header("X-Organization", "Nintendo")
+            self.send_header("Server", "BigIP")
+            self.end_headers()
+            self.wfile.write("ok")
+        except:
+            logger.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
     def do_POST(self):
-        length = int(self.headers['content-length'])
-        post = self.str_to_dict(self.rfile.read(length))
-        ret = ''
+        try:
+            length = int(self.headers['content-length'])
+            post = self.str_to_dict(self.rfile.read(length))
+            ret = ''
 
-        if self.path == "/ac":
-            logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
-            logger.log(logging.DEBUG, post)
-            ret = {}
-            ret["datetime"] = time.strftime("%Y%m%d%H%M%S")
-            ret["retry"] = "0"
-            action = post["action"]
-            self.send_response(200)
-            self.send_header("Content-type", "text/plain")
-            self.send_header("NODE", "wifiappe1")
+            if self.path == "/ac":
+                logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
+                logger.log(logging.DEBUG, post)
+                ret = {}
+                ret["datetime"] = time.strftime("%Y%m%d%H%M%S")
+                ret["retry"] = "0"
+                action = post["action"]
+                self.send_response(200)
+                self.send_header("Content-type", "text/plain")
+                self.send_header("NODE", "wifiappe1")
 
-            if action == "acctcreate":
-                # TODO: test for duplicate accounts
-                ret["returncd"] = "002"
+                if action == "acctcreate":
+                    # TODO: test for duplicate accounts
+                    ret["returncd"] = "002"
 
-                logger.log(logging.DEBUG, "acctcreate response to %s", self.client_address)
-                logger.log(logging.DEBUG, ret)
+                    logger.log(logging.DEBUG, "acctcreate response to %s", self.client_address)
+                    logger.log(logging.DEBUG, ret)
 
-                ret = self.dict_to_str(ret)
+                    ret = self.dict_to_str(ret)
 
-            elif action == "login":
-                ret["returncd"] = "001"
-                ret["locator"] = "gamespy.com"
-                challenge = utils.generate_random_str(8)
-                ret["challenge"] = challenge
-                post["challenge"] = challenge
-                authtoken = self.server.db.generate_authtoken(post["userid"], post)
-                ret["token"] = authtoken
+                elif action == "login":
+                    ret["returncd"] = "001"
+                    ret["locator"] = "gamespy.com"
+                    challenge = utils.generate_random_str(8)
+                    ret["challenge"] = challenge
+                    post["challenge"] = challenge
+                    authtoken = self.server.db.generate_authtoken(post["userid"], post)
+                    ret["token"] = authtoken
 
-                logger.log(logging.DEBUG, "login response to %s", self.client_address)
-                logger.log(logging.DEBUG, ret)
+                    logger.log(logging.DEBUG, "login response to %s", self.client_address)
+                    logger.log(logging.DEBUG, ret)
 
-                ret = self.dict_to_str(ret)
+                    ret = self.dict_to_str(ret)
 
-            elif action == "SVCLOC" or action == "svcloc": # Get service based on service id number
-                ret["returncd"] = "007"
-                ret["statusdata"] = "Y"
-                authtoken = self.server.db.generate_authtoken(post["userid"], post)
+                elif action == "SVCLOC" or action == "svcloc": # Get service based on service id number
+                    ret["returncd"] = "007"
+                    ret["statusdata"] = "Y"
+                    authtoken = self.server.db.generate_authtoken(post["userid"], post)
 
-                if 'svc' in post:
-                    if post["svc"] in ("9000", "9001"): # DLC host = 9000
-                        ret["svchost"] = self.headers['host'] # in case the client's DNS isn't redirecting dls1.nintendowifi.net
+                    if 'svc' in post:
+                        if post["svc"] in ("9000", "9001"): # DLC host = 9000
+                            ret["svchost"] = self.headers['host'] # in case the client's DNS isn't redirecting dls1.nintendowifi.net
 
-                        # Brawl has 2 host headers which Apache chokes on, so only return the first one or else it won't work
-                        ret["svchost"] = ret["svchost"].split(',')[0]
+                            # Brawl has 2 host headers which Apache chokes on, so only return the first one or else it won't work
+                            ret["svchost"] = ret["svchost"].split(',')[0]
 
-                        if post["svc"] == 9000:
-                            ret["token"] = authtoken
-                        else:
+                            if post["svc"] == 9000:
+                                ret["token"] = authtoken
+                            else:
+                                ret["servicetoken"] = authtoken
+                        elif post["svc"] == "0000": # Pokemon requests this for some things
                             ret["servicetoken"] = authtoken
-                    elif post["svc"] == "0000": # Pokemon requests this for some things
-                        ret["servicetoken"] = authtoken
-                        ret["svchost"] = "n/a"
+                            ret["svchost"] = "n/a"
 
-                logger.log(logging.DEBUG, "svcloc response to %s", self.client_address)
+                    logger.log(logging.DEBUG, "svcloc response to %s", self.client_address)
+                    logger.log(logging.DEBUG, ret)
+
+                    ret = self.dict_to_str(ret)
+                else:
+                    logger.log(logging.WARNING, "Unknown action request %s from %s!", self.path, self.client_address)
+                    ret = ''
+
+
+            elif self.path == "/pr":
+                logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
+                logger.log(logging.DEBUG, post)
+                ret = {}
+
+                words = len(post["words"].split('\t'))
+                wordsret = "0" * words
+                ret["prwords"] = wordsret
+                ret["prwordsA"] = wordsret
+                ret["prwordsC"] = wordsret
+                ret["prwordsE"] = wordsret
+                ret["prwordsJ"] = wordsret
+                ret["prwordsK"] = wordsret
+                ret["prwordsP"] = wordsret
+                ret["returncd"] = "000"
+                ret["datetime"] = time.strftime("%Y%m%d%H%M%S")
+
+                self.send_response(200)
+                self.send_header("Content-type", "text/plain")
+                self.send_header("NODE", "wifiappe1")
+
+                logger.log(logging.DEBUG, "pr response to %s", self.client_address)
                 logger.log(logging.DEBUG, ret)
 
                 ret = self.dict_to_str(ret)
-            else:
-                logger.log(logging.WARNING, "Unknown action request %s from %s!", self.path, self.client_address)
-                ret = ''
 
+            elif self.path == "/download":
+                logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
+                logger.log(logging.DEBUG, post)
 
-        elif self.path == "/pr":
-            logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
-            logger.log(logging.DEBUG, post)
-            ret = {}
+                action = post["action"]
 
-            words = len(post["words"].split('\t'))
-            wordsret = "0" * words
-            ret["prwords"] = wordsret
-            ret["prwordsA"] = wordsret
-            ret["prwordsC"] = wordsret
-            ret["prwordsE"] = wordsret
-            ret["prwordsJ"] = wordsret
-            ret["prwordsK"] = wordsret
-            ret["prwordsP"] = wordsret
-            ret["returncd"] = "000"
-            ret["datetime"] = time.strftime("%Y%m%d%H%M%S")
+                ret = ""
+                dlcdir = os.path.abspath('dlc')
+                dlcpath = os.path.abspath("dlc/" + post["gamecd"])
+                dlc_contenttype = False
 
-            self.send_response(200)
-            self.send_header("Content-type", "text/plain")
-            self.send_header("NODE", "wifiappe1")
+                if os.path.commonprefix([dlcdir, dlcpath]) != dlcdir:
+                    logging.log(logging.WARNING, 'Attempted directory traversal attack "%s", cancelling.', dlcpath)
+                    self.send_response(403)
+                    return
 
-            logger.log(logging.DEBUG, "pr response to %s", self.client_address)
-            logger.log(logging.DEBUG, ret)
+                def safeloadfi(fn, mode='rb'):
+                    '''
+                    safeloadfi : string -> string
 
-            ret = self.dict_to_str(ret)
+                    Safely load contents of a file, given a filename, and closing the file afterward
+                    '''
+                    with open(os.path.join(dlcpath, fn), mode) as fi:
+                        return fi.read()
 
-        elif self.path == "/download":
-            logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
-            logger.log(logging.DEBUG, post)
+                if action == "count":
+                    if post["gamecd"] in gamecodes_return_random_file:
+                        ret = "1"
+                    else:
+                        count = 0
 
-            action = post["action"]
+                        if os.path.exists(dlcpath):
+                            count = len(os.listdir(dlcpath))
 
-            ret = ""
-            dlcdir = os.path.abspath('dlc')
-            dlcpath = os.path.abspath("dlc/" + post["gamecd"])
-            dlc_contenttype = False
-            
-            if os.path.commonprefix([dlcdir, dlcpath]) != dlcdir:
-                logging.log(logging.WARNING, 'Attempted directory traversal attack "%s", cancelling.', dlcpath)
-                self.send_response(403)
-                return
+                            if os.path.isfile(dlcpath + "/_list.txt"):
+                                attr1 = None
+                                if "attr1" in post:
+                                    attr1 = post["attr1"]
+                                attr2 = None
+                                if "attr2" in post:
+                                    attr2 = post["attr2"]
+                                attr3 = None
+                                if "attr3" in post:
+                                    attr3 = post["attr3"]
 
-            def safeloadfi(fn, mode='rb'):
-                '''
-                safeloadfi : string -> string
+                                dlcfi = safeloadfi("_list.txt")
+                                lst = self.filter_list(dlcfi, attr1, attr2, attr3)
+                                count = self.get_file_count(lst)
 
-                Safely load contents of a file, given a filename, and closing the file afterward
-                '''
-                with open(os.path.join(dlcpath, fn), mode) as fi:
-                    return fi.read()
+                        ret = "%d" % count
 
-            if action == "count":
-                if post["gamecd"] in gamecodes_return_random_file:
-                    ret = "1"
-                else:
-                    count = 0
+                if action == "list":
+                    num = int(post["num"])
+                    offset = int(post["offset"])
+
+                    attr1 = None
+                    if "attr1" in post:
+                        attr1 = post["attr1"]
+                    attr2 = None
+                    if "attr2" in post:
+                        attr2 = post["attr2"]
+                    attr3 = None
+                    if "attr3" in post:
+                        attr3 = post["attr3"]
 
                     if os.path.exists(dlcpath):
-                        count = len(os.listdir(dlcpath))
+                        # Look for a list file first.
+                        # If the list file exists, send the entire thing back to the client.
+                        if os.path.isfile(os.path.join(dlcpath, "_list.txt")):
+                            ret = self.filter_list(safeloadfi("_list.txt"), attr1, attr2, attr3)
 
-                        if os.path.isfile(dlcpath + "/_list.txt"):
-                            attr1 = None
-                            if "attr1" in post:
-                                attr1 = post["attr1"]
-                            attr2 = None
-                            if "attr2" in post:
-                                attr2 = post["attr2"]
-                            attr3 = None
-                            if "attr3" in post:
-                                attr3 = post["attr3"]
+                            if post["gamecd"] in gamecodes_return_random_file:
+                                ret = self.filter_list_random_files(ret, 1)
 
-                            dlcfi = safeloadfi("_list.txt")
-                            lst = self.filter_list(dlcfi, attr1, attr2, attr3)
-                            count = self.get_file_count(lst)
+                if action == "contents":
+                    # Get only the base filename just in case there is a path involved somewhere in the filename string.
+                    dlc_contenttype = True
+                    contents = os.path.basename(post["contents"])
+                    ret = safeloadfi(contents)
 
-                    ret = "%d" % count
+                self.send_response(200)
 
-            if action == "list":
-                num = int(post["num"])
-                offset = int(post["offset"])
+                if dlc_contenttype == True:
+                    self.send_header("Content-type", "application/x-dsdl")
+                    self.send_header("Content-Disposition", "attachment; filename=\"" + post["contents"] + "\"")
+                else:
+                    self.send_header("Content-type", "text/plain")
 
-                attr1 = None
-                if "attr1" in post:
-                    attr1 = post["attr1"]
-                attr2 = None
-                if "attr2" in post:
-                    attr2 = post["attr2"]
-                attr3 = None
-                if "attr3" in post:
-                    attr3 = post["attr3"]
+                self.send_header("X-DLS-Host", "http://127.0.0.1/")
 
-                if os.path.exists(dlcpath):
-                    # Look for a list file first.
-                    # If the list file exists, send the entire thing back to the client.
-                    if os.path.isfile(os.path.join(dlcpath, "_list.txt")):
-                        ret = self.filter_list(safeloadfi("_list.txt"), attr1, attr2, attr3)
+                logger.log(logging.DEBUG, "download response to %s", self.client_address)
 
-                        if post["gamecd"] in gamecodes_return_random_file:
-                            ret = self.filter_list_random_files(ret, 1)
-
-            if action == "contents":
-                # Get only the base filename just in case there is a path involved somewhere in the filename string.
-                dlc_contenttype = True
-                contents = os.path.basename(post["contents"])
-                ret = safeloadfi(contents)
-
-            self.send_response(200)
-
-            if dlc_contenttype == True:
-                self.send_header("Content-type", "application/x-dsdl")
-                self.send_header("Content-Disposition", "attachment; filename=\"" + post["contents"] + "\"")
+                #if dlc_contenttype == False:
+                #    logger.log(logging.DEBUG, ret)
             else:
-                self.send_header("Content-type", "text/plain")
+                logger.log(logging.WARNING, "Unknown path request %s from %s!", self.path, self.client_address)
 
-            self.send_header("X-DLS-Host", "http://127.0.0.1/")
-
-            logger.log(logging.DEBUG, "download response to %s", self.client_address)
-
-            #if dlc_contenttype == False:
-            #    logger.log(logging.DEBUG, ret)
-        else:
-            logger.log(logging.WARNING, "Unknown path request %s from %s!", self.path, self.client_address)
-
-        self.send_header("Content-Length", str(len(ret)))
-        self.end_headers()
-        self.wfile.write(ret)
+            self.send_header("Content-Length", str(len(ret)))
+            self.end_headers()
+            self.wfile.write(ret)
+        except:
+            logger.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
     def str_to_dict(self, str):
         ret = urlparse.parse_qs(str)

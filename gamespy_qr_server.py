@@ -9,6 +9,7 @@ import threading
 import time
 import ctypes
 import Queue
+import traceback
 
 from multiprocessing.managers import BaseManager
 
@@ -60,38 +61,41 @@ class GameSpyQRServer(object):
             logger.log(level, "[%s:%d] %s", address[0], address[1], message)
 
     def start(self):
-        manager_address = ("127.0.0.1", 27500)
-        manager_password = ""
+        try:
+            manager_address = ("127.0.0.1", 27500)
+            manager_password = ""
 
-        self.server_manager = GameSpyServerDatabase(address = manager_address, authkey= manager_password)
-        self.server_manager.connect()
+            self.server_manager = GameSpyServerDatabase(address = manager_address, authkey= manager_password)
+            self.server_manager.connect()
 
-        # Start QR server
-        address = ('0.0.0.0', 27900)  # accessible to outside connections (use this if you don't know what you're doing)
+            # Start QR server
+            address = ('0.0.0.0', 27900)  # accessible to outside connections (use this if you don't know what you're doing)
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.bind(address)
-        self.socket.setblocking(0)
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.socket.bind(address)
+            self.socket.setblocking(0)
 
-        logger.log(logging.INFO, "Server is now listening on %s:%s..." % (address[0], address[1]))
+            logger.log(logging.INFO, "Server is now listening on %s:%s..." % (address[0], address[1]))
 
-        # Dependencies! I don't really like this solution but it's easier than trying to manage it another way.
-        server_browser_server = GameSpyServerBrowserServer(self)
-        server_browser_server_thread = threading.Thread(target=server_browser_server.start)
-        server_browser_server_thread.start()
+            # Dependencies! I don't really like this solution but it's easier than trying to manage it another way.
+            server_browser_server = GameSpyServerBrowserServer(self)
+            server_browser_server_thread = threading.Thread(target=server_browser_server.start)
+            server_browser_server_thread.start()
 
-        self.write_queue = Queue.Queue();
-        self.db = gs_database.GamespyDatabase()
-        threading.Thread(target=self.write_queue_worker).start()
+            self.write_queue = Queue.Queue()
+            self.db = gs_database.GamespyDatabase()
+            threading.Thread(target=self.write_queue_worker).start()
 
-        while 1:
-            ready = select.select([self.socket], [], [], 15)
+            while 1:
+                ready = select.select([self.socket], [], [], 15)
 
-            if ready[0]:
-                recv_data, address = self.socket.recvfrom(2048)
-                self.handle_packet(self.socket, recv_data, address)
+                if ready[0]:
+                    recv_data, address = self.socket.recvfrom(2048)
+                    self.handle_packet(self.socket, recv_data, address)
 
-            self.keepalive_check()
+                self.keepalive_check()
+        except:
+            logger.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
     def write_queue_send(self, data, address):
         time.sleep(0.05)

@@ -1,5 +1,6 @@
 import logging
 import time
+import traceback
 
 from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import serverFromString
@@ -89,79 +90,88 @@ class PlayerSession(LineReceiver):
         return ipaddress
 
     def connectionMade(self):
-        self.transport.setTcpKeepAlive(1)
+        try:
+            self.transport.setTcpKeepAlive(1)
 
-        self.log(logging.INFO, "Received connection from %s:%d" % (self.address.host, self.address.port))
+            self.log(logging.INFO, "Received connection from %s:%d" % (self.address.host, self.address.port))
 
-        # Create new session id
-        self.session = ""
+            # Create new session id
+            self.session = ""
 
-        # Generate a random challenge string
-        self.challenge = utils.generate_random_str(10, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+            # Generate a random challenge string
+            self.challenge = utils.generate_random_str(10, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-        # The first command sent to the client is always a login challenge containing the server challenge key.
-        msg = gs_query.create_gamespy_message([
-            ('__cmd__', "lc"),
-            ('__cmd_val__', "1"),
-            ('challenge', self.challenge),
-            ('id', "1"),
-        ])
+            # The first command sent to the client is always a login challenge containing the server challenge key.
+            msg = gs_query.create_gamespy_message([
+                ('__cmd__', "lc"),
+                ('__cmd_val__', "1"),
+                ('challenge', self.challenge),
+                ('id', "1"),
+            ])
 
-        self.log(logging.DEBUG, "SENDING: '%s'..." % msg)
-        self.transport.write(bytes(msg))
+            self.log(logging.DEBUG, "SENDING: '%s'..." % msg)
+            self.transport.write(bytes(msg))
+        except:
+            self.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
     def connectionLost(self, reason):
-        self.log(logging.INFO, "Client disconnected")
+        try:
+            self.log(logging.INFO, "Client disconnected")
 
-        self.status = "0"
-        self.statstring = "Offline"
-        self.locstring = ""
-        self.send_status_to_friends()
+            self.status = "0"
+            self.statstring = "Offline"
+            self.locstring = ""
+            self.send_status_to_friends()
 
-        if self.profileid in self.sessions:
-            del self.sessions[self.profileid]
+            if self.profileid in self.sessions:
+                del self.sessions[self.profileid]
 
-        self.db.delete_session(self.session)
-        self.log(logging.INFO, "Deleted session " + self.session)
+            self.db.delete_session(self.session)
+            self.log(logging.INFO, "Deleted session " + self.session)
+        except:
+            self.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
     def rawDataReceived(self, data):
-        self.log(logging.DEBUG, "RESPONSE: '%s'..." % data)
+        try:
+            self.log(logging.DEBUG, "RESPONSE: '%s'..." % data)
 
-        # In the case where command string is too big to fit into one read, any parts that could not be successfully
-        # parsed are stored in the variable remaining_message. On the next rawDataReceived command, the remaining
-        # message and the data are combined to create a full command.
-        data = self.remaining_message + data
+            # In the case where command string is too big to fit into one read, any parts that could not be successfully
+            # parsed are stored in the variable remaining_message. On the next rawDataReceived command, the remaining
+            # message and the data are combined to create a full command.
+            data = self.remaining_message + data
 
-        # Check to make sure the data buffer starts with a valid command.
-        if len(data) > 0 and data[0] != '\\':
-            # There is data in the buffer but it doesn't start with a \ so there's no chance of it being valid.
-            # Look for the first instance of \final\ and remove everything before it.
-            # If \final\ is not in the command string then ignore it.
-            final = "\\final\\"
-            data = data[data.index(final) + len(final):] if final in data else ""
+            # Check to make sure the data buffer starts with a valid command.
+            if len(data) > 0 and data[0] != '\\':
+                # There is data in the buffer but it doesn't start with a \ so there's no chance of it being valid.
+                # Look for the first instance of \final\ and remove everything before it.
+                # If \final\ is not in the command string then ignore it.
+                final = "\\final\\"
+                data = data[data.index(final) + len(final):] if final in data else ""
 
-        commands, self.remaining_message = gs_query.parse_gamespy_message(data)
+            commands, self.remaining_message = gs_query.parse_gamespy_message(data)
 
-        cmds = {
-            "login": self.perform_login,
-            "logout": self.perform_logout,
-            "getprofile": self.perform_getprofile,
-            "updatepro": self.perform_updatepro,
-            "ka": self.perform_ka,
-            "status": self.perform_status,
-            "bm": self.perform_bm,
-            "addbuddy": self.perform_addbuddy,
-            "delbuddy": self.perform_delbuddy,
-            "authadd": self.perform_authadd,
-        }
-        def cmd_err(data_parsed):
-            # Maybe write unknown commands to a separate file later so new data can be collected more easily?
-            self.log(logging.ERROR, "Found unknown command, don't know how to handle '%s'." % data_parsed['__cmd__'])
+            cmds = {
+                "login": self.perform_login,
+                "logout": self.perform_logout,
+                "getprofile": self.perform_getprofile,
+                "updatepro": self.perform_updatepro,
+                "ka": self.perform_ka,
+                "status": self.perform_status,
+                "bm": self.perform_bm,
+                "addbuddy": self.perform_addbuddy,
+                "delbuddy": self.perform_delbuddy,
+                "authadd": self.perform_authadd,
+            }
+            def cmd_err(data_parsed):
+                # Maybe write unknown commands to a separate file later so new data can be collected more easily?
+                self.log(logging.ERROR, "Found unknown command, don't know how to handle '%s'." % data_parsed['__cmd__'])
 
-        for data_parsed in commands:
-            #self.log(-1, data_parsed)
-            self.log(logging.DEBUG, data_parsed)
-            cmds.get(data_parsed['__cmd__'], cmd_err)(data_parsed)
+            for data_parsed in commands:
+                #self.log(-1, data_parsed)
+                self.log(logging.DEBUG, data_parsed)
+                cmds.get(data_parsed['__cmd__'], cmd_err)(data_parsed)
+        except:
+            self.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
     def perform_login(self, data_parsed):
         authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'], self.db)
