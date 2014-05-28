@@ -195,6 +195,10 @@ class GameSpyQRServer(object):
                 self.sessions[session_id] = self.Session(address)
                 self.sessions[session_id].session = session_id
                 self.sessions[session_id].keepalive = int(time.time())
+                self.sessions[session_id].disconnected = False
+
+            if session_id in self.sessions and self.sessions[session_id].disconnected == True:
+                return
 
         # Handle commands
         if recv_data[0] == '\x00': # Query
@@ -279,7 +283,8 @@ class GameSpyQRServer(object):
                     self.server_manager.delete_server(k['gamename'] , session_id)
 
                     if session_id in self.sessions:
-                        self.sessions.pop(session_id)
+                        self.sessions[session_id].disconnected = True
+
                 else: #if k['statechanged'] == "1": # Create server
                     #if k['publicport'] != "0" and k['publicip'] != "0":
                         # dwc_mtype controls what kind of server query we're looking for.
