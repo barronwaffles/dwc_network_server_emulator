@@ -269,8 +269,7 @@ class GameSpyQRServer(object):
                 if found_console == False:
                     # Couldn't detect game, try to get it from the database
                     # Try a 3 times before giving up
-                    retry = 0
-                    while retry < 3:
+                    for i in range(0, 3):
                         try:
                             profile = self.db.get_profile_from_profileid(self.sessions[session_id].playerid)
 
@@ -279,7 +278,6 @@ class GameSpyQRServer(object):
 
                             break
                         except:
-                            retry += 1
                             time.sleep(0.5)
 
 
