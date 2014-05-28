@@ -253,10 +253,34 @@ class GameSpyQRServer(object):
                 # The endianness of some server data depends on the endianness of the console, so we must be able
                 # to account for that.
                 self.sessions[session_id].playerid = int(k['dwc_pid'])
-                profile = self.db.get_profile_from_profileid(self.sessions[session_id].playerid)
 
-                if "console" in profile:
-                    self.sessions[session_id].console = profile['console']
+                # Try to detect console without hitting the database first
+                found_console = False
+                if 'gamename' in k:
+                    self.sessions[session_id].console = 0
+
+                    if k['gamename'].endswith('ds') or k['gamename'].endswith('dsam') or k['gamename'].endswith('dsi') or k['gamename'].endswith('dsiam'):
+                        self.sessions[session_id].console = 0
+                        found_console = True
+                    elif k['gamename'].endswith('wii') or k['gamename'].endswith('wiiam') or k['gamename'].endswith('wiiware') or k['gamename'].endswith('wiiwaream'):
+                        self.sessions[session_id].console = 1
+                        found_console = True
+
+                if found_console == False:
+                    # Couldn't detect game, try to get it from the database
+                    # Try a 3 times before giving up
+                    retry = 0
+                    while retry < 3:
+                        try:
+                            profile = self.db.get_profile_from_profileid(self.sessions[session_id].playerid)
+
+                            if "console" in profile:
+                                self.sessions[session_id].console = profile['console']
+
+                            break
+                        except:
+                            retry += 1
+                            time.sleep(0.5)
 
 
             if self.sessions[session_id].sent_challenge == False:

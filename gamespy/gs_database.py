@@ -9,6 +9,7 @@ import other.utils as utils
 import gamespy.gs_utility as gs_utils
 
 # Logger settings
+SQL_LOGLEVEL = logging.DEBUG
 logger_output_to_console = True
 logger_output_to_file = True
 logger_name = "GamespyDatabase"
@@ -17,7 +18,7 @@ logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_
 
 class GamespyDatabase(object):
     def __init__(self, filename='gpcm.db'):
-        self.conn = sqlite3.connect(filename)
+        self.conn = sqlite3.connect(filename, timeout=10.0)
         self.conn.row_factory = sqlite3.Row
 
         self.initialize_database(self.conn)
@@ -32,31 +33,31 @@ class GamespyDatabase(object):
             # user id's will be ints, or all passwords will be ints, etc, despite not seeing any
             # evidence yet to say otherwise as far as Nintendo DS games go.
             q = "CREATE TABLE users (profileid INT, userid TEXT, password TEXT, gsbrcd TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, firstname TEXT, lastname TEXT, stat TEXT, partnerid TEXT, console INT, csnum TEXT, cfc TEXT, bssid TEXT, devname BLOB, birth TEXT, gameid TEXT, enabled INT, zipcode TEXT, aim TEXT)"
-            logger.log(-1, q)
+            logger.log(SQL_LOGLEVEL, q)
             c.execute(q)
 
             q = "CREATE TABLE sessions (session TEXT, profileid INT, loginticket TEXT)"
-            logger.log(-1, q)
+            logger.log(SQL_LOGLEVEL, q)
             c.execute(q)
 
             q = "CREATE TABLE buddies (userProfileId INT, buddyProfileId INT, time INT, status INT, notified INT, gameid TEXT, blocked INT)"
-            logger.log(-1, q)
+            logger.log(SQL_LOGLEVEL, q)
             c.execute(q)
 
             q = "CREATE TABLE pending_messages (sourceid INT, targetid INT, msg TEXT)"
-            logger.log(-1, q)
+            logger.log(SQL_LOGLEVEL, q)
             c.execute(q)
 
             q = "CREATE TABLE gamestat_profile (profileid INT, dindex TEXT, ptype TEXT, data TEXT)"
-            logger.log(-1, q)
+            logger.log(SQL_LOGLEVEL, q)
             c.execute(q)
 
             q = "CREATE TABLE gameinfo (profileid INT, dindex TEXT, ptype TEXT, data TEXT)"
-            logger.log(-1, q)
+            logger.log(SQL_LOGLEVEL, q)
             c.execute(q)
 
             q = "CREATE TABLE nas_logins (userid TEXT, authtoken TEXT, data TEXT)"
-            logger.log(-1, q)
+            logger.log(SQL_LOGLEVEL, q)
             c.execute(q)
 
             self.conn.commit()
@@ -71,7 +72,7 @@ class GamespyDatabase(object):
     def get_next_free_profileid(self):
         # TODO: Make profile ids start at 1 for each game?
         q = "SELECT max(profileid) FROM users"
-        logger.log(-1, q)
+        logger.log(SQL_LOGLEVEL, q)
 
         c = self.conn.cursor()
         c.execute(q)
@@ -89,7 +90,7 @@ class GamespyDatabase(object):
     def check_user_exists(self, userid, gsbrcd):
         q = "SELECT * FROM users WHERE userid = ? and gsbrcd = ?"
         q2 = q.replace("?", "%s") % (userid, gsbrcd)
-        logger.log(-1, q)
+        logger.log(SQL_LOGLEVEL, q)
 
         c = self.conn.cursor()
         c.execute(q, [userid, gsbrcd])
@@ -106,7 +107,7 @@ class GamespyDatabase(object):
     def check_profile_exists(self, profileid):
         q = "SELECT * FROM users WHERE profileid = ?"
         q2 = q.replace("?", "%s") % (profileid)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [profileid])
@@ -125,7 +126,7 @@ class GamespyDatabase(object):
         if profileid != 0:
             q = "SELECT * FROM users WHERE profileid = ?"
             q2 = q.replace("?", "%s") % (profileid)
-            logger.log(-1, q2)
+            logger.log(SQL_LOGLEVEL, q2)
 
             c = self.conn.cursor()
             c.execute(q, [profileid])
@@ -138,7 +139,7 @@ class GamespyDatabase(object):
     def perform_login(self, userid, password, gsbrcd):
         q = "SELECT * FROM users WHERE userid = ? and gsbrcd = ?"
         q2 = q.replace("?", "%s") % (userid, gsbrcd)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [userid, gsbrcd])
@@ -183,7 +184,7 @@ class GamespyDatabase(object):
 
             q = "INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
             q2 = q.replace("?", "%s") % (profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled, zipcode, aim)
-            logger.log(-1, q2)
+            logger.log(SQL_LOGLEVEL, q2)
 
             c = self.conn.cursor()
             c.execute(q, [profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled, zipcode, aim])
@@ -216,7 +217,7 @@ class GamespyDatabase(object):
 
             q = "INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
             q2 = q.replace("?", "%s") % (profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled, zipcode, aim)
-            logger.log(-1, q2)
+            logger.log(SQL_LOGLEVEL, q2)
 
             c = self.conn.cursor()
             c.execute(q, [profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled, zipcode, aim])
@@ -230,7 +231,7 @@ class GamespyDatabase(object):
         c = self.conn.cursor()
 
         q = "SELECT * FROM users"
-        logger.log(-1, q)
+        logger.log(SQL_LOGLEVEL, q)
 
         users = []
         for row in c.execute(q):
@@ -241,7 +242,7 @@ class GamespyDatabase(object):
     def save_pending_message(self, sourceid, targetid, msg):
         q = "INSERT INTO pending_messages VALUES (?,?,?)"
         q2 = q.replace("?", "%s") % (sourceid, targetid, msg)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [sourceid, targetid, msg])
@@ -254,7 +255,7 @@ class GamespyDatabase(object):
 
         q = "SELECT * FROM pending_messages WHERE targetid = ?"
         q2 = q.replace("?", "%s") % (profileid)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         messages = []
         for row in c.execute(q, [profileid]):
@@ -269,7 +270,7 @@ class GamespyDatabase(object):
         # FIXME: Possible security issue due to embedding an unsanitized string directly into the statement.
         q = "UPDATE users SET \"%s\" = ? WHERE profileid = ?"
         q2 = q.replace("?", "%s") % (field[0], field[1], profileid)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q % field[0], [field[1], profileid])
@@ -280,7 +281,7 @@ class GamespyDatabase(object):
     def get_profileid_from_session_key(self, session_key):
         q = "SELECT profileid FROM sessions WHERE session = ?"
         q2 = q.replace("?", "%s") % (session_key)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [session_key])
@@ -296,7 +297,7 @@ class GamespyDatabase(object):
 
     def get_profileid_from_loginticket(self, loginticket):
         q = "SELECT profileid FROM sessions WHERE loginticket = ?"
-        logger.log(-1, q.replace("?", "%s") % (loginticket))
+        logger.log(SQL_LOGLEVEL, q.replace("?", "%s") % (loginticket))
 
         c = self.conn.cursor()
         c.execute(q, (loginticket,))
@@ -313,7 +314,7 @@ class GamespyDatabase(object):
         if profileid != 0:
             q = "SELECT profileid FROM sessions WHERE session = ?"
             q2 = q.replace("?", "%s") % (session_key)
-            logger.log(-1, q2)
+            logger.log(SQL_LOGLEVEL, q2)
 
             c = self.conn.cursor()
             c.execute(q, [session_key])
@@ -328,7 +329,7 @@ class GamespyDatabase(object):
 
         q = "SELECT session FROM sessions WHERE session = ?"
         q2 = q.replace("?", "%s") % (session_key)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         for r in c.execute(q, [session_key]):
@@ -339,7 +340,7 @@ class GamespyDatabase(object):
     def delete_session(self, profileid):
         q = "DELETE FROM sessions WHERE profileid = ?"
         q2 = q.replace("?", "%s") % (profileid)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [profileid])
@@ -357,7 +358,7 @@ class GamespyDatabase(object):
 
         q ="INSERT INTO sessions VALUES (?, ?, ?)"
         q2 = q.replace("?", "%s") % (session_key, profileid, loginticket)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [session_key, profileid, loginticket])
@@ -372,12 +373,12 @@ class GamespyDatabase(object):
         if profileid != None:
             q = "SELECT * FROM sessions WHERE profileid = ?"
             q2 = q.replace("?", "%s") % (profileid)
-            logger.log(-1, q2)
+            logger.log(SQL_LOGLEVEL, q2)
 
             r = c.execute(q, [profileid])
         else:
             q = "SELECT * FROM sessions"
-            logger.log(-1, q)
+            logger.log(SQL_LOGLEVEL, q)
 
             r = c.execute(q)
 
@@ -390,7 +391,7 @@ class GamespyDatabase(object):
     def get_nas_login(self, authtoken):
         q = "SELECT data FROM nas_logins WHERE authtoken = ?"
         q2 = q.replace("?", "%s") % (authtoken)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [authtoken])
@@ -412,7 +413,7 @@ class GamespyDatabase(object):
 
         q = "SELECT authtoken FROM nas_logins WHERE authtoken = ?"
         q2 = q.replace("?", "%s") % (authtoken)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         for r in c.execute(q, [authtoken]):
@@ -420,7 +421,7 @@ class GamespyDatabase(object):
 
         q = "SELECT * FROM nas_logins WHERE userid = ?"
         q2 = q.replace("?", "%s") % (userid)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c.execute(q, [userid])
         r = self.get_dict(c.fetchone())
@@ -435,12 +436,12 @@ class GamespyDatabase(object):
         if r == None: # no row, add it
             q = "INSERT INTO nas_logins VALUES (?, ?, ?)"
             q2 = q.replace("?", "%s") % (userid, authtoken, data)
-            logger.log(-1, q2)
+            logger.log(SQL_LOGLEVEL, q2)
             c.execute(q, [userid, authtoken, data])
         else:
             q = "UPDATE nas_logins SET authtoken = ?, data = ? WHERE userid = ?"
             q2 = q.replace("?", "%s") % (authtoken, data, userid)
-            logger.log(-1, q2)
+            logger.log(SQL_LOGLEVEL, q2)
             c.execute(q, [authtoken, data, userid])
 
         c.close()
@@ -455,7 +456,7 @@ class GamespyDatabase(object):
 
         q = "INSERT INTO buddies VALUES (?, ?, ?, ?, ?, ?, ?)"
         q2 = q.replace("?", "%s") % (userProfileId, buddyProfileId, now, 0, 0, "", 0)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [userProfileId, buddyProfileId, now, 0, 0, "", 0]) # 0 will mean not authorized
@@ -464,7 +465,7 @@ class GamespyDatabase(object):
     def auth_buddy(self, userProfileId, buddyProfileId):
         q = "UPDATE buddies SET status = ? WHERE userProfileId = ? AND buddyProfileId = ?"
         q2 = q.replace("?", "%s") % (1, userProfileId, buddyProfileId)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [1, userProfileId, buddyProfileId]) # 1 will mean authorized
@@ -473,7 +474,7 @@ class GamespyDatabase(object):
     def block_buddy(self, userProfileId, buddyProfileId):
         q = "UPDATE buddies SET blocked = ? WHERE userProfileId = ? AND buddyProfileId = ?"
         q2 = q.replace("?", "%s") % (1, userProfileId, buddyProfileId)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [1, userProfileId, buddyProfileId]) # 1 will mean blocked
@@ -482,7 +483,7 @@ class GamespyDatabase(object):
     def unblock_buddy(self, userProfileId, buddyProfileId):
         q = "UPDATE buddies SET blocked = ? WHERE userProfileId = ? AND buddyProfileId = ?"
         q2 = q.replace("?", "%s") % (0, userProfileId, buddyProfileId)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [0, userProfileId, buddyProfileId]) # 0 will mean not blocked
@@ -493,7 +494,7 @@ class GamespyDatabase(object):
         if userProfileId != 0 and buddyProfileId != 0:
             q = "SELECT * FROM buddies WHERE userProfileId = ? AND buddyProfileId = ?"
             q2 = q.replace("?", "%s") % (userProfileId, buddyProfileId)
-            logger.log(-1, q2)
+            logger.log(SQL_LOGLEVEL, q2)
 
             c = self.conn.cursor()
             c.execute(q, [userProfileId, buddyProfileId])
@@ -505,7 +506,7 @@ class GamespyDatabase(object):
     def delete_buddy(self, userProfileId, buddyProfileId):
         q = "DELETE FROM buddies WHERE userProfileId = ? AND buddyProfileId = ?"
         q2 = q.replace("?", "%s") % (userProfileId, buddyProfileId)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [userProfileId, buddyProfileId])
@@ -514,7 +515,7 @@ class GamespyDatabase(object):
     def get_buddy_list(self, userProfileId):
         q = "SELECT * FROM buddies WHERE userProfileId = ? AND blocked = 0"
         q2 = q.replace("?", "%s") % (userProfileId)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
 
@@ -527,7 +528,7 @@ class GamespyDatabase(object):
     def get_blocked_list(self, userProfileId):
         q = "SELECT * FROM buddies WHERE userProfileId = ? AND blocked = 1"
         q2 = q.replace("?", "%s") % (userProfileId)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
 
@@ -540,7 +541,7 @@ class GamespyDatabase(object):
     def get_pending_buddy_requests(self, userProfileId):
         q = "SELECT * FROM buddies WHERE buddyProfileId = ? AND status = 0"
         q2 = q.replace("?", "%s") % (userProfileId)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
 
@@ -553,7 +554,7 @@ class GamespyDatabase(object):
     def buddy_need_auth_message(self, userProfileId):
         q = "SELECT * FROM buddies WHERE buddyProfileId = ? AND status = 1 AND notified = 0"
         q2 = q.replace("?", "%s") % (userProfileId)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
 
@@ -566,7 +567,7 @@ class GamespyDatabase(object):
     def buddy_sent_auth_message(self, userProfileId, buddyProfileId):
         q = "UPDATE buddies SET notified = ? WHERE userProfileId = ? AND buddyProfileId = ?"
         q2 = q.replace("?", "%s") % (1, userProfileId, buddyProfileId)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [1, userProfileId, buddyProfileId]) # 1 will mean that the player has been sent the "
@@ -576,7 +577,7 @@ class GamespyDatabase(object):
     def pd_insert(self, profileid, dindex, ptype, data):
         q = "INSERT OR IGNORE INTO gamestat_profile (profileid, dindex, ptype, data) VALUES(?,?,?,?)"
         q2 = q.replace("?", "%s") % (profileid, dindex, ptype, data)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [profileid, dindex, ptype, data])
@@ -584,7 +585,7 @@ class GamespyDatabase(object):
 
         q = "UPDATE gamestat_profile SET data = ? WHERE profileid = ? AND dindex = ? AND ptype = ?"
         q2 = q.replace("?", "%s") % (data, profileid, dindex, ptype)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [data, profileid, dindex, ptype])
@@ -593,7 +594,7 @@ class GamespyDatabase(object):
     def pd_get(self, profileid, dindex, ptype):
         q = "SELECT * FROM gamestat_profile WHERE profileid = ? AND dindex = ? AND ptype = ?"
         q2 = q.replace("?", "%s") % (profileid, dindex, ptype)
-        logger.log(-1, q2)
+        logger.log(SQL_LOGLEVEL, q2)
 
         c = self.conn.cursor()
         c.execute(q, [profileid, dindex, ptype])
