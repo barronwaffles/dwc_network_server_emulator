@@ -50,8 +50,11 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             cursor.execute('CREATE TABLE filepaths (fileid INTEGER PRIMARY KEY AUTOINCREMENT, gameid INT, playerid INT, path TEXT)')
 
         if not self.table_exists('g1687_FriendInfo'):
-            cursor.execute('CREATE TABLE g1687_FriendInfo (recordid INTEGER PRIMARY KEY AUTOINCREMENT, info TEXT)')
-            cursor.execute('INSERT INTO typedata VALUES ("g1687_FriendInfo", "recordid", "intValue"), ("g1687_FriendInfo", "info", "binaryDataValue")')
+            cursor.execute('CREATE TABLE g1687_FriendInfo (recordid INTEGER PRIMARY KEY AUTOINCREMENT, ownerid INT, info TEXT)')
+            cursor.execute('INSERT INTO typedata VALUES ("g1687_FriendInfo", "recordid", "intValue"), ("g1687_FriendInfo", "ownerid", "intValue"), ("g1687_FriendInfo", "info", "binaryDataValue")')
+        else:
+            self.create_column_if_not_exists('g1687_FriendInfo', 'ownerid', 'INT',  'intValue')
+            self.create_column_if_not_exists('g1687_FriendInfo', 'info',    'TEXT', 'binaryDataValue')
             
         if not self.table_exists('g2050_box'):
             cursor.execute('CREATE TABLE g2050_box (recordid INTEGER PRIMARY KEY AUTOINCREMENT, ownerid INT, m_enable INT, m_type INT, m_index INT, m_file_id INT, m_header TEXT, m_file_id___size INT, m_file_id___create_time DATETIME, m_file_id___downloads INT)')
@@ -109,6 +112,22 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
         cursor.execute("SELECT Count(1) FROM sqlite_master WHERE type='table' AND name=?", (name,))
         exists = cursor.fetchone()[0]
         return True if exists else False
+
+    def column_exists(self, table, column):
+        cursor = self.db.cursor()
+        cursor.execute("PRAGMA table_info(%s)" % table)
+        data = cursor.fetchall()
+        for row in data:
+            if column == row[1]:
+                return True
+        return False
+
+    def create_column_if_not_exists(self, table, column, sqlType, sakeType):
+        if not self.column_exists(table, column):
+            cursor = self.db.cursor()
+            cursor.execute('ALTER TABLE ' + table + ' ADD COLUMN ' + column + ' ' + sqlType)
+            cursor.execute('INSERT INTO typedata VALUES (?, ?, ?)', (table, column, sakeType))
+        return
     
     def get_typedata(self, table, column):
         try:
