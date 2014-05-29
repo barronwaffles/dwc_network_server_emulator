@@ -403,7 +403,7 @@ class Session(LineReceiver):
         if server['publicip'] == ip and server['publicport'] == str(self.forward_client[1]):
             if self.forward_client[1] == 0 and 'localport' in server:
                 # No public port returned from client, try contacting on the local port.
-                self.forward_client[1] = int(server['localport'])
+                self.forward_client = (self.forward_client[0], int(server['localport']))
 
             # Send command to server to get it to connect to natneg
             cookie = int(utils.generate_random_hex_str(8), 16) # Quick and lazy way to get a random 32bit integer. Replace with something else later

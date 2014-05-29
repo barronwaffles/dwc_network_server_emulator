@@ -107,7 +107,7 @@ class Gamestats(LineReceiver):
             self.data = msg
 
             commands, self.remaining_message = gs_query.parse_gamespy_message(msg)
-            #logger.log(logging.DEBUG, "STATS RESPONSE: %s" % msg)
+            logger.log(logging.DEBUG, "STATS RESPONSE: %s" % msg)
 
             cmds = {
                     "auth":    self.perform_auth,
@@ -292,6 +292,9 @@ class Gamestats(LineReceiver):
     def perform_getpd(self, data_parsed):
         profile = self.db.pd_get(self.profileid, data_parsed['dindex'], data_parsed['ptype'])
 
+        if profile == None:
+            self.log(logging.WARNING, "Could not find profile for %d %s %s" % (self.profileid, data_parsed['dindex'], data_parsed['ptype']))
+
         keys = data_parsed['keys'].split('\x01')
 
         profile_data = None
@@ -302,12 +305,14 @@ class Gamestats(LineReceiver):
         data = ""
         if profile_data != None:
             profile_data = profile_data[0][0]
+        else:
+            self.log(logging.WARNING, "Could not get data section from profile for %d" % (self.profileid))
 
-            for key in (key for key in keys if key not in ("__cmd__", "__cmd_val__", "")):
-                data += "\\" + key + "\\"
-                # this WILL error if profile_data isn't properly set above
-                if key in profile_data:
-                    data += profile_data[key]
+        for key in (key for key in keys if key not in ("__cmd__", "__cmd_val__", "")):
+            data += "\\" + key + "\\"
+
+            if profile_data != None and key in profile_data:
+                data += profile_data[key]
 
         modified = int(time.time())
 
