@@ -74,6 +74,12 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             ['recordid', 'ownerid', 'info'      ],
             [PK,         'INT',     'TEXT'      ],
             ['int',      'int',     'binaryData'])
+			
+        self.create_or_alter_table_if_not_exists(
+            'g1687_StoredGhostData',
+            ['recordid', 'fileid', 'profile', 'region', 'gameid', 'course' ],
+            [PK,         'INT',    'INT',     'INT',    'INT',    'INT'    ],
+            ['int',      'int',    'int',     'int',    'int',    'int'    ])
 
         # WarioWare DIY
         self.create_or_alter_table_if_not_exists(
@@ -95,14 +101,14 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             'g2050_box',
             ['recordid', 'ownerid', 'm_enable', 'm_type', 'm_index', 'm_file_id', 'm_header',   'm_file_id___size', 'm_file_id___create_time', 'm_file_id___downloads'],
             [PK,         'INT',     'INT',      'INT',    'INT',     'INT',       'TEXT',       'INT',              'DATETIME',                'INT'                  ],
-            ['int',      'int',     'boolean',  'int',    'int',     'int',       'binaryData', 'int',              'dateAndTime',             'intValue'             ])
+            ['int',      'int',     'boolean',  'int',    'int',     'int',       'binaryData', 'int',              'dateAndTime',             'int'                  ])
         cursor.execute('CREATE TRIGGER IF NOT EXISTS g2050ti_box AFTER INSERT ON g2050_box BEGIN UPDATE g2050_box SET m_file_id___create_time = strftime(\'%Y-%m-%dT%H:%M:%f\', \'now\'), m_file_id___size = 0, m_file_id___downloads = 0 WHERE recordid = NEW.recordid; END')
         cursor.execute('CREATE TRIGGER IF NOT EXISTS g2050tu_box AFTER UPDATE ON g2050_box BEGIN UPDATE g2050_box SET m_file_id___create_time = strftime(\'%Y-%m-%dT%H:%M:%f\', \'now\') WHERE recordid = NEW.recordid; END')
         self.create_or_alter_table_if_not_exists(
             'g2050_box_us_eu',
             ['recordid', 'ownerid', 'm_enable', 'm_type', 'm_index', 'm_file_id', 'm_header',   'm_file_id___size', 'm_file_id___create_time', 'm_file_id___downloads'],
             [PK,         'INT',     'INT',      'INT',    'INT',     'INT',       'TEXT',       'INT',              'DATETIME',                'INT'                  ],
-            ['int',      'int',     'boolean',  'int',    'int',     'int',       'binaryData', 'int',              'dateAndTime',             'intValue'             ])
+            ['int',      'int',     'boolean',  'int',    'int',     'int',       'binaryData', 'int',              'dateAndTime',             'int'                  ])
         cursor.execute('CREATE TRIGGER IF NOT EXISTS g2050ti_box_us_eu AFTER INSERT ON g2050_box_us_eu BEGIN UPDATE g2050_box_us_eu SET m_file_id___create_time = strftime(\'%Y-%m-%dT%H:%M:%f\', \'now\'), m_file_id___size = 0, m_file_id___downloads = 0 WHERE recordid = NEW.recordid; END')
         cursor.execute('CREATE TRIGGER IF NOT EXISTS g2050tu_box_us_eu AFTER UPDATE ON g2050_box_us_eu BEGIN UPDATE g2050_box_us_eu SET m_file_id___create_time = strftime(\'%Y-%m-%dT%H:%M:%f\', \'now\') WHERE recordid = NEW.recordid; END')
 
@@ -121,6 +127,14 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             ['recordid', 'song_name',   'creator_name', 'average_rating', 'serialid', 'filestore', 'is_lyric', 'num_ratings', 'song_code',   'artist_name'],
             [PK,         'TEXT',        'TEXT',         'REAL',           'INT',      'INT',       'INT',      'INT',         'TEXT',        'TEXT'       ],
             ['int',      'asciiString', 'asciiString',  'float',          'int',      'int',       'boolean',  'int',         'asciiString', 'asciiString'])
+			
+			
+        # Playground
+        self.create_or_alter_table_if_not_exists(
+            'g2999_tblRegionInfo',
+            ['recordid', 'region', 'allowed_regions', 'min_ratings' ],
+            [PK,         'INT',    'INT',             'INT'         ],
+            ['int',      'byte',   'int',             'int'         ])
             
         # load column info into memory, unfortunately there's no simple way
         # to check for column-existence so get that data in advance
