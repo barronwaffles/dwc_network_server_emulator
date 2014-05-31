@@ -4,6 +4,7 @@ import itertools
 import json
 import time
 import logging
+from contextlib import closing
 
 import other.utils as utils
 import gamespy.gs_utility as gs_utils
@@ -16,6 +17,54 @@ logger_name = "GamespyDatabase"
 logger_filename = "gamespy_database.log"
 logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
+class Transaction(object):
+    def __init__(self, connection):
+        self.conn = connection
+        self.databaseAltered = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        if self.databaseAltered:
+            self.conn.commit()
+        return
+
+    def _executeAndMeasure(self, cursor, statement, parameters):
+        logger.log(SQL_LOGLEVEL, "STARTING: " + statement)
+        logger.log(SQL_LOGLEVEL, "Parameters: " + ', '.join(str(p) for p in parameters))
+
+        timeStart = time.time()
+        clockStart = time.clock()
+
+        cursor.execute(statement, parameters)
+
+        clockEnd = time.clock()
+        timeEnd = time.time()
+
+        logger.log(SQL_LOGLEVEL, "DONE: " + statement + "; %s real time / %s processor time", timeEnd - timeStart, clockEnd - clockStart)
+        return
+
+    def queryall(self, statement, parameters=()):
+        with closing(self.conn.cursor()) as cursor:
+            self._executeAndMeasure(cursor, statement, parameters)
+            rows = cursor.fetchall()
+            return rows
+        return []
+
+    def queryone(self, statement, parameters=()):
+        with closing(self.conn.cursor()) as cursor:
+            self._executeAndMeasure(cursor, statement, parameters)
+            row = cursor.fetchone()
+            return row
+        return []
+
+    def nonquery(self, statement, parameters=()):
+        with closing(self.conn.cursor()) as cursor:
+            self._executeAndMeasure(cursor, statement, parameters)
+            self.databaseAltered = True
+        return
+
 class GamespyDatabase(object):
     def __init__(self, filename='gpcm.db'):
         self.conn = sqlite3.connect(filename, timeout=10.0)
@@ -25,45 +74,25 @@ class GamespyDatabase(object):
 
     def initialize_database(self, conn):
         c = self.conn.cursor()
-        c.execute("SELECT * FROM sqlite_master WHERE name = 'users' AND type = 'table'")
+        c.execute("SELECT COUNT(*) FROM sqlite_master WHERE name = 'users' AND type = 'table'")
 
         if c.fetchone() == None:
             # I highly doubt having everything in a database be of the type TEXT is a good practice,
             # but I'm not good with databases and I'm not 100% positive that, for instance, that all
             # user id's will be ints, or all passwords will be ints, etc, despite not seeing any
             # evidence yet to say otherwise as far as Nintendo DS games go.
-            q = "CREATE TABLE users (profileid INT, userid TEXT, password TEXT, gsbrcd TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, firstname TEXT, lastname TEXT, stat TEXT, partnerid TEXT, console INT, csnum TEXT, cfc TEXT, bssid TEXT, devname BLOB, birth TEXT, gameid TEXT, enabled INT, zipcode TEXT, aim TEXT)"
-            logger.log(SQL_LOGLEVEL, q)
-            c.execute(q)
 
-            q = "CREATE TABLE sessions (session TEXT, profileid INT, loginticket TEXT)"
-            logger.log(SQL_LOGLEVEL, q)
-            c.execute(q)
-
-            q = "CREATE TABLE buddies (userProfileId INT, buddyProfileId INT, time INT, status INT, notified INT, gameid TEXT, blocked INT)"
-            logger.log(SQL_LOGLEVEL, q)
-            c.execute(q)
-
-            q = "CREATE TABLE pending_messages (sourceid INT, targetid INT, msg TEXT)"
-            logger.log(SQL_LOGLEVEL, q)
-            c.execute(q)
-
-            q = "CREATE TABLE gamestat_profile (profileid INT, dindex TEXT, ptype TEXT, data TEXT)"
-            logger.log(SQL_LOGLEVEL, q)
-            c.execute(q)
-
-            q = "CREATE TABLE gameinfo (profileid INT, dindex TEXT, ptype TEXT, data TEXT)"
-            logger.log(SQL_LOGLEVEL, q)
-            c.execute(q)
-
-            q = "CREATE TABLE nas_logins (userid TEXT, authtoken TEXT, data TEXT)"
-            logger.log(SQL_LOGLEVEL, q)
-            c.execute(q)
-
-            self.conn.commit()
+            with Transaction(self.conn) as tx:
+                tx.nonquery("CREATE TABLE users (profileid INT, userid TEXT, password TEXT, gsbrcd TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, firstname TEXT, lastname TEXT, stat TEXT, partnerid TEXT, console INT, csnum TEXT, cfc TEXT, bssid TEXT, devname BLOB, birth TEXT, gameid TEXT, enabled INT, zipcode TEXT, aim TEXT)")
+                tx.nonquery("CREATE TABLE sessions (session TEXT, profileid INT, loginticket TEXT)")
+                tx.nonquery("CREATE TABLE buddies (userProfileId INT, buddyProfileId INT, time INT, status INT, notified INT, gameid TEXT, blocked INT)")
+                tx.nonquery("CREATE TABLE pending_messages (sourceid INT, targetid INT, msg TEXT)")
+                tx.nonquery("CREATE TABLE gamestat_profile (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
+                tx.nonquery("CREATE TABLE gameinfo (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
+                tx.nonquery("CREATE TABLE nas_logins (userid TEXT, authtoken TEXT, data TEXT)")
 
     def get_dict(self, row):
-        if row == None:
+        if not row:
             return None
 
         return dict(itertools.izip(row.keys(), row))
@@ -71,80 +100,53 @@ class GamespyDatabase(object):
     # User functions
     def get_next_free_profileid(self):
         # TODO: Make profile ids start at 1 for each game?
-        q = "SELECT max(profileid) FROM users"
-        logger.log(SQL_LOGLEVEL, q)
 
-        c = self.conn.cursor()
-        c.execute(q)
-
-        r = self.get_dict(c.fetchone())
+        # TODO: This leads to a race condition if two users try to create accounts at the same time.
+        # Instead, it's better to create a new row and return the sqlite ROWID instead.
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT max(profileid) AS m FROM users")
+            r = self.get_dict(row)
 
         profileid = 1 # Cannot be 0 or else it freezes the game.
-        if r != None and r['max(profileid)'] != None:
-            profileid = int(r['max(profileid)']) + 1
-
-        c.close()
+        if r != None and r['m'] != None:
+            profileid = int(r['m']) + 1
 
         return profileid
 
     def check_user_exists(self, userid, gsbrcd):
-        q = "SELECT * FROM users WHERE userid = ? and gsbrcd = ?"
-        q2 = q.replace("?", "%s") % (userid, gsbrcd)
-        logger.log(SQL_LOGLEVEL, q)
-
-        c = self.conn.cursor()
-        c.execute(q, [userid, gsbrcd])
-
-        r = self.get_dict(c.fetchone())
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT COUNT(*) FROM users WHERE userid = ? AND gsbrcd = ?", (userid, gsbrcd))
+            count = int(row[0])
 
         valid_user = False  # Default, user doesn't exist
-        if r != None:
+        if count > 0:
             valid_user = True  # Valid password
 
-        c.close()
         return valid_user
 
     def check_profile_exists(self, profileid):
-        q = "SELECT * FROM users WHERE profileid = ?"
-        q2 = q.replace("?", "%s") % (profileid)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [profileid])
-
-        r = self.get_dict(c.fetchone())
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT COUNT(*) FROM users WHERE profileid = ?", (profileid,))
+            count = int(row[0])
 
         valid_profile = False  # Default, user doesn't exist
-        if r != None:
+        if count > 0:
             valid_profile = True  # Valid password
 
-        c.close()
         return valid_profile
 
     def get_profile_from_profileid(self, profileid):
         profile = {}
         if profileid != 0:
-            q = "SELECT * FROM users WHERE profileid = ?"
-            q2 = q.replace("?", "%s") % (profileid)
-            logger.log(SQL_LOGLEVEL, q2)
-
-            c = self.conn.cursor()
-            c.execute(q, [profileid])
-
-            profile = self.get_dict(c.fetchone())
-            c.close()
-
+            with Transaction(self.conn) as tx:
+                row = tx.queryone("SELECT * FROM users WHERE profileid = ?", (profileid,))
+                profile = self.get_dict(row)
         return profile
 
     def perform_login(self, userid, password, gsbrcd):
-        q = "SELECT * FROM users WHERE userid = ? and gsbrcd = ?"
-        q2 = q.replace("?", "%s") % (userid, gsbrcd)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [userid, gsbrcd])
-
-        r = self.get_dict(c.fetchone())
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT * FROM users WHERE userid = ? and gsbrcd = ?", (userid, gsbrcd))
+            r = self.get_dict(row)
 
         profileid = None  # Default, user doesn't exist
         if r != None:
@@ -154,7 +156,6 @@ class GamespyDatabase(object):
             if r['password'] == md5.hexdigest():
                 profileid = r['profileid']  # Valid password
 
-        c.close()
         return profileid
 
     def create_user(self, userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth, gameid):
@@ -182,17 +183,12 @@ class GamespyDatabase(object):
             md5.update(password)
             password = md5.hexdigest()
 
-            q = "INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-            q2 = q.replace("?", "%s") % (profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled, zipcode, aim)
-            logger.log(SQL_LOGLEVEL, q2)
-
-            c = self.conn.cursor()
-            c.execute(q, [profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled, zipcode, aim])
-            c.close()
-
-            self.conn.commit()
+            with Transaction(self.conn) as tx:
+                q = "INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                tx.nonquery(q, (profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled, zipcode, aim))
 
             return profileid
+        return None
 
     def import_user(self, profileid, uniquenick, firstname, lastname, email, gsbrcd, gameid, console):
         if self.check_profile_exists(profileid) == 0:
@@ -215,50 +211,32 @@ class GamespyDatabase(object):
 
             enabled = 1
 
-            q = "INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-            q2 = q.replace("?", "%s") % (profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled, zipcode, aim)
-            logger.log(SQL_LOGLEVEL, q2)
-
-            c = self.conn.cursor()
-            c.execute(q, [profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled, zipcode, aim])
-            c.close()
-
-            self.conn.commit()
+            with Transaction(self.conn) as tx:
+                q = "INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                tx.nonquery(q, (profileid, str(userid), password, gsbrcd, email, uniquenick, pid, lon, lat, loc, firstname, lastname, stat, partnerid, console, csnum, cfc, bssid, devname, birth, gameid, enabled, zipcode, aim))
 
             return profileid
 
     def get_user_list(self):
-        c = self.conn.cursor()
-
-        q = "SELECT * FROM users"
-        logger.log(SQL_LOGLEVEL, q)
+        with Transaction(self.conn) as tx:
+            rows = tx.queryall("SELECT * FROM users")
 
         users = []
-        for row in c.execute(q):
+        for row in rows:
             users.append(self.get_dict(row))
 
         return users
 
     def save_pending_message(self, sourceid, targetid, msg):
-        q = "INSERT INTO pending_messages VALUES (?,?,?)"
-        q2 = q.replace("?", "%s") % (sourceid, targetid, msg)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [sourceid, targetid, msg])
-        c.close()
-
-        self.conn.commit()
+        with Transaction(self.conn) as tx:
+            tx.nonquery("INSERT INTO pending_messages VALUES (?,?,?)", (sourceid, targetid, msg))
 
     def get_pending_messages(self, profileid):
-        c = self.conn.cursor()
-
-        q = "SELECT * FROM pending_messages WHERE targetid = ?"
-        q2 = q.replace("?", "%s") % (profileid)
-        logger.log(SQL_LOGLEVEL, q2)
+        with Transaction(self.conn) as tx:
+            rows = tx.queryall("SELECT * FROM pending_messages WHERE targetid = ?", (profileid,))
 
         messages = []
-        for row in c.execute(q, [profileid]):
+        for row in rows:
             messages.append(self.get_dict(row))
 
         return messages
@@ -268,43 +246,31 @@ class GamespyDatabase(object):
         # Start replacing each field one by one.
         # TODO: Optimize this so it's done all in one update.
         # FIXME: Possible security issue due to embedding an unsanitized string directly into the statement.
-        q = "UPDATE users SET \"%s\" = ? WHERE profileid = ?"
-        q2 = q.replace("?", "%s") % (field[0], field[1], profileid)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q % field[0], [field[1], profileid])
-        self.conn.commit()
+        with Transaction(self.conn) as tx:
+            q = "UPDATE users SET \"%s\" = ? WHERE profileid = ?"
+            tx.nonquery(q % field[0], (field[1], profileid))
 
     # Session functions
     # TODO: Cache session keys so we don't have to query the database every time we get a profile id.
     def get_profileid_from_session_key(self, session_key):
-        q = "SELECT profileid FROM sessions WHERE session = ?"
-        q2 = q.replace("?", "%s") % (session_key)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [session_key])
-
-        r = self.get_dict(c.fetchone())
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT profileid FROM sessions WHERE session = ?", (session_key,))
+            r = self.get_dict(row)
 
         profileid = -1  # Default, invalid session key
         if r != None:
             profileid = r['profileid']
 
-        c.close()
         return profileid
 
     def get_profileid_from_loginticket(self, loginticket):
-        q = "SELECT profileid FROM sessions WHERE loginticket = ?"
-        logger.log(SQL_LOGLEVEL, q.replace("?", "%s") % (loginticket))
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT profileid FROM sessions WHERE loginticket = ?", (loginticket,))
 
-        c = self.conn.cursor()
-        c.execute(q, (loginticket,))
+        profileid = -1
+        if row:
+            profileid = int(row[0])
 
-        profileid = int(c.fetchone()[0])
-
-        c.close()
         return profileid
 
     def get_profile_from_session_key(self, session_key):
@@ -312,39 +278,26 @@ class GamespyDatabase(object):
 
         profile = {}
         if profileid != 0:
-            q = "SELECT profileid FROM sessions WHERE session = ?"
-            q2 = q.replace("?", "%s") % (session_key)
-            logger.log(SQL_LOGLEVEL, q2)
-
-            c = self.conn.cursor()
-            c.execute(q, [session_key])
-
-            profile = self.get_dict(c.fetchone())
-            c.close()
+            with Transaction(self.conn) as tx:
+                row = tx.queryone("SELECT profileid FROM sessions WHERE session = ?", (session_key,))
+                profile = self.get_dict(row)
 
         return profile
 
     def generate_session_key(self, min_size):
-        session_key = utils.generate_random_number_str(min_size)
-
-        q = "SELECT session FROM sessions WHERE session = ?"
-        q2 = q.replace("?", "%s") % (session_key)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        for r in c.execute(q, [session_key]):
-            session_key = utils.generate_random_number_str(min_size)
-
-        return session_key
+        # TODO: There's probably a better way to do this.
+        # The point is preventing duplicate session keys.
+        while True:
+            with Transaction(self.conn) as tx:
+                session_key = utils.generate_random_number_str(min_size)
+                row = tx.queryone("SELECT COUNT(*) FROM sessions WHERE session = ?", (session_key,))
+                count = int(row[0])
+                if count == 0:
+                    return session_key
 
     def delete_session(self, profileid):
-        q = "DELETE FROM sessions WHERE profileid = ?"
-        q2 = q.replace("?", "%s") % (profileid)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [profileid])
-        self.conn.commit()
+        with Transaction(self.conn) as tx:
+            tx.nonquery("DELETE FROM sessions WHERE profileid = ?", (profileid,))
 
     def create_session(self, profileid, loginticket):
         if profileid != None and self.check_profile_exists(profileid) == False:
@@ -355,32 +308,18 @@ class GamespyDatabase(object):
 
         # Create new session
         session_key = self.generate_session_key(8)
-
-        q ="INSERT INTO sessions VALUES (?, ?, ?)"
-        q2 = q.replace("?", "%s") % (session_key, profileid, loginticket)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [session_key, profileid, loginticket])
-        self.conn.commit()
+        with Transaction(self.conn) as tx:
+            tx.nonquery("INSERT INTO sessions VALUES (?, ?, ?)", (session_key, profileid, loginticket))
 
         return session_key
 
     def get_session_list(self, profileid=None):
-        c = self.conn.cursor()
-
         sessions = []
-        if profileid != None:
-            q = "SELECT * FROM sessions WHERE profileid = ?"
-            q2 = q.replace("?", "%s") % (profileid)
-            logger.log(SQL_LOGLEVEL, q2)
-
-            r = c.execute(q, [profileid])
-        else:
-            q = "SELECT * FROM sessions"
-            logger.log(SQL_LOGLEVEL, q)
-
-            r = c.execute(q)
+        with Transaction(self.conn) as tx:
+            if profileid != None:
+                r = tx.queryall("SELECT * FROM sessions WHERE profileid = ?", (profileid,))
+            else:
+                r = tx.queryall("SELECT * FROM sessions")
 
         for row in r:
             sessions.append(self.get_dict(row))
@@ -389,14 +328,9 @@ class GamespyDatabase(object):
 
     # nas server functions
     def get_nas_login(self, authtoken):
-        q = "SELECT data FROM nas_logins WHERE authtoken = ?"
-        q2 = q.replace("?", "%s") % (authtoken)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [authtoken])
-        r = self.get_dict(c.fetchone())
-        c.close()
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT data FROM nas_logins WHERE authtoken = ?", (authtoken,))
+            r = self.get_dict(row)
 
         if r == None:
             return None
@@ -409,22 +343,19 @@ class GamespyDatabase(object):
         # ^ real authtoken is 80 + 3 bytes though and I want to figure out what's causing the 52200
         # so I'm matching everything as closely as possible to the real thing
         size = 80
-        authtoken = "NDS" + utils.generate_random_str(size)
 
-        q = "SELECT authtoken FROM nas_logins WHERE authtoken = ?"
-        q2 = q.replace("?", "%s") % (authtoken)
-        logger.log(SQL_LOGLEVEL, q2)
+        # TODO: Another one of those questionable dupe-preventations
+        while True:
+            with Transaction(self.conn) as tx:
+                authtoken = "NDS" + utils.generate_random_str(size)
+                row = tx.queryone("SELECT COUNT(*) FROM nas_logins WHERE authtoken = ?", (authtoken,))
+                count = int(row[0])
+                if count == 0:
+                    break
 
-        c = self.conn.cursor()
-        for r in c.execute(q, [authtoken]):
-            authtoken = "NDS" + utils.generate_random_str(size)
-
-        q = "SELECT * FROM nas_logins WHERE userid = ?"
-        q2 = q.replace("?", "%s") % (userid)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c.execute(q, [userid])
-        r = self.get_dict(c.fetchone())
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT * FROM nas_logins WHERE userid = ?", (userid,))
+            r = self.get_dict(row)
 
         if "devname" in data:
             data["devname"] = gs_utils.base64_encode(data["devname"])
@@ -433,19 +364,11 @@ class GamespyDatabase(object):
 
         data = json.dumps(data)
 
-        if r == None: # no row, add it
-            q = "INSERT INTO nas_logins VALUES (?, ?, ?)"
-            q2 = q.replace("?", "%s") % (userid, authtoken, data)
-            logger.log(SQL_LOGLEVEL, q2)
-            c.execute(q, [userid, authtoken, data])
-        else:
-            q = "UPDATE nas_logins SET authtoken = ?, data = ? WHERE userid = ?"
-            q2 = q.replace("?", "%s") % (authtoken, data, userid)
-            logger.log(SQL_LOGLEVEL, q2)
-            c.execute(q, [authtoken, data, userid])
-
-        c.close()
-        self.conn.commit()
+        with Transaction(self.conn) as tx:
+            if r == None: # no row, add it
+                tx.nonquery("INSERT INTO nas_logins VALUES (?, ?, ?)", (userid, authtoken, data))
+            else:
+                tx.nonquery("UPDATE nas_logins SET authtoken = ?, data = ? WHERE userid = ?", (authtoken, data, userid))
 
         return authtoken
         
@@ -454,153 +377,86 @@ class GamespyDatabase(object):
     def add_buddy(self, userProfileId, buddyProfileId):
         now = int(time.time())
 
-        q = "INSERT INTO buddies VALUES (?, ?, ?, ?, ?, ?, ?)"
-        q2 = q.replace("?", "%s") % (userProfileId, buddyProfileId, now, 0, 0, "", 0)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [userProfileId, buddyProfileId, now, 0, 0, "", 0]) # 0 will mean not authorized
-        self.conn.commit()
+        # status == 0 -> not authorized
+        with Transaction(self.conn) as tx:
+            tx.nonquery("INSERT INTO buddies VALUES (?, ?, ?, ?, ?, ?, ?)", (userProfileId, buddyProfileId, now, 0, 0, "", 0))
 
     def auth_buddy(self, userProfileId, buddyProfileId):
-        q = "UPDATE buddies SET status = ? WHERE userProfileId = ? AND buddyProfileId = ?"
-        q2 = q.replace("?", "%s") % (1, userProfileId, buddyProfileId)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [1, userProfileId, buddyProfileId]) # 1 will mean authorized
-        self.conn.commit()
+        # status == 1 -> authorized
+        with Transaction(self.conn) as tx:
+            tx.nonquery("UPDATE buddies SET status = ? WHERE userProfileId = ? AND buddyProfileId = ?", (1, userProfileId, buddyProfileId))
 
     def block_buddy(self, userProfileId, buddyProfileId):
-        q = "UPDATE buddies SET blocked = ? WHERE userProfileId = ? AND buddyProfileId = ?"
-        q2 = q.replace("?", "%s") % (1, userProfileId, buddyProfileId)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [1, userProfileId, buddyProfileId]) # 1 will mean blocked
-        self.conn.commit()
+        with Transaction(self.conn) as tx:
+            tx.nonquery("UPDATE buddies SET blocked = ? WHERE userProfileId = ? AND buddyProfileId = ?", (1, userProfileId, buddyProfileId))
 
     def unblock_buddy(self, userProfileId, buddyProfileId):
-        q = "UPDATE buddies SET blocked = ? WHERE userProfileId = ? AND buddyProfileId = ?"
-        q2 = q.replace("?", "%s") % (0, userProfileId, buddyProfileId)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [0, userProfileId, buddyProfileId]) # 0 will mean not blocked
-        self.conn.commit()
+        with Transaction(self.conn) as tx:
+            tx.nonquery("UPDATE buddies SET blocked = ? WHERE userProfileId = ? AND buddyProfileId = ?", (0, userProfileId, buddyProfileId))
 
     def get_buddy(self, userProfileId, buddyProfileId):
         profile = {}
         if userProfileId != 0 and buddyProfileId != 0:
-            q = "SELECT * FROM buddies WHERE userProfileId = ? AND buddyProfileId = ?"
-            q2 = q.replace("?", "%s") % (userProfileId, buddyProfileId)
-            logger.log(SQL_LOGLEVEL, q2)
-
-            c = self.conn.cursor()
-            c.execute(q, [userProfileId, buddyProfileId])
-            profile = self.get_dict(c.fetchone())
-            c.close()
-
+            with Transaction(self.conn) as tx:
+                row = tx.queryone("SELECT * FROM buddies WHERE userProfileId = ? AND buddyProfileId = ?", (userProfileId, buddyProfileId))
+                profile = self.get_dict(row)
         return profile
 
     def delete_buddy(self, userProfileId, buddyProfileId):
-        q = "DELETE FROM buddies WHERE userProfileId = ? AND buddyProfileId = ?"
-        q2 = q.replace("?", "%s") % (userProfileId, buddyProfileId)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [userProfileId, buddyProfileId])
-        self.conn.commit()
+        with Transaction(self.conn) as tx:
+            tx.nonquery("DELETE FROM buddies WHERE userProfileId = ? AND buddyProfileId = ?", (userProfileId, buddyProfileId))
 
     def get_buddy_list(self, userProfileId):
-        q = "SELECT * FROM buddies WHERE userProfileId = ? AND blocked = 0"
-        q2 = q.replace("?", "%s") % (userProfileId)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
+        with Transaction(self.conn) as tx:
+            rows = tx.queryall("SELECT * FROM buddies WHERE userProfileId = ? AND blocked = 0", (userProfileId,))
 
         users = []
-        for row in c.execute(q, [userProfileId]):
+        for row in rows:
             users.append(self.get_dict(row))
 
         return users
 
     def get_blocked_list(self, userProfileId):
-        q = "SELECT * FROM buddies WHERE userProfileId = ? AND blocked = 1"
-        q2 = q.replace("?", "%s") % (userProfileId)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
+        with Transaction(self.conn) as tx:
+            rows = tx.queryall("SELECT * FROM buddies WHERE userProfileId = ? AND blocked = 1", (userProfileId,))
 
         users = []
-        for row in c.execute(q, [userProfileId]):
+        for row in rows:
             users.append(self.get_dict(row))
 
         return users
 
     def get_pending_buddy_requests(self, userProfileId):
-        q = "SELECT * FROM buddies WHERE buddyProfileId = ? AND status = 0"
-        q2 = q.replace("?", "%s") % (userProfileId)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
+        with Transaction(self.conn) as tx:
+            rows = tx.queryall("SELECT * FROM buddies WHERE buddyProfileId = ? AND status = 0", (userProfileId,))
 
         users = []
-        for row in c.execute(q, [userProfileId]):
+        for row in rows:
             users.append(self.get_dict(row))
 
         return users
 
     def buddy_need_auth_message(self, userProfileId):
-        q = "SELECT * FROM buddies WHERE buddyProfileId = ? AND status = 1 AND notified = 0"
-        q2 = q.replace("?", "%s") % (userProfileId)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
+        with Transaction(self.conn) as tx:
+            rows = tx.queryall("SELECT * FROM buddies WHERE buddyProfileId = ? AND status = 1 AND notified = 0", (userProfileId,))
 
         users = []
-        for row in c.execute(q, [userProfileId]):
+        for row in rows:
             users.append(self.get_dict(row))
 
         return users
 
     def buddy_sent_auth_message(self, userProfileId, buddyProfileId):
-        q = "UPDATE buddies SET notified = ? WHERE userProfileId = ? AND buddyProfileId = ?"
-        q2 = q.replace("?", "%s") % (1, userProfileId, buddyProfileId)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [1, userProfileId, buddyProfileId]) # 1 will mean that the player has been sent the "
-        self.conn.commit()
+        with Transaction(self.conn) as tx:
+            tx.nonquery("UPDATE buddies SET notified = ? WHERE userProfileId = ? AND buddyProfileId = ?", (1, userProfileId, buddyProfileId))
 
     # Gamestats-related functions
     def pd_insert(self, profileid, dindex, ptype, data):
-        q = "INSERT OR IGNORE INTO gamestat_profile (profileid, dindex, ptype, data) VALUES(?,?,?,?)"
-        q2 = q.replace("?", "%s") % (profileid, dindex, ptype, data)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [profileid, dindex, ptype, data])
-        self.conn.commit()
-
-        q = "UPDATE gamestat_profile SET data = ? WHERE profileid = ? AND dindex = ? AND ptype = ?"
-        q2 = q.replace("?", "%s") % (data, profileid, dindex, ptype)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [data, profileid, dindex, ptype])
-        self.conn.commit()
+        with Transaction(self.conn) as tx:
+            tx.nonquery("INSERT OR IGNORE INTO gamestat_profile (profileid, dindex, ptype, data) VALUES(?,?,?,?)", (profileid, dindex, ptype, data))
+            tx.nonquery("UPDATE gamestat_profile SET data = ? WHERE profileid = ? AND dindex = ? AND ptype = ?", (data, profileid, dindex, ptype))
 
     def pd_get(self, profileid, dindex, ptype):
-        q = "SELECT * FROM gamestat_profile WHERE profileid = ? AND dindex = ? AND ptype = ?"
-        q2 = q.replace("?", "%s") % (profileid, dindex, ptype)
-        logger.log(SQL_LOGLEVEL, q2)
-
-        c = self.conn.cursor()
-        c.execute(q, [profileid, dindex, ptype])
-
-        r = self.get_dict(c.fetchone())
-
-        c.close()
-
-        return r
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT * FROM gamestat_profile WHERE profileid = ? AND dindex = ? AND ptype = ?", (profileid, dindex, ptype))
+        return self.get_dict(row)
