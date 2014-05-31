@@ -126,7 +126,7 @@ class PlayerSession(LineReceiver):
             if self.profileid in self.sessions:
                 del self.sessions[self.profileid]
 
-            self.db.delete_session(self.session)
+            self.db.delete_session(self.sesskey)
             self.log(logging.INFO, "Deleted session " + self.session)
         except:
             self.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
