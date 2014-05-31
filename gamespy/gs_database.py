@@ -31,8 +31,9 @@ class Transaction(object):
         return
 
     def _executeAndMeasure(self, cursor, statement, parameters):
-        logger.log(SQL_LOGLEVEL, "STARTING: " + statement)
-        logger.log(SQL_LOGLEVEL, "Parameters: " + ', '.join(str(p) for p in parameters))
+        logTransactionId = utils.generate_random_str(8)
+
+        logger.log(SQL_LOGLEVEL, "[%s] STARTING: " % logTransactionId + statement.replace('?', '%s') % parameters)
 
         timeStart = time.time()
         clockStart = time.clock()
@@ -42,7 +43,7 @@ class Transaction(object):
         clockEnd = time.clock()
         timeEnd = time.time()
 
-        logger.log(SQL_LOGLEVEL, "DONE: " + statement + "; %s real time / %s processor time", timeEnd - timeStart, clockEnd - clockStart)
+        logger.log(SQL_LOGLEVEL, "[%s] DONE: Took %s real time / %s processor time", logTransactionId, timeEnd - timeStart, clockEnd - clockStart)
         return
 
     def queryall(self, statement, parameters=()):
