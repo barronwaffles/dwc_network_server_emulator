@@ -42,8 +42,12 @@ class Transaction(object):
 
         clockEnd = time.clock()
         timeEnd = time.time()
+        timeDiff = timeEnd - timeStart
 
-        logger.log(SQL_LOGLEVEL, "[%s] DONE: Took %s real time / %s processor time", logTransactionId, timeEnd - timeStart, clockEnd - clockStart)
+        logger.log(SQL_LOGLEVEL, "[%s] DONE: Took %s real time / %s processor time", logTransactionId, timeDiff, clockEnd - clockStart)
+        if timeDiff > 1.0:
+            logger.log(logging.WARNING, "[%s] WARNING: SQL Statement took %s seconds!", logTransactionId, timeDiff)
+            logger.log(logging.WARNING, "[%s] " % logTransactionId + statement.replace('?', '%s') % parameters)
         return
 
     def queryall(self, statement, parameters=()):
