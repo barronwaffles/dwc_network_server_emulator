@@ -31,6 +31,10 @@ def rc4_encrypt(_key, _data):
     key = bytearray(_key)
     data = bytearray(_data)
 
+    if len(key) == 0:
+        # This shouldn't happen but it apparently can on a rare occasion. key should always be set.
+        return
+
     # Key-scheduling algorithm
     S = range(0x100)
 
