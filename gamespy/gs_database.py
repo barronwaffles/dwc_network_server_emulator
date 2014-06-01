@@ -78,16 +78,16 @@ class GamespyDatabase(object):
         self.initialize_database(self.conn)
 
     def initialize_database(self, conn):
-        c = self.conn.cursor()
-        c.execute("SELECT COUNT(*) FROM sqlite_master WHERE name = 'users' AND type = 'table'")
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT COUNT(*) FROM sqlite_master WHERE name = 'users' AND type = 'table'")
+            count = int(row[0])
 
-        if c.fetchone() == None:
             # I highly doubt having everything in a database be of the type TEXT is a good practice,
             # but I'm not good with databases and I'm not 100% positive that, for instance, that all
             # user id's will be ints, or all passwords will be ints, etc, despite not seeing any
             # evidence yet to say otherwise as far as Nintendo DS games go.
 
-            with Transaction(self.conn) as tx:
+            if count < 1:
                 tx.nonquery("CREATE TABLE users (profileid INT, userid TEXT, password TEXT, gsbrcd TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, firstname TEXT, lastname TEXT, stat TEXT, partnerid TEXT, console INT, csnum TEXT, cfc TEXT, bssid TEXT, devname BLOB, birth TEXT, gameid TEXT, enabled INT, zipcode TEXT, aim TEXT)")
                 tx.nonquery("CREATE TABLE sessions (session TEXT, profileid INT, loginticket TEXT)")
                 tx.nonquery("CREATE TABLE buddies (userProfileId INT, buddyProfileId INT, time INT, status INT, notified INT, gameid TEXT, blocked INT)")
@@ -95,6 +95,19 @@ class GamespyDatabase(object):
                 tx.nonquery("CREATE TABLE gamestat_profile (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
                 tx.nonquery("CREATE TABLE gameinfo (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
                 tx.nonquery("CREATE TABLE nas_logins (userid TEXT, authtoken TEXT, data TEXT)")
+
+            # Create some indexes for performance.
+            tx.nonquery("CREATE UNIQUE INDEX IF NOT EXISTS users_profileid_idx ON users (profileid)")
+            tx.nonquery("CREATE INDEX IF NOT EXISTS users_userid_idx ON users (userid)")
+            tx.nonquery("CREATE INDEX IF NOT EXISTS pending_messages_targetid_idx ON pending_messages (targetid)")
+            tx.nonquery("CREATE UNIQUE INDEX IF NOT EXISTS sessions_session_idx ON sessions (session)")
+            tx.nonquery("CREATE INDEX IF NOT EXISTS sessions_loginticket_idx ON sessions (loginticket)")
+            tx.nonquery("CREATE INDEX IF NOT EXISTS sessions_profileid_idx ON sessions (profileid)")
+            tx.nonquery("CREATE UNIQUE INDEX IF NOT EXISTS nas_logins_authtoken_idx ON nas_logins (authtoken)")
+            tx.nonquery("CREATE INDEX IF NOT EXISTS nas_logins_userid_idx ON nas_logins (userid)")
+            tx.nonquery("CREATE INDEX IF NOT EXISTS buddies_userProfileId_idx ON buddies (userProfileId)")
+            tx.nonquery("CREATE INDEX IF NOT EXISTS buddies_buddyProfileId_idx ON buddies (buddyProfileId)")
+            tx.nonquery("CREATE INDEX IF NOT EXISTS gamestat_profile_profileid_idx ON gamestat_profile (profileid)")
 
     def get_dict(self, row):
         if not row:
