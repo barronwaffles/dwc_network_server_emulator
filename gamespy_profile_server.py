@@ -68,6 +68,8 @@ class PlayerSession(LineReceiver):
         self.keepalive = int(time.time())
         self.sesskey = ""
 
+        self.sdkrevision = "0"
+
     def log(self, level, message):
         if self.profileid == 0:
             if self.gameid == "":
@@ -228,6 +230,9 @@ class PlayerSession(LineReceiver):
         else:
             birth = ""
 
+        if 'sdkrevision' in data_parsed:
+            self.sdkrevision = data_parsed['sdkrevision']
+
         # Verify the client's response
         valid_response = gs_utils.generate_response(self.challenge, authtoken_parsed['challenge'], data_parsed['challenge'], data_parsed['authtoken'])
         if data_parsed['response'] != valid_response:
@@ -251,6 +256,44 @@ class PlayerSession(LineReceiver):
             self.sesskey = self.db.create_session(profileid, loginticket)
 
             self.sessions[profileid] = self
+
+            self.buddies = self.db.get_buddy_list(self.profileid)
+            self.blocked = self.db.get_blocked_list(self.profileid)
+
+            if self.sdkrevision == "16": # Used in Tatsunoko vs Capcom
+                # This makes an assumption about the format of the list for blk and bdy.
+                # I was not able to find an example where the list contained more than 1 profile id, so I am assuming
+                # that | is used as a delimiter here based on how the otherslist command works in
+                # gamespy_player_search_server works.
+                def make_list(data):
+                    list = []
+                    for d in data:
+                        if d['status'] == 1:
+                            list.append(str(d['buddyProfileId']))
+                    return list
+
+                block_list = make_list(self.blocked)
+                msg = gs_query.create_gamespy_message([
+                    ('__cmd__', "blk"),
+                    ('__cmd_val__', str(len(block_list))),
+                    ('list', '|'.join(block_list)),
+                    ('id', data_parsed['id']),
+                ])
+
+                self.log(logging.DEBUG, "SENDING: %s" % msg)
+                self.transport.write(bytes(msg))
+
+                buddy_list = make_list(self.buddies)
+                msg = gs_query.create_gamespy_message([
+                    ('__cmd__', "bdy"),
+                    ('__cmd_val__', str(len(buddy_list))),
+                    ('list', '|'.join(buddy_list)),
+                    ('id', data_parsed['id']),
+                ])
+
+                self.log(logging.DEBUG, "SENDING: %s" % msg)
+                self.transport.write(bytes(msg))
+
 
             msg = gs_query.create_gamespy_message([
                 ('__cmd__', "lc"),
@@ -277,9 +320,6 @@ class PlayerSession(LineReceiver):
 
             self.log(logging.DEBUG, "SENDING: %s" % msg)
             self.transport.write(bytes(msg))
-
-            self.buddies = self.db.get_buddy_list(self.profileid)
-            self.blocked = self.db.get_blocked_list(self.profileid)
 
             # Get pending messages.
             self.get_pending_messages()
