@@ -260,7 +260,7 @@ class PlayerSession(LineReceiver):
             self.buddies = self.db.get_buddy_list(self.profileid)
             self.blocked = self.db.get_blocked_list(self.profileid)
 
-            if self.sdkrevision == "16": # Used in Tatsunoko vs Capcom
+            if self.sdkrevision == "11": # Used in Tatsunoko vs Capcom
                 # This makes an assumption about the format of the list for blk and bdy.
                 # I was not able to find an example where the list contained more than 1 profile id, so I am assuming
                 # that | is used as a delimiter here based on how the otherslist command works in
