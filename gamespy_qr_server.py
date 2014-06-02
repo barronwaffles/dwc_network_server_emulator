@@ -244,7 +244,7 @@ class GameSpyQRServer(object):
                 #self.log(logging.DEBUG, address, "%s = %s" % (d[i], d[i+1]))
                 k[d[i]] = d[i+1]
 
-            if "gamename" in k:
+            if "gamename" in k and k['gamename'] in self.secret_key_list:
                 self.sessions[session_id].secretkey = self.secret_key_list[k['gamename']]
                 #print "Got secret key %s for %s" % (self.sessions[session_id].secretkey, k['gamename'])
 
