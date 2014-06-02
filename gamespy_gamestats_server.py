@@ -327,6 +327,8 @@ class Gamestats(LineReceiver):
         ])
 
         self.log(logging.DEBUG, "SENDING: '%s'..." % msg)
+        msg = self.crypt(msg)
+        self.transport.write(bytes(msg))
 
 
 
