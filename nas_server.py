@@ -257,7 +257,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             try:
                 # I'm not sure about the replacement for '-', but it'll at least let it be decoded.
                 # For the most part it's not important since it's mostly used for the devname/ingamesn fields.
-                ret[k] = base64.b64decode(v[0].replace("*", "=").replace("?", "/").replace(">","+").replace("-","/"))
+                ret[k] = base64.b64decode( urlparse.unquote( v[0] ).replace("*", "=").replace("?", "/").replace(">","+").replace("-","/") )
             except TypeError:
                 print "Could not decode following string: ret[%s] = %s" % (k, v[0])
                 print "url: %s" % str
