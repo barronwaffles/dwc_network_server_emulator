@@ -273,7 +273,6 @@ class PlayerSession(LineReceiver):
                     ('__cmd__', "blk"),
                     ('__cmd_val__', str(len(block_list))),
                     ('list', ','.join(block_list)),
-                    ('id', data_parsed['id']),
                 ])
 
                 self.log(logging.DEBUG, "SENDING: %s" % msg)
@@ -284,7 +283,6 @@ class PlayerSession(LineReceiver):
                     ('__cmd__', "bdy"),
                     ('__cmd_val__', str(len(buddy_list))),
                     ('list', ','.join(buddy_list)),
-                    ('id', data_parsed['id']),
                 ])
 
                 self.log(logging.DEBUG, "SENDING: %s" % msg)
