@@ -244,9 +244,11 @@ class GameSpyQRServer(object):
                 #self.log(logging.DEBUG, address, "%s = %s" % (d[i], d[i+1]))
                 k[d[i]] = d[i+1]
 
-            if "gamename" in k and k['gamename'] in self.secret_key_list:
-                self.sessions[session_id].secretkey = self.secret_key_list[k['gamename']]
-                #print "Got secret key %s for %s" % (self.sessions[session_id].secretkey, k['gamename'])
+            if "gamename" in k:
+                if k['gamename'] in self.secret_key_list:
+                    self.sessions[session_id].secretkey = self.secret_key_list[k['gamename']]
+                else:
+                    self.log(logging.INFO, address, "Connection from unknown game '%s'!" % k['gamename'])
 
             if self.sessions[session_id].playerid == 0 and "dwc_pid" in k:
                 # Get the player's id and then query the profile to figure out what console they are on.
