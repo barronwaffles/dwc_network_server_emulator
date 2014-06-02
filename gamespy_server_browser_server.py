@@ -290,7 +290,11 @@ class Session(LineReceiver):
                     flags_buffer += ip
 
                 flags |= ServerListFlags.NONSTANDARD_PORT_FLAG
-                flags_buffer += utils.get_bytes_from_short_be(int(server_info['publicport']))
+
+                if server_info['publicport'] != "0":
+                    flags_buffer += utils.get_bytes_from_short_be(int(server_info['publicport']))
+                else:
+                    flags_buffer += utils.get_bytes_from_short_be(int(server_info['localport']))
 
                 if "localip0" in server_info:
                     # How to handle multiple localips?
@@ -301,8 +305,8 @@ class Session(LineReceiver):
                     flags |= ServerListFlags.NONSTANDARD_PRIVATE_PORT_FLAG
                     flags_buffer += utils.get_bytes_from_short_be(int(server_info['localport']))
 
-                #flags |= ServerListFlags.ICMP_IP_FLAG
-                #flags_buffer += bytearray([int(x) for x in "0.0.0.0".split('.')])
+                flags |= ServerListFlags.ICMP_IP_FLAG
+                flags_buffer += bytearray([int(x) for x in "0.0.0.0".split('.')])
 
                 output += bytearray([flags & 0xff])
                 output += flags_buffer
