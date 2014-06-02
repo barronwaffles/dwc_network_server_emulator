@@ -261,10 +261,6 @@ class PlayerSession(LineReceiver):
             self.blocked = self.db.get_blocked_list(self.profileid)
 
             if self.sdkrevision == "11": # Used in Tatsunoko vs Capcom
-                # This makes an assumption about the format of the list for blk and bdy.
-                # I was not able to find an example where the list contained more than 1 profile id, so I am assuming
-                # that | is used as a delimiter here based on how the otherslist command works in
-                # gamespy_player_search_server works.
                 def make_list(data):
                     list = []
                     for d in data:
@@ -276,7 +272,7 @@ class PlayerSession(LineReceiver):
                 msg = gs_query.create_gamespy_message([
                     ('__cmd__', "blk"),
                     ('__cmd_val__', str(len(block_list))),
-                    ('list', '|'.join(block_list)),
+                    ('list', ','.join(block_list)),
                     ('id', data_parsed['id']),
                 ])
 
@@ -287,7 +283,7 @@ class PlayerSession(LineReceiver):
                 msg = gs_query.create_gamespy_message([
                     ('__cmd__', "bdy"),
                     ('__cmd_val__', str(len(buddy_list))),
-                    ('list', '|'.join(buddy_list)),
+                    ('list', ','.join(buddy_list)),
                     ('id', data_parsed['id']),
                 ])
 
