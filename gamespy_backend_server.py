@@ -258,45 +258,49 @@ class GameSpyBackendServer(object):
         start = time.time()
 
         for server in self.server_list[gameid]:
-            translated, variables = self.translate_expression(filters)
+            if filters != "":
+                translated, variables = self.translate_expression(filters)
 
-            for idx in variables:
-                token = translated[idx]
+                for idx in variables:
+                    token = translated[idx]
 
-                if token in server:
-                    token = server[token]
-                    _, _, token_type = self.get_token(token)
+                    if token in server:
+                        token = server[token]
+                        _, _, token_type = self.get_token(token)
 
-                    if token_type == TokenType.FIELD:
-                        # At this point, any field should be a string.
-                        # This does not support stuff like:
-                        # dwc_test = 'test', dwc_test2 = dwc_test, dwc_test3 = dwc_test2
-                        token = '"' + token + '"'
+                        if token_type == TokenType.FIELD:
+                            # At this point, any field should be a string.
+                            # This does not support stuff like:
+                            # dwc_test = 'test', dwc_test2 = dwc_test, dwc_test3 = dwc_test2
+                            token = '"' + token + '"'
 
-                    translated[idx] = token
+                        translated[idx] = token
 
-            q = ' '.join(translated)
+                q = ' '.join(translated)
 
-            # Always run validate_ast over the entire AST before evaluating anything. eval() is dangerous to use on
-            # unsanitized inputs. The validate_ast function has a fairly strict whitelist so it should be safe in what
-            # it accepts as valid.
-            m = ast.parse(q, "<string>", "exec")
-            valid_filter = True
-            for node in m.body:
-                valid_filter = self.validate_ast(node, False)
+                # Always run validate_ast over the entire AST before evaluating anything. eval() is dangerous to use on
+                # unsanitized inputs. The validate_ast function has a fairly strict whitelist so it should be safe in what
+                # it accepts as valid.
+                m = ast.parse(q, "<string>", "exec")
+                valid_filter = True
+                for node in m.body:
+                    valid_filter = self.validate_ast(node, False)
 
-            if valid_filter == False:
-                # Return only anything matched up until this point.
-                return matched_servers
+                if valid_filter == False:
+                    # Return only anything matched up until this point.
+                    return matched_servers
 
-            # Use Python to evaluate the query. This method may take a little time but it shouldn't be all that
-            # big of a difference, I think. It takes about 0.0004 seconds per server to determine whether or not it's a
-            # match on my computer. Usually there's a low max_servers set when the game searches for servers, so assuming
-            # something like the game is asking for 6 servers, it would take about 0.0024 seconds total. These times
-            # will obviously be different per computer. It's not ideal, but it shouldn't be a huge bottleneck.
-            # A possible way to speed it up is to make validate_ast also evaluate the expressions at the same time as it
-            # validates it.
-            result = eval(q)
+                # Use Python to evaluate the query. This method may take a little time but it shouldn't be all that
+                # big of a difference, I think. It takes about 0.0004 seconds per server to determine whether or not it's a
+                # match on my computer. Usually there's a low max_servers set when the game searches for servers, so assuming
+                # something like the game is asking for 6 servers, it would take about 0.0024 seconds total. These times
+                # will obviously be different per computer. It's not ideal, but it shouldn't be a huge bottleneck.
+                # A possible way to speed it up is to make validate_ast also evaluate the expressions at the same time as it
+                # validates it.
+                result = eval(q)
+            else:
+                # There are no filters, so just return the server.
+                result = True
 
             if result == True:
                 matched_servers.append(server)
