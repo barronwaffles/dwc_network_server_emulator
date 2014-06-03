@@ -41,6 +41,7 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
         
         self.db = sqlite3.connect('storage.db')
         self.tables = {}
+        self.valid_sql_terms = ['LIKE', '=', 'AND', 'OR']
         
         logger.log(logging.INFO, "Checking for and creating database tables...")
 
@@ -190,6 +191,8 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
 
 class IllegalColumnAccessException(Exception):
     pass
+class FilterSyntaxException(Exception):
+    pass
     
 class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def confirm_columns(self, columndata, table):
@@ -203,6 +206,66 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             columns.append(colname)
         
         return columns
+
+    def tokenize_filter(self, filter):
+        # TODO: Actual proper tokenization
+        return filter.split()
+
+    def parse_filter(self, table, filter):
+        # I think I need to read up on how to properly parse SQL-like data, but this should do for the stuff I've seen from games so far.
+        out = ''
+
+        if ';' in filter:
+            raise FilterSyntaxException("Semicolon in filter '%s'" & filter)
+        if '\\' in filter:
+            raise FilterSyntaxException("Backslash in filter '%s'" & filter)
+        brace_count = filter.count('(')
+        if brace_count != filter.count(')'):
+            raise FilterSyntaxException("Mismatching brace count in filter '%s'" & filter)
+
+        filter = self.tokenize_filter(filter)
+
+        for f in filter:
+            if f in self.server.tables[table]:
+                # is a table name
+                out += f + ' '
+            elif f.upper() in self.server.valid_sql_terms:
+                # is some SQL term such as LIKE, AND, OR, etc.
+                out += f + ' '
+            elif ( f.startswith("'") and f.endswith("'") ) or ( f.startswith('"') and f.endswith('"') ):
+                # is a string
+                out += f + ' '
+            else:
+                # is nothing valid, abort and return the statement so far
+                out = out.strip()
+
+                # try to make the output still valid by removing trailing connecting tokens
+                last_space = out.rfind(' ')
+                if last_space >= 0:
+                    last_token = out[last_space + 1 :  ]
+                    if last_token in self.server.valid_sql_terms:
+                        out = out[  : last_space ]
+
+                return out
+
+        return out
+
+    def append_filter(self, filter, table, statement, where_appended):
+        try:
+            filters = self.parse_filter(table, filter)
+            if filters:
+                if not where_appended:
+                    statement += ' WHERE '
+                    where_appended = True
+                else:
+                    statement += ' AND '
+                statement += ' ( '
+                statement += filters
+                statement += ' ) '
+        except FilterSyntaxException as e:
+            logger.log(logging.WARNING, "FilterSyntaxException: %s by %s", e.message, self.client_address)
+            pass
+        return statement, where_appended
 
     def do_POST(self):
         # Alright, in case anyone is wondering: Yes, I am faking a SOAP service
@@ -249,26 +312,49 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 statement = 'SELECT '
                 statement += ",".join(columns)
                 statement += ' FROM ' + table
+                where_appended = False
 
                 if shortaction == 'SearchForRecords':
                     # this is ugly as hell but SearchForRecords can request specific ownerids like this
                     owneriddata = data.getElementsByTagName('ns1:ownerids')
                     if owneriddata and owneriddata[0] and owneriddata[0].firstChild:
                         oids = owneriddata[0].getElementsByTagName('ns1:int')
-                        statement += ' WHERE '
+                        if not where_appended:
+                            statement += ' WHERE '
+                            where_appended = True
+                        else:
+                            statement += ' AND '
+                        statement += ' ( '
                         statement += ' OR '.join('ownerid = '+str(int(oid.firstChild.data)) for oid in oids)
+                        statement += ' ) '
 
                 elif shortaction == 'GetMyRecords':
                     profileid = self.server.gamespydb.get_profileid_from_loginticket(loginticket)
-                    statement += ' WHERE ownerid = ' + str(profileid)
+                    if not where_appended:
+                        statement += ' WHERE '
+                        where_appended = True
+                    else:
+                        statement += ' AND '
+                    statement += ' ( ownerid = ' + str(profileid) + ' ) '
                 
                 elif shortaction == 'GetSpecificRecords':
                     recordids = data.getElementsByTagName('ns1:recordids')[0].getElementsByTagName('ns1:int')
                     
                     # limit to requested records
-                    statement += ' WHERE '
+                    if not where_appended:
+                        statement += ' WHERE '
+                        where_appended = True
+                    else:
+                        statement += ' AND '
+                    statement += ' ( '
                     statement += ' OR '.join('recordid = '+str(int(r.firstChild.data)) for r in recordids)
+                    statement += ' ) '
                         
+                # if there's a filter, evaluate it
+                filterdata = data.getElementsByTagName('ns1:filter')
+                if filterdata and filterdata[0] and filterdata[0].firstChild:
+                    statement, where_appended = self.append_filter(filterdata[0].firstChild.data, table, statement, where_appended)
+
                 # if only a subset of the data is wanted
                 limit_offset_data = data.getElementsByTagName('ns1:offset')
                 limit_max_data = data.getElementsByTagName('ns1:max')
@@ -311,7 +397,13 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 
             elif shortaction == 'GetRecordCount':
                 statement = 'SELECT COUNT(1) FROM ' + table
+
+                filterdata = data.getElementsByTagName('ns1:filter')
+                if filterdata and filterdata[0] and filterdata[0].firstChild:
+                    statement, where_appended = self.append_filter(filterdata[0].firstChild.data, table, statement, False)
                     
+                logger.log(logging.DEBUG, statement)
+
                 cursor = self.server.db.cursor()
                 cursor.execute(statement)
                 count = cursor.fetchone()[0]

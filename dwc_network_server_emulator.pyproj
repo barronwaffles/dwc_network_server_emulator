@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{1a9e8a26-6cea-4e78-835e-b043356ce360}</ProjectGuid>
+    <ProjectHome>.</ProjectHome>
+    <StartupFile>master_server.py</StartupFile>
+    <SearchPath>
+    </SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <InterpreterId>00000000-0000-0000-0000-000000000000</InterpreterId>
+    <InterpreterVersion>
+    </InterpreterVersion>
+    <Name>dwc_network_server_emulator</Name>
+    <RootNamespace>dwc_network_server_emulator</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="gamespy_backend_server.py" />
+    <Compile Include="gamespy_gamestats_server.py" />
+    <Compile Include="gamespy_natneg_server.py" />
+    <Compile Include="gamespy_player_search_server.py" />
+    <Compile Include="gamespy_profile_server.py" />
+    <Compile Include="gamespy_qr_server.py" />
+    <Compile Include="gamespy_server_browser_server.py" />
+    <Compile Include="internal_stats_server.py" />
+    <Compile Include="master_server.py" />
+    <Compile Include="nas_server.py" />
+    <Compile Include="storage_server.py" />
+    <Compile Include="gamespy\gs_database.py" />
+    <Compile Include="gamespy\gs_query.py" />
+    <Compile Include="gamespy\gs_utility.py" />
+    <Compile Include="gamespy\__init__.py" />
+    <Compile Include="other\utils.py" />
+    <Compile Include="other\__init__.py" />
+    <Compile Include="tools\import_wiimm_data.py" />
+    <Content Include="www\conntest.nintendowifi.net\public_html\index.html" />
+    <Content Include="www\gamestats.gs.nintendowifi.net\public_html\index.html" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="gamespy" />
+    <Folder Include="other" />
+    <Folder Include="tools" />
+    <Folder Include="www\" />
+    <Folder Include="www\conntest.nintendowifi.net\" />
+    <Folder Include="www\conntest.nintendowifi.net\public_html" />
+    <Folder Include="www\gamestats.gs.nintendowifi.net\" />
+    <Folder Include="www\gamestats.gs.nintendowifi.net\public_html" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
+</Project>
