@@ -248,10 +248,6 @@ class GameSpyBackendServer(object):
     def find_servers(self, gameid, filters, fields, max_count):
         matched_servers = []
 
-        # How does it handle 0?
-        if max_count == 0:
-            return []
-
         if gameid not in self.server_list:
             return []
 
@@ -305,7 +301,7 @@ class GameSpyBackendServer(object):
             if result == True:
                 matched_servers.append(server)
 
-                if len(matched_servers) >= max_count:
+                if max_count != 0 and len(matched_servers) >= max_count:
                     break
 
         servers = []
