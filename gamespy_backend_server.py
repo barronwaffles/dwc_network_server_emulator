@@ -254,6 +254,8 @@ class GameSpyBackendServer(object):
         start = time.time()
 
         for server in self.server_list[gameid]:
+            stop_search = False
+
             if filters != "":
                 translated, variables = self.translate_expression(filters)
 
@@ -284,19 +286,23 @@ class GameSpyBackendServer(object):
 
                 if valid_filter == False:
                     # Return only anything matched up until this point.
-                    return matched_servers
-
-                # Use Python to evaluate the query. This method may take a little time but it shouldn't be all that
-                # big of a difference, I think. It takes about 0.0004 seconds per server to determine whether or not it's a
-                # match on my computer. Usually there's a low max_servers set when the game searches for servers, so assuming
-                # something like the game is asking for 6 servers, it would take about 0.0024 seconds total. These times
-                # will obviously be different per computer. It's not ideal, but it shouldn't be a huge bottleneck.
-                # A possible way to speed it up is to make validate_ast also evaluate the expressions at the same time as it
-                # validates it.
-                result = eval(q)
+                    logger.log(logging.WARNING, "Invalid filter(s): %s" % (filters))
+                    stop_search = True
+                else:
+                    # Use Python to evaluate the query. This method may take a little time but it shouldn't be all that
+                    # big of a difference, I think. It takes about 0.0004 seconds per server to determine whether or not it's a
+                    # match on my computer. Usually there's a low max_servers set when the game searches for servers, so assuming
+                    # something like the game is asking for 6 servers, it would take about 0.0024 seconds total. These times
+                    # will obviously be different per computer. It's not ideal, but it shouldn't be a huge bottleneck.
+                    # A possible way to speed it up is to make validate_ast also evaluate the expressions at the same time as it
+                    # validates it.
+                    result = eval(q)
             else:
                 # There are no filters, so just return the server.
                 result = True
+
+            if stop_search == True:
+                break
 
             if result == True:
                 matched_servers.append(server)

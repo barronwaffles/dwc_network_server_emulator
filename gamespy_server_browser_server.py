@@ -189,7 +189,7 @@ class Session(LineReceiver):
                 self.log(logging.DEBUG, "list version: %02x / encoding version: %02x / game version: %08x / query game: %s / game name: %s / challenge: %s / filter: %s / fields: %s / options: %08x / max servers: %d / source ip: %08x" % (list_version, encoding_version, game_version, query_game, game_name, challenge, filter, fields, options, max_servers, source_ip))
 
                 # Requesting ip and port of client, not server
-                if filter == "" or fields == "" or send_ip == True:
+                if filter == "" and fields == "" or send_ip == True:
                     output = bytearray([int(x) for x in self.address.host.split('.')])
                     output += utils.get_bytes_from_short_be(6500) # Does this ever change?
 
@@ -247,7 +247,7 @@ class Session(LineReceiver):
         results = self.server_manager.find_servers(game, filter, fields, max_count)
         return results
 
-    def generate_server_list_data(self, address, fields, server_info):
+    def generate_server_list_header_data(self, address, fields):
         output = bytearray()
 
         # Write the address
@@ -256,23 +256,26 @@ class Session(LineReceiver):
         # Write the port
         output += utils.get_bytes_from_short_be(address.port)
 
-        #if len(server_info) > 0:
-        if True:
-            # Write number of fields that will be returned.
-            key_count = len(fields)
-            output += utils.get_bytes_from_short(key_count)
+        # Write number of fields that will be returned.
+        key_count = len(fields)
+        output += utils.get_bytes_from_short(key_count)
 
-            if key_count != len(fields):
-                # For some reason we didn't get all of the expected data.
-                self.log(logging.WARNING, "key_count[%d] != len(fields)[%d]" % (key_count, len(fields)))
-                self.log(logging.WARNING, fields)
+        if key_count != len(fields):
+            # For some reason we didn't get all of the expected data.
+            self.log(logging.WARNING, "key_count[%d] != len(fields)[%d]" % (key_count, len(fields)))
+            self.log(logging.WARNING, fields)
 
-            flags_buffer = bytearray()
+        # Write the fields
+        for field in fields:
+            output += bytearray(field) + '\0\0'
 
-            # Write the fields
-            for field in fields:
-                output += bytearray(field) + '\0\0'
+        return output
 
+    def generate_server_list_data(self, address, fields, server_info, finalize = False):
+        output = bytearray()
+        flags_buffer = bytearray()
+
+        if len(server_info) > 0:
             # Start server loop here instead of including all of the fields and stuff again
             flags = 0
             if len(server_info) != 0:
@@ -317,12 +320,22 @@ class Session(LineReceiver):
                         for field in fields:
                             output += '\xff' + bytearray(server_info['requested'][field]) + '\0'
 
-            output += '\0'
-            output += utils.get_bytes_from_int(-1)
-
         return output
 
     def find_server(self, query_game, filter, fields, max_servers, game_name, challenge):
+        def send_encrypted_data(self, challenge, data):
+            self.log(logging.DEBUG, "Sent server list message to %s:%s..." % (self.address.host, self.address.port))
+            self.log(logging.DEBUG, utils.pretty_print_hex(data))
+            
+            # Encrypt data
+            enc = gs_utils.EncTypeX()
+            data = enc.encrypt(self.secret_key_list[game_name], challenge, data)
+
+            # Send to client
+            self.transport.write(bytes(data))
+
+        max_packet_length = 256 + 511 + 255 # OpenSpy's max packet length, just go with it for now
+
         # Get dictionary from master server list server.
         self.log(logging.DEBUG, "Searching for server matching '%s' with the fields '%s'" % (filter, fields))
 
@@ -334,8 +347,10 @@ class Session(LineReceiver):
         if self.server_list == []:
             self.server_list.append({})
 
-        for _server in self.server_list:
-            server = _server
+        data = self.generate_server_list_header_data(self.address, fields)
+        for i in range(0, len(self.server_list)):
+            server = self.server_list[i]
+
             if server and fields and 'requested' in server and server['requested'] == {}:
                 # If the requested fields weren't found then don't return a server.
                 # This fixes a bug with Mario Kart DS.
@@ -346,19 +361,18 @@ class Session(LineReceiver):
                 self.console = int(server['__console__'])
 
             # Generate binary server list data
-            data = self.generate_server_list_data(self.address, fields, server)
-            self.log(logging.DEBUG, utils.pretty_print_hex(data))
+            data += self.generate_server_list_data(self.address, fields, server, i >= len(self.server_list))
 
-            # Encrypt data
-            enc = gs_utils.EncTypeX()
-            data = enc.encrypt(self.secret_key_list[game_name], challenge, data)
-
-            # Send to client
-            self.transport.write(bytes(data))
-            self.log(logging.DEBUG, "Sent server list message to %s:%s..." % (self.address.host, self.address.port))
+            if len(data) >= max_packet_length:
+                send_encrypted_data(self, challenge, data)
+                data = bytearray()
 
             # if "publicip" in server and "publicport" in server:
             #     self.server_cache[str(server['publicip']) + str(server['publicport'])] = server
+
+        data += '\0'
+        data += utils.get_bytes_from_int(-1)
+        send_encrypted_data(self, challenge, data)
 
     def find_server_in_cache(self, addr, port, console):
         if console != 0:
