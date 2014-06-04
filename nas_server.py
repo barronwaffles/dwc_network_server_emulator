@@ -270,7 +270,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             dict[k] = base64.b64encode(v).replace("=", "*")
 
         # nas(wii).nintendowifi.net has a URL query-like format but does not use encoding for special characters
-        return "&".join("{!s}={!s}".format(k, v) for k, v in dict.items())
+        return "&".join("{!s}={!s}".format(k, v) for k, v in dict.items()) + "\r\n"
 
     def filter_list_random_files(self, data, count):
         # Get [count] random files from the filelist
