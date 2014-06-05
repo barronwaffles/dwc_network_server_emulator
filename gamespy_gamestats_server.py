@@ -103,8 +103,14 @@ class Gamestats(LineReceiver):
     def rawDataReceived(self, data):
         try:
             # Decrypt packet
-            msg = self.remaining_message + str(self.crypt(data))
+            self.remaining_message += data
+
+            if "\\final\\" not in data:
+                return
+
+            msg = str(self.crypt(self.remaining_message))
             self.data = msg
+            self.remaining_message = ""
 
             commands, self.remaining_message = gs_query.parse_gamespy_message(msg)
             logger.log(logging.DEBUG, "STATS RESPONSE: %s" % msg)
