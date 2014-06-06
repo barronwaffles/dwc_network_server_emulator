@@ -51,7 +51,7 @@ class GameSpyNatNegServer(object):
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.socket.bind(address)
 
-            self.write_queue = Queue.Queue();
+            self.write_queue = Queue.Queue()
 
             logger.log(logging.INFO, "Server is now listening on %s:%s..." % (address[0], address[1]))
             threading.Thread(target=self.write_queue_worker).start()
@@ -213,13 +213,15 @@ class GameSpyNatNegServer(object):
             logger.log(logging.DEBUG, "Sent natify response to %s:%d..." % (addr[0], addr[1]))
             logger.log(logging.DEBUG, utils.pretty_print_hex(output))
 
-        elif recv_data[7] == '\x0d':
+        elif recv_data[7] == '\x0d': # Report
             client_id = "%02x" % ord(recv_data[13])
             logger.log(logging.DEBUG, "Received report command from %s:%s..." % (addr[0], addr[1]))
             logger.log(logging.DEBUG, utils.pretty_print_hex(recv_data))
 
-            output = bytearray(recv_data)
+            # Report response
+            output = bytearray(recv_data[:21])
             output[7] = 0x0e # Report response
+            output[14] = 0 # Clear byte to match real server's response
             self.write_queue.put((recv_data, addr))
 
         else: # Was able to connect
