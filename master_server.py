@@ -29,7 +29,7 @@ if __name__ == "__main__":
         #GameSpyServerBrowserServer,
         GameSpyNatNegServer,
         NasServer,
-        #InternalStatsServer,
+        InternalStatsServer,
         StorageServer,
     ]
     for server in servers:
