@@ -36,6 +36,7 @@ GameSpyServerDatabase.register("delete_natneg_server")
 class GameSpyNatNegServer(object):
     def __init__(self):
         self.session_list = {}
+        self.natneg_preinit_session = {}
         self.secret_key_list = gs_utils.generate_secret_keys("gslist.cfg")
 
         manager_address = ("127.0.0.1", 27500)
@@ -214,7 +215,6 @@ class GameSpyNatNegServer(object):
             logger.log(logging.DEBUG, utils.pretty_print_hex(output))
 
         elif recv_data[7] == '\x0d': # Report
-            client_id = "%02x" % ord(recv_data[13])
             logger.log(logging.DEBUG, "Received report command from %s:%s..." % (addr[0], addr[1]))
             logger.log(logging.DEBUG, utils.pretty_print_hex(recv_data))
 
@@ -222,7 +222,37 @@ class GameSpyNatNegServer(object):
             output = bytearray(recv_data[:21])
             output[7] = 0x0e # Report response
             output[14] = 0 # Clear byte to match real server's response
-            self.write_queue.put((recv_data, addr))
+            self.write_queue.put((output, addr))
+
+        elif recv_data[7] == '\x0f':
+            # Natneg v4 command thanks to Pipian.
+            # Only seems to be used in very few DS games (namely, Pokemon Black/White/Black 2/White 2).
+            logger.log(logging.DEBUG, "Received pre-init command from %s:%s..." % (addr[0], addr[1]))
+            logger.log(logging.DEBUG, utils.pretty_print_hex(recv_data))
+
+            session = utils.get_int(recv_data[-4:],0)
+
+            # Report response
+            output = bytearray(recv_data[:-4] + [0, 0, 0, 0])
+            output[7] = 0x10 # Pre-init response
+
+            if session == 0:
+                # What's the correct behavior when session == 0?
+                output[13] = 2
+            elif session in self.natneg_preinit_session:
+                # Should this be sent to both clients or just the one that connected most recently?
+                # I can't tell from a one sided packet capture of Pokemon.
+                # For the time being, send to both clients just in case.
+                output[13] = 2
+                self.write_queue.put((output, self.natneg_preinit_session[session]))
+
+                output[12] = (1, 0)[output[12]] # Swap the index
+                del self.natneg_preinit_session[session]
+            else:
+                output[13] = 0
+                self.natneg_preinit_session[session] = addr
+
+            self.write_queue.put((output, addr))
 
         else: # Was able to connect
             logger.log(logging.DEBUG, "Received unknown command %02x from %s:%s..." % (ord(recv_data[7]), addr[0], addr[1]))
