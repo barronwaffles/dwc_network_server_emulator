@@ -349,7 +349,7 @@ class Gamestats(LineReceiver):
 
     def crypt(self, data):
         key = "GameSpy3D"
-        output = bytearray(data)
+        output = bytearray(data.encode("ascii"))
 
         if "\\final\\" in output:
             end = output.index("\\final\\")
