@@ -306,6 +306,8 @@ class Gamestats(LineReceiver):
         profile_data = None
 
         if profile != None and 'data' in profile:
+            if profile['data'].endswith("\\"):
+                profile['data'] = profile['data'][:-1]
             profile_data = gs_query.parse_gamespy_message("\\prof\\" + profile['data'] + "\\final\\")
 
         data = ""
