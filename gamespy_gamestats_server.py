@@ -316,11 +316,14 @@ class Gamestats(LineReceiver):
         else:
             self.log(logging.WARNING, "Could not get data section from profile for %d" % (self.profileid))
 
-        for key in (key for key in keys if key not in ("__cmd__", "__cmd_val__", "")):
-            data += "\\" + key + "\\"
+        if len(keys) > 0:
+            for key in (key for key in keys if key not in ("__cmd__", "__cmd_val__", "")):
+                data += "\\" + key + "\\"
 
-            if profile_data != None and key in profile_data:
-                data += profile_data[key]
+                if profile_data != None and key in profile_data:
+                    data += profile_data[key]
+        else:
+            data = profile_data
 
         modified = int(time.time())
 

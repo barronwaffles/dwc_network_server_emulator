@@ -103,6 +103,7 @@ class PlayerSearch(LineReceiver):
         msg_d.append(('oldone', ""))
         msg = gs_query.create_gamespy_message(msg_d)
 
+        logger.log(logging.DEBUG, "SENDING: %s" % msg)
         self.transport.write(bytes(msg))
 
 if __name__ == "__main__":
