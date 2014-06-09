@@ -306,9 +306,10 @@ class Gamestats(LineReceiver):
         profile_data = None
 
         if profile != None and 'data' in profile:
-            if profile['data'].endswith("\\"):
-                profile['data'] = profile['data'][:-1]
-            profile_data = gs_query.parse_gamespy_message("\\prof\\" + profile['data'] + "\\final\\")
+            profile_data = profile['data']
+            if profile_data.endswith("\\"):
+                profile_data = profile_data[:-1]
+            profile_data = gs_query.parse_gamespy_message("\\prof\\" + profile_data + "\\final\\")
 
         data = ""
         if profile_data != None:
@@ -316,14 +317,15 @@ class Gamestats(LineReceiver):
         else:
             self.log(logging.WARNING, "Could not get data section from profile for %d" % (self.profileid))
 
-        if len(keys) > 0:
+        if len(keys) > 0 and keys[0] != "":
             for key in (key for key in keys if key not in ("__cmd__", "__cmd_val__", "")):
                 data += "\\" + key + "\\"
 
                 if profile_data != None and key in profile_data:
                     data += profile_data[key]
         else:
-            data = profile_data
+            self.log(logging.WARNING, "No keys requested, defaulting to all keys: %s" % (profile['data']))
+            data = profile['data']
 
         modified = int(time.time())
 
