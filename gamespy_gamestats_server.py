@@ -296,10 +296,11 @@ class Gamestats(LineReceiver):
         self.db.pd_insert(self.profileid, data_parsed['dindex'], data_parsed['ptype'], data)
 
     def perform_getpd(self, data_parsed):
-        profile = self.db.pd_get(self.profileid, data_parsed['dindex'], data_parsed['ptype'])
+        pid = int(data_parsed['pid'])
+        profile = self.db.pd_get(pid, data_parsed['dindex'], data_parsed['ptype'])
 
         if profile == None:
-            self.log(logging.WARNING, "Could not find profile for %d %s %s" % (self.profileid, data_parsed['dindex'], data_parsed['ptype']))
+            self.log(logging.WARNING, "Could not find profile for %d %s %s", pid, data_parsed['dindex'], data_parsed['ptype'])
 
         keys = data_parsed['keys'].split('\x01')
 
@@ -315,7 +316,7 @@ class Gamestats(LineReceiver):
         if profile_data != None:
             profile_data = profile_data[0][0]
         else:
-            self.log(logging.WARNING, "Could not get data section from profile for %d" % (self.profileid))
+            self.log(logging.WARNING, "Could not get data section from profile for %d", pid)
 
         if len(keys) > 0 and keys[0] != "":
             for key in (key for key in keys if key not in ("__cmd__", "__cmd_val__", "")):
@@ -333,7 +334,7 @@ class Gamestats(LineReceiver):
             ('__cmd__', "getpdr"),
             ('__cmd_val__', 1),
             ('lid', self.lid),
-            ('pid', self.profileid),
+            ('pid', pid),
             ('mod', modified),
             ('length', len(data)),
             ('data', data),
