@@ -305,28 +305,29 @@ class Gamestats(LineReceiver):
         keys = data_parsed['keys'].split('\x01')
 
         profile_data = None
+        data = ""
 
+        # Someone figure out if this is actually a good way to handle this when no profile is found
         if profile != None and 'data' in profile:
             profile_data = profile['data']
             if profile_data.endswith("\\"):
                 profile_data = profile_data[:-1]
             profile_data = gs_query.parse_gamespy_message("\\prof\\" + profile_data + "\\final\\")
 
-        data = ""
-        if profile_data != None:
-            profile_data = profile_data[0][0]
-        else:
-            self.log(logging.WARNING, "Could not get data section from profile for %d" % pid)
+            if profile_data != None:
+                profile_data = profile_data[0][0]
+            else:
+                self.log(logging.WARNING, "Could not get data section from profile for %d" % pid)
 
-        if len(keys) > 0 and keys[0] != "":
-            for key in (key for key in keys if key not in ("__cmd__", "__cmd_val__", "")):
-                data += "\\" + key + "\\"
+            if len(keys) > 0 and keys[0] != "":
+                for key in (key for key in keys if key not in ("__cmd__", "__cmd_val__", "")):
+                    data += "\\" + key + "\\"
 
-                if profile_data != None and key in profile_data:
-                    data += profile_data[key]
-        else:
-            self.log(logging.WARNING, "No keys requested, defaulting to all keys: %s" % (profile['data']))
-            data = profile['data']
+                    if profile_data != None and key in profile_data:
+                        data += profile_data[key]
+            else:
+                self.log(logging.WARNING, "No keys requested, defaulting to all keys: %s" % (profile['data']))
+                data = profile['data']
 
         modified = int(time.time())
 
