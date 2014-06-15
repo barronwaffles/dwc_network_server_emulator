@@ -226,24 +226,27 @@ class Gamestats(LineReceiver):
         if profileid != None:
             # Successfully logged in or created account, continue creating session.
             sesskey = self.db.create_session(profileid, '')
-
             self.sessions[profileid] = self
+            self.profileid = int(profileid)
 
             msg = gs_query.create_gamespy_message([
                 ('__cmd__', "pauthr"),
                 ('__cmd_val__', profileid),
                 ('lid', self.lid),
             ])
-
-            self.profileid = int(profileid)
-
-            self.log(logging.DEBUG, "SENDING: '%s'..." % msg)
-
-            msg = self.crypt(msg)
-            self.transport.write(bytes(msg))
         else:
-            # Return error
-            pass
+            # login failed
+            msg = gs_query.create_gamespy_message([
+                ('__cmd__', "pauthr"),
+                ('__cmd_val__', -3),
+                ('lid', self.lid),
+                ('errmsg', 'Invalid Validation'),
+            ])
+
+        self.log(logging.DEBUG, "SENDING: '%s'..." % msg)
+
+        msg = self.crypt(msg)
+        self.transport.write(bytes(msg))
 
     def perform_ka(self, data_parsed):
         msg = gs_query.create_gamespy_message([
