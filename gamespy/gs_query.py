@@ -79,11 +79,11 @@ def create_gamespy_message_from_list(messages):
     query = ""
     for message in messages:
         if message[0] == "__cmd__":
-            cmd = message[1]
+            cmd = str(message[1]).strip('\\')
         elif message[0] == "__cmd_val__":
-            cmd_val = message[1]
+            cmd_val = str(message[1]).strip('\\')
         else:
-            query += "\\%s\\%s" % (message[0], message[1])
+            query += "\\%s\\%s" % (str(message[0]).strip('\\'), str(message[1]).strip('\\'))
 
     if cmd != "":
         # Prepend the main command if one was found.
