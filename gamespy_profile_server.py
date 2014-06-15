@@ -179,57 +179,6 @@ class PlayerSession(LineReceiver):
         authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'], self.db)
         #print authtoken_parsed
 
-        # Track what console is connecting and save it in the database during user creation just in case we can use
-        # the information in the future.
-        console = 0 # 0 = NDS, 1 = Wii
-
-        # get correct information
-        userid = authtoken_parsed['userid']
-
-        # The Wii does not use passwd, so take another uniquely generated string as the password.
-        if "passwd" in authtoken_parsed:
-            password = authtoken_parsed['passwd']
-        else:
-            password = authtoken_parsed['gsbrcd']
-            console = 1
-
-        gsbrcd = authtoken_parsed['gsbrcd']
-        gameid = gsbrcd[:4]
-        uniquenick = utils.base32_encode(int(userid)) + gsbrcd
-        email = uniquenick + "@nds" # The Wii also seems to use @nds.
-
-        # Wii: Serial number
-        if "csnum" in authtoken_parsed:
-            csnum = authtoken_parsed['csnum']
-            console = 1
-        else:
-            csnum = ""
-
-        # Wii: Friend code
-        if "cfc" in authtoken_parsed:
-            cfc = authtoken_parsed['cfc']
-            console = 1
-        else:
-            cfc = ""
-
-        # NDS: Wifi network's BSSID
-        if "bssid" in authtoken_parsed:
-            bssid = authtoken_parsed['bssid']
-        else:
-            bssid = ""
-
-        # NDS: Device name
-        if "devname" in authtoken_parsed:
-            devname = authtoken_parsed['devname']
-        else:
-            devname = ""
-
-        # NDS: User's birthday
-        if "birth" in authtoken_parsed:
-            birth = authtoken_parsed['birth']
-        else:
-            birth = ""
-
         if 'sdkrevision' in data_parsed:
             self.sdkrevision = data_parsed['sdkrevision']
 
@@ -240,15 +189,7 @@ class PlayerSession(LineReceiver):
 
         proof = gs_utils.generate_proof(self.challenge, authtoken_parsed['challenge'], data_parsed['challenge'], data_parsed['authtoken'])
 
-        valid_user = self.db.check_user_exists(userid, gsbrcd)
-        if valid_user == False:
-            profileid = self.db.create_user(userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth, gameid)
-        else:
-            profileid = self.db.perform_login(userid, password, gsbrcd)
-
-            if profileid == None:
-                 # Handle case where the user is invalid
-                self.log(logging.ERROR, "Invalid password")
+        userid, profileid, gsbrcd, uniquenick = gs_utils.login_profile_via_parsed_authtoken(authtoken_parsed, self.db)
 
         if profileid != None:
             # Successfully logged in or created account, continue creating session.
@@ -327,6 +268,8 @@ class PlayerSession(LineReceiver):
             # if profile != None:
             #     self.statstring = profile['stat']
             #     self.locstring = profile['loc']
+        else:
+            self.log(logging.WARNING, "Invalid password")
 
     def perform_logout(self, data_parsed):
         self.log(logging.INFO, "Session %s has logged off" % (data_parsed['sesskey']))

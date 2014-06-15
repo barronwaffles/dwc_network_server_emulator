@@ -71,6 +71,41 @@ def prepare_rc4_base64(_key, _data):
 def parse_authtoken(authtoken, db):
     return db.get_nas_login(authtoken)
 
+def login_profile_via_parsed_authtoken(authtoken_parsed, db):
+    console = 0
+    userid = authtoken_parsed['userid']
+
+    csnum =   authtoken_parsed.get('csnum',   '') # Wii: Serial number
+    cfc =     authtoken_parsed.get('cfc',     '') # Wii: Friend code
+    bssid =   authtoken_parsed.get('bssid',   '') # NDS: Wifi network's BSSID
+    devname = authtoken_parsed.get('devname', '') # NDS: Device name
+    birth =   authtoken_parsed.get('birth',   '') # NDS: User's birthday
+
+    # The Wii does not use passwd, so take another uniquely generated string as the password.
+    if "passwd" in authtoken_parsed:
+        password = authtoken_parsed['passwd']
+    else:
+        password = authtoken_parsed['gsbrcd']
+        console = 1
+
+    gsbrcd = authtoken_parsed['gsbrcd']
+    gameid = gsbrcd[:4]
+    uniquenick = utils.base32_encode(int(userid)) + gsbrcd
+    email = uniquenick + "@nds" # The Wii also seems to use @nds.
+
+    if "csnum" in authtoken_parsed:
+        console = 1
+    if "cfc" in authtoken_parsed:
+        console = 1
+
+    valid_user = db.check_user_exists(userid, gsbrcd)
+    if valid_user == False:
+        profileid = db.create_user(userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth, gameid)
+    else:
+        profileid = db.perform_login(userid, password, gsbrcd)
+
+    return userid, profileid, gsbrcd, uniquenick
+
 def generate_response(challenge, ac_challenge, secretkey, authtoken):
     md5 = hashlib.md5()
     md5.update(ac_challenge)
