@@ -300,7 +300,7 @@ class Gamestats(LineReceiver):
         profile = self.db.pd_get(pid, data_parsed['dindex'], data_parsed['ptype'])
 
         if profile == None:
-            self.log(logging.WARNING, "Could not find profile for %d %s %s", pid, data_parsed['dindex'], data_parsed['ptype'])
+            self.log(logging.WARNING, "Could not find profile for %d %s %s" % (pid, data_parsed['dindex'], data_parsed['ptype']))
 
         keys = data_parsed['keys'].split('\x01')
 
@@ -316,7 +316,7 @@ class Gamestats(LineReceiver):
         if profile_data != None:
             profile_data = profile_data[0][0]
         else:
-            self.log(logging.WARNING, "Could not get data section from profile for %d", pid)
+            self.log(logging.WARNING, "Could not get data section from profile for %d" % pid)
 
         if len(keys) > 0 and keys[0] != "":
             for key in (key for key in keys if key not in ("__cmd__", "__cmd_val__", "")):
