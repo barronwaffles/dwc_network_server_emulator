@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # Let database initialize before starting any servers.
     # This fixes any conflicts where two servers find an uninitialized database at the same time and both try to
     # initialize it.
-    database = gs_database.GamespyDatabase()
+    gs_database.GamespyDatabase().initialize_database()
     
     servers = [
         GameSpyBackendServer,
