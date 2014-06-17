@@ -177,7 +177,19 @@ class PlayerSession(LineReceiver):
 
     def perform_login(self, data_parsed):
         authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'], self.db)
-        #print authtoken_parsed
+        
+        if authtoken_parsed == None:
+            self.log(logging.WARNING, "Invalid Authtoken.")
+            msg = gs_query.create_gamespy_message([
+                ('__cmd__', "error"),
+                ('__cmd_val__', ""),
+                ('err', '266'),
+                ('fatal', ''),
+                ('errmsg', 'There was an error validating the pre-authentication.'),
+                ('id', data_parsed['id']),
+            ])
+            self.transport.write(bytes(msg))
+            return
 
         if 'sdkrevision' in data_parsed:
             self.sdkrevision = data_parsed['sdkrevision']
