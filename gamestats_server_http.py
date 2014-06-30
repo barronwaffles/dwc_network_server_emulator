@@ -86,7 +86,7 @@ class GameStatsServer(object):
 
 class GameStatsHTTPServer(BaseHTTPServer.HTTPServer):
     def __init__(self, server_address, RequestHandlerClass):
-        self.db = gs_database.GamespyDatabase()
+        #self.db = gs_database.GamespyDatabase()
         self.gamelist = self.parse_key_file()
 
         BaseHTTPServer.HTTPServer.__init__(self, server_address, RequestHandlerClass)
