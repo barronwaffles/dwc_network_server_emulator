@@ -8,6 +8,7 @@ from gamespy_gamestats_server import GameSpyGamestatsServer
 from nas_server import NasServer
 from internal_stats_server import InternalStatsServer
 from storage_server import StorageServer
+from gamestats_server_http import GameStatsServer
 
 import gamespy.gs_database as gs_database
 
@@ -31,6 +32,7 @@ if __name__ == "__main__":
         NasServer,
         InternalStatsServer,
         StorageServer,
+        GameStatsServer,
     ]
     for server in servers:
         threading.Thread(target=server().start).start()
