@@ -122,7 +122,7 @@ class GameStatsHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         if '/' in gameid:
             gameid = gameid[:gameid.index('/')]
 
-        logger.log(logging.DEBUG, "Request for '%s': %s", gameid, self.path)
+        #logger.log(logging.DEBUG, "Request for '%s': %s", gameid, self.path)
         if gameid in self.server.gamelist:
             game = self.server.gamelist[gameid]['class']()
             game.do_GET(self, self.server.gamelist[gameid]['key'])
