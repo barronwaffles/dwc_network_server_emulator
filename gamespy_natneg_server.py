@@ -233,7 +233,7 @@ class GameSpyNatNegServer(object):
             session = utils.get_int(recv_data[-4:],0)
 
             # Report response
-            output = bytearray(recv_data[:-4] + [0, 0, 0, 0])
+            output = bytearray(recv_data[:-4]) + bytearray([0, 0, 0, 0])
             output[7] = 0x10 # Pre-init response
 
             if session == 0:
