@@ -219,7 +219,15 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             ret = self.filter_list(safeloadfi("_list.txt"), attr1, attr2, attr3)
 
                             if post["gamecd"] in gamecodes_return_random_file:
-                                ret = self.filter_list_random_files(ret, 1)
+                                # allow user to control which file to receive by setting the local date
+                                # selected file will be the one at index (day of year) mod (file count)
+                                try:
+                                    userData = self.server.db.get_nas_login(post['token'])
+                                    date = time.strptime(userData['devtime'], '%y%m%d%H%M%S')
+                                    files = ret.splitlines()
+                                    ret = files[int(date.tm_yday) % len(files)] + '\r\n'
+                                except:
+                                    ret = self.filter_list_random_files(ret, 1)
 
                 if action == "contents":
                     # Get only the base filename just in case there is a path involved somewhere in the filename string.
