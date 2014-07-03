@@ -225,7 +225,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                                     userData = self.server.db.get_nas_login(post['token'])
                                     date = time.strptime(userData['devtime'], '%y%m%d%H%M%S')
                                     files = ret.splitlines()
-                                    ret = files[int(date.tm_yday) % len(files)] + '\r\n'
+                                    ret = files[(int(date.tm_yday) - 1) % len(files)] + '\r\n'
                                 except:
                                     ret = self.filter_list_random_files(ret, 1)
 
