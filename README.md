@@ -10,11 +10,8 @@ Whether it's to add new features or clean up existing code, we could always use 
   
 **Requirements**  
 - Python 2.7  
-- Twisted  
-- zope.interface (Twisted dependency)  
-- pywin32 (Twisted dependency)  
+- Twisted 13.2  
 - Apache (or your favorite httpd)  
-- PHP5  
   
   
 Open source projects referenced during the creation of this project:  
