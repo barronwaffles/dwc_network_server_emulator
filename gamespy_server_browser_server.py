@@ -105,6 +105,7 @@ class Session(LineReceiver):
         self.console = 0
         self.server_cache = server_cache
         self.qr = qr
+        self.own_server = None
 
         manager_address = ("127.0.0.1", 27500)
         manager_password = ""
@@ -397,7 +398,7 @@ class Session(LineReceiver):
         else:
             ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in addr.split('.')]), 0)).value) # DS
 
-        self.log(logging.DEBUG, "IP: %s, Console: %d" % (ip, console))
+        self.log(logging.DEBUG, "IP: %s, Port: %d, Console: %d" % (ip, port, console))
 
         # Get server based on ip/port
         # server = None
@@ -407,7 +408,7 @@ class Session(LineReceiver):
         #     server = self.server_cache[ip + str(port)]
         #     #self.server_cache.pop((publicip + str(self.forward_client[1])))
 
-        server = self.server_manager.find_server_by_address(ip, self.forward_client[1])._getvalue()
+        server = self.server_manager.find_server_by_address(ip, port)._getvalue()
         self.log(logging.DEBUG, "find_server_in_cache is returning: %s %s" % (server, ip))
 
         return server, ip
@@ -443,10 +444,35 @@ class Session(LineReceiver):
             # Send command to server to get it to connect to natneg
             cookie = int(utils.generate_random_hex_str(8), 16) # Quick and lazy way to get a random 32bit integer. Replace with something else later
 
-            if len(data) == 10 and bytearray(data)[0:6] == bytearray([0xfd, 0xfc, 0x1e, 0x66, 0x6a, 0xb2]):
+            #if (len(data) == 24 and bytearray(data)[0:10] == bytearray([0x53, 0x42, 0x43, 0x4d, 0x03, 0x00, 0x00, 0x00, 0x01, 0x04])) or (len(data) == 40 and bytearray(data)[0:10] == bytearray([0x53, 0x42, 0x43, 0x4d, 0x0b, 0x00, 0x00, 0x00, 0x01, 0x04])):
+            if self.own_server == None and len(data) >= 16 and bytearray(data)[0:4] in (bytearray([0xbb, 0x49, 0xcc, 0x4d]), bytearray([0x53, 0x42, 0x43, 0x4d])):
+                # Is the endianness the same between the DS and Wii here? It seems so but I'm not positive.
+                self_port = utils.get_short(bytearray(data[10:12]), 0)
+                self_ip = bytearray(data[12:16])
+                self_ip = '.'.join(["%d" % x for x in self_ip])
+
+                self.own_server, _ = self.find_server_in_cache(self_ip, self_port, self.console)
+
+                if self.own_server == None:
+                    if self.console == 0:
+                        self.own_server, _ = self.find_server_in_cache(self_ip, self_port, 1) # Try Wii
+                    elif self.console == 1:
+                        self.own_server, _ = self.find_server_in_cache(self_ip, self_port, 0) # Try DS
+
+                if self.own_server == None:
+                    self.log(logging.DEBUG, "Could not find own server: %s:%d" % (self_ip, self_port))
+                else:
+                    self.log(logging.DEBUG, "Found own server: %s" % (self.own_server))
+
+
+            elif len(data) == 10 and bytearray(data)[0:6] == bytearray([0xfd, 0xfc, 0x1e, 0x66, 0x6a, 0xb2]):
                 natneg_session = utils.get_int(data,6)
                 self.log(logging.DEBUG, "Adding %d to natneg server list: %s" % (natneg_session, server))
                 self.server_manager.add_natneg_server(natneg_session, server) # Store info in backend so we can get it later in natneg
+
+                if self.own_server != None:
+                    self.log(logging.DEBUG, "Adding %d to natneg server list: %s (self)" % (natneg_session, self.own_server))
+                    self.server_manager.add_natneg_server(natneg_session, self.own_server) # Store info in backend so we can get it later in natneg
 
                 # if self.qr != None:
                 #     own_server = self.qr.get_own_server()
