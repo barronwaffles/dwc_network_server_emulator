@@ -83,7 +83,12 @@ def rc4_encrypt(_key, _data):
 # This seems to be what Luigi Auriemma calls "Gsmsalg".
 def prepare_rc4_base64(_key, _data):
     data = rc4_encrypt(_key, _data)
+
+    if data == None:
+        data = bytearray()
+
     data.append(0)
+
     return base64.b64encode(buffer(data))
 
 # get the login data from nas.nintendowifi.net/ac from an authtoken
@@ -101,12 +106,16 @@ def login_profile_via_parsed_authtoken(authtoken_parsed, db):
     birth =   authtoken_parsed.get('birth',   '') # NDS: User's birthday
 
     # The Wii does not use passwd, so take another uniquely generated string as the password.
-    if "passwd" in authtoken_parsed:
-        password = authtoken_parsed['passwd']
-    else:
-        password = authtoken_parsed['gsbrcd']
+    # if "passwd" in authtoken_parsed:
+    #     password = authtoken_parsed['passwd']
+    # else:
+    #     password = authtoken_parsed['gsbrcd']
+    #     console = 1
+
+    if not "passwd" in authtoken_parsed:
         console = 1
 
+    password = authtoken_parsed['gsbrcd']
     gsbrcd = authtoken_parsed['gsbrcd']
     gameid = gsbrcd[:4]
     uniquenick = utils.base32_encode(int(userid)) + gsbrcd

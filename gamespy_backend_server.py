@@ -161,6 +161,7 @@ class GameSpyBackendServer(object):
                 i += 1
                 while i < len(filters) and filters[i].isdigit():
                     i += 1
+
             elif filters[i].isalnum() or filters[i] in special_chars:
                 # Whole numbers or words
                 if filters[i].isdigit():
@@ -303,7 +304,8 @@ class GameSpyBackendServer(object):
                 if valid_filter == False:
                     # Return only anything matched up until this point.
                     logger.log(logging.WARNING, "Invalid filter(s): %s" % (filters))
-                    stop_search = True
+                    #stop_search = True
+                    continue
                 else:
                     # Use Python to evaluate the query. This method may take a little time but it shouldn't be all that
                     # big of a difference, I think. It takes about 0.0004 seconds per server to determine whether or not it's a
@@ -320,7 +322,7 @@ class GameSpyBackendServer(object):
             if stop_search == True:
                 break
 
-            if result == True:
+            if valid_filter == True and result == True:
                 matched_servers.append(server)
 
                 if max_count != 0 and len(matched_servers) >= max_count:
