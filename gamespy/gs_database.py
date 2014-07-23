@@ -186,10 +186,13 @@ class GamespyDatabase(object):
 
         profileid = None  # Default, user doesn't exist
         if r != None:
-            md5 = hashlib.md5()
-            md5.update(password)
+            #md5 = hashlib.md5()
+            #md5.update(password)
 
-            if r['password'] == md5.hexdigest():
+            #if r['password'] == md5.hexdigest():
+            #    profileid = r['profileid']  # Valid password
+
+            if r['gsbrcd'] == gsbrcd:
                 profileid = r['profileid']  # Valid password
 
         return profileid
