@@ -42,7 +42,7 @@ def base64_encode(input):
 
 
 def base64_decode(input):
-    output = base64.b64decode(input.replace('[', '+').replace('/', ']').replace('_', '='))
+    output = base64.b64decode(input.replace('[', '+').replace(']', '/').replace('_', '='))
     return output
 
 # Tetris DS overlay 10 @ 0216E9B8
