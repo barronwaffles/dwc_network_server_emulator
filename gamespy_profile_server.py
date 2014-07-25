@@ -380,20 +380,9 @@ class PlayerSession(LineReceiver):
 
     def perform_status(self, data_parsed):
         self.sesskey = data_parsed['sesskey']
-
-
         self.status = data_parsed['__cmd_val__']
-        self.statstring =  data_parsed['statstring']
-        self.locstring =  data_parsed['locstring']
-
-        # fields = [
-        #     #("status", self.status),
-        #     ("stat", self.statstring),
-        #     ("loc", self.locstring),
-        # ]
-        #
-        # for f in fields:
-        #     self.db.update_profile(self.sesskey, f)
+        self.statstring = data_parsed['statstring']
+        self.locstring = data_parsed['locstring']
 
         # Send authorization requests to client
         self.get_buddy_requests()
@@ -519,7 +508,9 @@ class PlayerSession(LineReceiver):
 
         for buddy in self.buddies:
             if buddy['buddyProfileId'] in self.sessions:
+                #self.log(logging.DEBUG, "Sending status to buddy id %s (%s:%d): %s" % (str(buddy['buddyProfileId']), self.sessions[buddy['buddyProfileId']].address.host, self.sessions[buddy['buddyProfileId']].address.port, msg))
                 self.sessions[buddy['buddyProfileId']].transport.write(bytes(msg))
+
 
     def get_status_from_friends(self):
         # This will be called when the player logs in. Grab the player's buddy list and check the current sessions to
@@ -588,7 +579,10 @@ class PlayerSession(LineReceiver):
 
         for message in messages:
             if message['sourceid'] not in self.blocked:
-                self.transport.write(bytearray(message['msg']))
+                try:
+                    self.transport.write(bytearray(message['msg']))
+                except:
+                    self.transport.write(bytearray(message['msg'], "utf-8"))
 
 if __name__ == "__main__":
     gsps = GameSpyProfileServer()

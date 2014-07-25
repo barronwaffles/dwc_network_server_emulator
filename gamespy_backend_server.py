@@ -289,6 +289,28 @@ class GameSpyBackendServer(object):
                             # dwc_test = 'test', dwc_test2 = dwc_test, dwc_test3 = dwc_test2
                             token = '"' + token + '"'
 
+                        elif token_type == TokenType.NUMBER:
+                            for idx2 in range(idx + 1, len(translated)):
+                                _, _, token_type = self.get_token(translated[idx2])
+
+                                if token_type == TokenType.TOKEN and translated[idx2] not in ('(', ')'):
+                                    if idx2 == idx + 1:
+                                        # Skip boolean operator if it's the first token on the right
+                                        continue
+
+                                    # Boolean operator, leave left as integer
+                                    token = str(int(token))
+                                    break
+
+                                elif token_type == TokenType.STRING or token_type == TokenType.NUMBER:
+                                    if token_type == TokenType.STRING:
+                                        # Found string on far right, turn left into string as well
+                                        token = "'" + token + "'"
+                                    elif token_type == TokenType.NUMBER:
+                                        token = str(int(token))
+                                    break
+
+
                         translated[idx] = token
 
                 q = ' '.join(translated)
