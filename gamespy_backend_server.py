@@ -361,26 +361,12 @@ class GameSpyBackendServer(object):
                 result['localip' + str(i)] = server['localip' + str(i)]
                 i += 1
 
-            if 'localport' in server:
-                result['localport'] = server['localport']
-
-            if 'localport' in server:
-                result['localport'] = server['localport']
-
-            if 'natneg' in server:
-                result['natneg'] = server['natneg']
-
-            if 'publicip' in server:
-                result['publicip'] = server['publicip']
-
-            if 'publicport' in server:
-                result['publicport'] = server['publicport']
-
-            if '__session__' in server:
-                result['__session__'] = server['__session__']
-
-            if '__console__' in server:
-                result['__console__'] = server['__console__']
+            attrs = [
+                    "localport", "natneg",
+                    "publicip", "publicport",
+                    "__session__", "__console__"
+            ]
+            result.update({name:server[name] for name in attrs if name in server})
 
             requested = {}
             for field in fields:

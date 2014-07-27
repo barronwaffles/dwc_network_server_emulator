@@ -75,14 +75,14 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         try:
             length = int(self.headers['content-length'])
             post = self.str_to_dict(self.rfile.read(length))
-            ret = ''
 
             if self.path == "/ac":
                 logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
                 logger.log(logging.DEBUG, post)
-                ret = {}
-                ret["datetime"] = time.strftime("%Y%m%d%H%M%S")
-                ret["retry"] = "0"
+                ret = {
+                    "datetime": time.strftime("%Y%m%d%H%M%S")
+                    "retry": "0"
+                }
                 action = post["action"]
                 self.send_response(200)
                 self.send_header("Content-type", "text/plain")
@@ -98,13 +98,15 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     ret = self.dict_to_str(ret)
 
                 elif action == "login":
-                    ret["returncd"] = "001"
-                    ret["locator"] = "gamespy.com"
                     challenge = utils.generate_random_str(8)
-                    ret["challenge"] = challenge
-                    post["challenge"] = challenge
                     authtoken = self.server.db.generate_authtoken(post["userid"], post)
-                    ret["token"] = authtoken
+                    ret.update({
+                        "returncd": "001",
+                        "locator": "gamespy.com",
+                        "challenge": challenge,
+                        "token": authtoken,
+                    })
+                    post["challenge"] = challenge
 
                     logger.log(logging.DEBUG, "login response to %s", self.client_address)
                     logger.log(logging.DEBUG, ret)
@@ -137,25 +139,21 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     ret = self.dict_to_str(ret)
                 else:
                     logger.log(logging.WARNING, "Unknown action request %s from %s!", self.path, self.client_address)
-                    ret = ''
 
 
             elif self.path == "/pr":
                 logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
                 logger.log(logging.DEBUG, post)
-                ret = {}
-
                 words = len(post["words"].split('\t'))
                 wordsret = "0" * words
-                ret["prwords"] = wordsret
-                ret["prwordsA"] = wordsret
-                ret["prwordsC"] = wordsret
-                ret["prwordsE"] = wordsret
-                ret["prwordsJ"] = wordsret
-                ret["prwordsK"] = wordsret
-                ret["prwordsP"] = wordsret
-                ret["returncd"] = "000"
-                ret["datetime"] = time.strftime("%Y%m%d%H%M%S")
+                ret = {
+                    "prwords": wordsret,
+                    "returncd": "000",
+                    "datetime": time.strftime("%Y%m%d%H%M%S")
+                }
+
+                for l in "ACEJKP":
+                    ret["prwords"+l] = wordsret
 
                 self.send_response(200)
                 self.send_header("Content-type", "text/plain")
@@ -201,15 +199,9 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             count = len(os.listdir(dlcpath))
 
                             if os.path.isfile(dlcpath + "/_list.txt"):
-                                attr1 = None
-                                if "attr1" in post:
-                                    attr1 = post["attr1"]
-                                attr2 = None
-                                if "attr2" in post:
-                                    attr2 = post["attr2"]
-                                attr3 = None
-                                if "attr3" in post:
-                                    attr3 = post["attr3"]
+                                attr1 = post.get("attr1", None)
+                                attr2 = post.get("attr2", None)
+                                attr3 = post.get("attr3", None)
 
                                 dlcfi = safeloadfi("_list.txt")
                                 lst = self.filter_list(dlcfi, attr1, attr2, attr3)
@@ -221,15 +213,9 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     num = int(post["num"])
                     offset = int(post["offset"])
 
-                    attr1 = None
-                    if "attr1" in post:
-                        attr1 = post["attr1"]
-                    attr2 = None
-                    if "attr2" in post:
-                        attr2 = post["attr2"]
-                    attr3 = None
-                    if "attr3" in post:
-                        attr3 = post["attr3"]
+                    attr1 = post.get("attr1", None)
+                    attr2 = post.get("attr2", None)
+                    attr3 = post.get("attr3", None)
 
                     if os.path.exists(dlcpath):
                         # Look for a list file first.
@@ -277,8 +263,8 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         except:
             logger.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
-    def str_to_dict(self, str):
-        ret = urlparse.parse_qs(str)
+    def str_to_dict(self, s):
+        ret = urlparse.parse_qs(s)
 
         for k, v in ret.iteritems():
             try:
@@ -287,7 +273,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 ret[k] = base64.b64decode( urlparse.unquote( v[0] ).replace("*", "=").replace("?", "/").replace(">","+").replace("-","/") )
             except TypeError:
                 print "Could not decode following string: ret[%s] = %s" % (k, v[0])
-                print "url: %s" % str
+                print "url: %s" % s
                 ret[k] = v[0] # If you don't assign it like this it'll be a list, which breaks other code.
 
         return ret
@@ -310,33 +296,9 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             return data
 
         # Filter the list based on the attribute fields
-        output = []
-
-        for line in data.splitlines():
-            s = line.split('\t')
-
-            if len(s) == 6:
-                data = {}
-                data['filename'] = s[0]
-                data['desc'] = s[1]
-                data['attr1'] = s[2]
-                data['attr2'] = s[3]
-                data['attr3'] = s[4]
-                data['filesize'] = s[5]
-
-                matched = True
-                if attr1 != None:
-                    if data['attr1'] != attr1:
-                        matched = False
-                if attr2 != None:
-                    if data['attr2'] != attr2:
-                        matched = False
-                if attr3 != None:
-                    if data['attr3'] != attr3:
-                        matched = False
-
-                if matched == True:
-                    output.append(line)
+        nc = lambda a, b: (a is None or a == b)
+        attrs = lambda data: (len(data) == 6 and nc(attr1, data[2]) and nc(attr2, data[3]) and nc(attr3, data[4]))
+        output = filter(lambda line: attrs(line.split("\t")), data.splitlines())
 
         # if nothing matches, at least return a newline; Pokemon BW at least expects this and will error without it
         return '\r\n'.join(output) + '\r\n'
