@@ -173,7 +173,7 @@ class Session(LineReceiver):
                 fields = utils.get_string(data, idx)
                 idx += len(fields) + 1
 
-                options = utils.get_int_be(data, idx)
+                options = utils.get_int(data, idx, True)
                 idx += 4
 
                 source_ip = 0
@@ -209,7 +209,7 @@ class Session(LineReceiver):
                 # Requesting ip and port of client, not server
                 if filter == "" and fields == "" or send_ip == True:
                     output = bytearray([int(x) for x in self.address.host.split('.')])
-                    output += utils.get_bytes_from_short_be(6500) # Does this ever change?
+                    output += utils.get_bytes_from_short(6500, True) # Does this ever change?
 
                     enc = gs_utils.EncTypeX()
                     output_enc = enc.encrypt(self.secret_key_list[game_name], challenge, output)
@@ -224,9 +224,9 @@ class Session(LineReceiver):
 
 
             elif data[2] == '\x02': # Send message request
-                packet_len = utils.get_short_be(data, 0)
+                packet_len = utils.get_short(data, 0, True)
                 dest_addr = '.'.join(["%d" % ord(x) for x in data[3:7]])
-                dest_port = utils.get_short_be(data, 7) # What's the pythonic way to do this? unpack?
+                dest_port = utils.get_short(data, 7, True) # What's the pythonic way to do this? unpack?
                 dest = (dest_addr, dest_port)
 
                 self.log(logging.DEBUG, "Received send message request from %s:%s to %s:%d... expecting %d byte packet." % (self.address.host, self.address.port, dest_addr, dest_port, packet_len))
@@ -272,7 +272,7 @@ class Session(LineReceiver):
         output += bytearray([int(x) for x in address.host.split('.')])
 
         # Write the port
-        output += utils.get_bytes_from_short_be(address.port)
+        output += utils.get_bytes_from_short(address.port, True)
 
         # Write number of fields that will be returned.
         key_count = len(fields)
@@ -302,20 +302,15 @@ class Session(LineReceiver):
                 if "natneg" in server_info:
                     flags |= ServerListFlags.CONNECT_NEGOTIATE_FLAG
 
-                ip = 0
-                if self.console != 0:
-                    ip = utils.get_bytes_from_int_be(int(server_info['publicip'])) # Wii
-                    flags_buffer += ip
-                else:
-                    ip = utils.get_bytes_from_int(int(server_info['publicip'])) # DS
-                    flags_buffer += ip
+                ip = utils.get_bytes_from_int(int(server_info['publicip']), self.console)
+                flags_buffer += ip
 
                 flags |= ServerListFlags.NONSTANDARD_PORT_FLAG
 
                 if server_info['publicport'] != "0":
-                    flags_buffer += utils.get_bytes_from_short_be(int(server_info['publicport']))
+                    flags_buffer += utils.get_bytes_from_short(int(server_info['publicport']), True)
                 else:
-                    flags_buffer += utils.get_bytes_from_short_be(int(server_info['localport']))
+                    flags_buffer += utils.get_bytes_from_short(int(server_info['localport']), True)
 
                 if "localip0" in server_info:
                     # How to handle multiple localips?
@@ -324,7 +319,7 @@ class Session(LineReceiver):
 
                 if "localport" in server_info:
                     flags |= ServerListFlags.NONSTANDARD_PRIVATE_PORT_FLAG
-                    flags_buffer += utils.get_bytes_from_short_be(int(server_info['localport']))
+                    flags_buffer += utils.get_bytes_from_short(int(server_info['localport']), True)
 
                 flags |= ServerListFlags.ICMP_IP_FLAG
                 flags_buffer += bytearray([int(x) for x in "0.0.0.0".split('.')])
@@ -393,11 +388,7 @@ class Session(LineReceiver):
         send_encrypted_data(self, challenge, data)
 
     def find_server_in_cache(self, addr, port, console):
-        if console != 0:
-            ip = str(ctypes.c_int32(utils.get_int_be(bytearray([int(x) for x in addr.split('.')]), 0)).value) # Wii
-        else:
-            ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in addr.split('.')]), 0)).value) # DS
-
+        ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in addr.split('.')]), 0)).value, console)
         self.log(logging.DEBUG, "IP: %s, Port: %d, Console: %d" % (ip, port, console))
 
         # Get server based on ip/port
