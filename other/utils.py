@@ -101,16 +101,8 @@ def get_short(data, idx):
     return get_num_from_bytes(data, idx, 'h', False)
 
 
-def get_short_be(data, idx):
-    return get_short(data, idx, True)
-
-
 def get_int(data, idx):
     return get_num_from_bytes(data, idx, 'i', False)
-
-
-def get_int_be(data, idx):
-    return get_int(data, idx, True)
 
 
 def get_string(data, idx):
@@ -127,16 +119,8 @@ def get_bytes_from_short(num):
     return get_bytes_from_num(num, 'h', False)
 
 
-def get_bytes_from_short_be(num):
-    return get_bytes_from_short(num, True)
-
-
 def get_bytes_from_int(num, be=False):
     return get_bytes_from_num(num, 'i', be)
-
-
-def get_bytes_from_int_be(num):
-    return get_bytes_from_int(num, True)
 
 
 # For server logging
