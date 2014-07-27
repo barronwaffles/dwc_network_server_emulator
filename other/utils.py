@@ -18,6 +18,7 @@
 import logging
 import random
 import string
+import struct
 
 def generate_random_str_from_set(ln, chs):
     return ''.join(random.choice(chs) for _ in range(ln))
@@ -87,69 +88,41 @@ def base32_decode(str, reverse = False):
 
 
 # Number routines
-# I'm not sure what the pythonic way to do this is, so I'm making the code explicit by giving myself functions to
-# convert the bytes to ints.
-def get_num_from_bytes(data, idx, bytes, bigEndian = False):
-    # Get only the bytes we want to work with
-    data = data[idx:idx+bytes]
-
-    if bigEndian == True:
-        data = data[::-1]
-
-    num = 0
-    i = 0
-    while i < bytes and i < len(data):
-        if type(data[i]) is int:
-            num |= (data[i] << (8 * i))
-        else:
-            num |= (ord(data[i]) << (8 * i))
-        i += 1
-
-    return num
+def get_num_from_bytes(data, idx, fmt, bigEndian = False):
+    return struct.unpack_from("<>"[bigEndian] + fmt, data, idx)[0]
 
 # Instead of passing slices, pass the buffer and index so we can calculate the length automatically.
 def get_short(data, idx):
-    return get_num_from_bytes(data, idx, 2, False)
+    return get_num_from_bytes(data, idx, 'h', False)
 
 def get_short_be(data, idx):
-    return get_num_from_bytes(data, idx, 2, True)
+    return get_short(data, idx, True)
 
 def get_int(data, idx):
-    return get_num_from_bytes(data, idx, 4, False)
+    return get_num_from_bytes(data, idx, 'i', False)
 
 def get_int_be(data, idx):
-    return get_num_from_bytes(data, idx, 4, True)
+    return get_int(data, idx, True)
 
 def get_string(data, idx):
     data = data[idx:]
     end = data.index('\0')
     return str(data[:end])
 
-def get_bytes_from_num(num, size, bigEndian = False):
-    output = bytearray(size)
-
-    i = 0
-    while i < size:
-        output[i] = (num >> 8 * i) & 0xff
-
-        i += 1
-
-    if bigEndian:
-        output = output[::-1]
-
-    return output
+def get_bytes_from_num(num, fmt, bigEndian = False):
+    return struct.pack("<>"[bigEndian]+fmt, num)
 
 def get_bytes_from_short(num):
-    return get_bytes_from_num(num, 2, False)
+    return get_bytes_from_num(num, 'h', False)
 
 def get_bytes_from_short_be(num):
-    return get_bytes_from_num(num, 2, True)
+    return get_bytes_from_short(num, True)
 
-def get_bytes_from_int(num):
-    return get_bytes_from_num(num, 4, False)
+def get_bytes_from_int(num, be=False):
+    return get_bytes_from_num(num, 'i', be)
 
 def get_bytes_from_int_be(num):
-    return get_bytes_from_num(num, 4, True)
+    return get_bytes_from_int(num, True)
 
 
 # For server logging
