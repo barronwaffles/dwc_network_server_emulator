@@ -128,113 +128,114 @@ class Session(LineReceiver):
 
             self.buffer += data
 
-            packet_len = utils.get_short(self.buffer, 0, True)
-            packet = None
+            while True:
+                packet_len = utils.get_short(self.buffer, 0, True)
+                packet = None
 
-            if len(data) >= packet_len:
-                packet = data[:packet_len]
-                self.buffer = self.buffer[packet_len:]
+                if len(data) >= packet_len:
+                    packet = data[:packet_len]
+                    self.buffer = self.buffer[packet_len:]
 
-            if packet == None:
-                # Don't have enough for the entire packet, skip.
-                return
+                if packet == None:
+                    # Don't have enough for the entire packet, break.
+                    break
 
-            if packet[2] == '\x00': # Server list request
-                self.log(logging.DEBUG, "Received server list request from %s:%s..." % (self.address.host, self.address.port))
+                if packet[2] == '\x00': # Server list request
+                    self.log(logging.DEBUG, "Received server list request from %s:%s..." % (self.address.host, self.address.port))
 
-                # This code is so... not python. The C programmer in me is coming out strong.
-                # TODO: Rewrite this section later?
-                idx = 3
-                list_version = ord(packet[idx])
-                idx += 1
-                encoding_version = ord(packet[idx])
-                idx += 1
-                game_version = utils.get_int(packet, idx)
-                idx += 4
+                    # This code is so... not python. The C programmer in me is coming out strong.
+                    # TODO: Rewrite this section later?
+                    idx = 3
+                    list_version = ord(packet[idx])
+                    idx += 1
+                    encoding_version = ord(packet[idx])
+                    idx += 1
+                    game_version = utils.get_int(packet, idx)
+                    idx += 4
 
-                query_game = utils.get_string(packet, idx)
-                idx += len(query_game) + 1
-                game_name = utils.get_string(packet, idx)
-                idx += len(game_name) + 1
+                    query_game = utils.get_string(packet, idx)
+                    idx += len(query_game) + 1
+                    game_name = utils.get_string(packet, idx)
+                    idx += len(game_name) + 1
 
-                challenge = packet[idx:idx+8]
-                idx += 8
+                    challenge = packet[idx:idx+8]
+                    idx += 8
 
-                filter = utils.get_string(packet, idx)
-                idx += len(filter) + 1
-                fields = utils.get_string(packet, idx)
-                idx += len(fields) + 1
+                    filter = utils.get_string(packet, idx)
+                    idx += len(filter) + 1
+                    fields = utils.get_string(packet, idx)
+                    idx += len(fields) + 1
 
-                options = utils.get_int(packet, idx, True)
-                idx += 4
+                    options = utils.get_int(packet, idx, True)
+                    idx += 4
 
-                source_ip = 0
-                max_servers = 0
+                    source_ip = 0
+                    max_servers = 0
 
-                NO_SERVER_LIST = 0x02
-                ALTERNATE_SOURCE_IP = 0x08
-                LIMIT_RESULT_COUNT = 0x80
+                    NO_SERVER_LIST = 0x02
+                    ALTERNATE_SOURCE_IP = 0x08
+                    LIMIT_RESULT_COUNT = 0x80
 
-                send_ip = False
-                if (options & LIMIT_RESULT_COUNT):
-                    max_servers = utils.get_int(packet, idx)
-                elif (options & ALTERNATE_SOURCE_IP):
-                    source_ip = utils.get_int(packet, idx)
-                elif (options & NO_SERVER_LIST):
-                    send_ip = True
+                    send_ip = False
+                    if (options & LIMIT_RESULT_COUNT):
+                        max_servers = utils.get_int(packet, idx)
+                    elif (options & ALTERNATE_SOURCE_IP):
+                        source_ip = utils.get_int(packet, idx)
+                    elif (options & NO_SERVER_LIST):
+                        send_ip = True
 
-                if '\\' in fields:
-                    fields = [x for x in fields.split('\\') if x and not x.isspace()]
+                    if '\\' in fields:
+                        fields = [x for x in fields.split('\\') if x and not x.isspace()]
 
-                #print "%02x %02x %08x" % (list_version, encoding_version, game_version)
-                #print "%s" % query_game
-                #print "%s" % game_name
-                #print "%s" % challenge
-                #print "%s" % filter
-                #print "%s" % fields
+                    #print "%02x %02x %08x" % (list_version, encoding_version, game_version)
+                    #print "%s" % query_game
+                    #print "%s" % game_name
+                    #print "%s" % challenge
+                    #print "%s" % filter
+                    #print "%s" % fields
 
-                #print "%08x" % options
-                #print "%d %08x" % (max_servers, source_ip)
+                    #print "%08x" % options
+                    #print "%d %08x" % (max_servers, source_ip)
 
-                self.log(logging.DEBUG, "list version: %02x / encoding version: %02x / game version: %08x / query game: %s / game name: %s / challenge: %s / filter: %s / fields: %s / options: %08x / max servers: %d / source ip: %08x" % (list_version, encoding_version, game_version, query_game, game_name, challenge, filter, fields, options, max_servers, source_ip))
+                    self.log(logging.DEBUG, "list version: %02x / encoding version: %02x / game version: %08x / query game: %s / game name: %s / challenge: %s / filter: %s / fields: %s / options: %08x / max servers: %d / source ip: %08x" % (list_version, encoding_version, game_version, query_game, game_name, challenge, filter, fields, options, max_servers, source_ip))
 
-                # Requesting ip and port of client, not server
-                if filter == "" and fields == "" or send_ip == True:
-                    output = bytearray([int(x) for x in self.address.host.split('.')])
-                    output += utils.get_bytes_from_short(6500, True) # Does this ever change?
+                    # Requesting ip and port of client, not server
+                    if filter == "" and fields == "" or send_ip == True:
+                        output = bytearray([int(x) for x in self.address.host.split('.')])
+                        output += utils.get_bytes_from_short(6500, True) # Does this ever change?
 
-                    enc = gs_utils.EncTypeX()
-                    output_enc = enc.encrypt(self.secret_key_list[game_name], challenge, output)
+                        enc = gs_utils.EncTypeX()
+                        output_enc = enc.encrypt(self.secret_key_list[game_name], challenge, output)
 
-                    self.transport.write(bytes(output_enc))
+                        self.transport.write(bytes(output_enc))
 
-                    self.log(logging.DEBUG, "Responding with own IP and game port...")
-                    self.log(logging.DEBUG, utils.pretty_print_hex(output))
+                        self.log(logging.DEBUG, "Responding with own IP and game port...")
+                        self.log(logging.DEBUG, utils.pretty_print_hex(output))
+                    else:
+                        self.find_server(query_game, filter, fields, max_servers, game_name, challenge)
+
+                elif packet[2] == '\x02': # Send message request
+                    packet_len = utils.get_short(packet, 0, True)
+                    dest_addr = '.'.join(["%d" % ord(x) for x in packet[3:7]])
+                    dest_port = utils.get_short(packet, 7, True) # What's the pythonic way to do this? unpack?
+                    dest = (dest_addr, dest_port)
+
+                    self.log(logging.DEBUG, "Received send message request from %s:%s to %s:%d... expecting %d byte packet." % (self.address.host, self.address.port, dest_addr, dest_port, packet_len))
+                    self.log(logging.DEBUG, utils.pretty_print_hex(bytearray(packet)))
+
+                    if packet_len == len(packet):
+                        # Contains entire packet, send immediately.
+                        self.forward_data_to_client(packet[3:], dest)
+                    else:
+                        self.log(logging.ERROR, "ERROR: Could not find entire packet.")
+
+                elif packet[2] == '\x03': # Keep alive reply
+                    self.log(logging.DEBUG, "Received keep alive from %s:%s..." % (self.address.host, self.address.port))
+
                 else:
-                    self.find_server(query_game, filter, fields, max_servers, game_name, challenge)
-
-            elif packet[2] == '\x02': # Send message request
-                packet_len = utils.get_short(packet, 0, True)
-                dest_addr = '.'.join(["%d" % ord(x) for x in packet[3:7]])
-                dest_port = utils.get_short(packet, 7, True) # What's the pythonic way to do this? unpack?
-                dest = (dest_addr, dest_port)
-
-                self.log(logging.DEBUG, "Received send message request from %s:%s to %s:%d... expecting %d byte packet." % (self.address.host, self.address.port, dest_addr, dest_port, packet_len))
-                self.log(logging.DEBUG, utils.pretty_print_hex(bytearray(packet)))
-
-                if packet_len == len(packet):
-                    # Contains entire packet, send immediately.
-                    self.forward_data_to_client(packet[3:], dest)
-                else:
-                    self.log(logging.ERROR, "ERROR: Could not find entire packet.")
-
-            elif packet[2] == '\x03': # Keep alive reply
-                self.log(logging.DEBUG, "Received keep alive from %s:%s..." % (self.address.host, self.address.port))
-
-            else:
-                self.log(logging.DEBUG, "Received unknown command (%02x) from %s:%s..." % (ord(packet[2]), self.address.host, self.address.port))
-                self.log(logging.DEBUG, utils.pretty_print_hex(bytearray(packet)))
-                self.log(logging.DEBUG, utils.pretty_print_hex(packet))
+                    self.log(logging.DEBUG, "Received unknown command (%02x) from %s:%s..." % (ord(packet[2]), self.address.host, self.address.port))
+                    self.log(logging.DEBUG, utils.pretty_print_hex(bytearray(packet)))
+                    self.log(logging.DEBUG, utils.pretty_print_hex(packet))
         except:
             self.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
