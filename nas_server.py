@@ -99,6 +99,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
                 elif action == "login":
                     challenge = utils.generate_random_str(8)
+                    post["challenge"] = challenge
                     authtoken = self.server.db.generate_authtoken(post["userid"], post)
                     ret.update({
                         "returncd": "001",
@@ -106,7 +107,6 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         "challenge": challenge,
                         "token": authtoken,
                     })
-                    post["challenge"] = challenge
 
                     logger.log(logging.DEBUG, "login response to %s", self.client_address)
                     logger.log(logging.DEBUG, ret)
