@@ -97,12 +97,12 @@ def get_num_from_bytes(data, idx, fmt, bigEndian=False):
 # the length automatically.
 
 
-def get_short(data, idx, bigEndian=False):
-    return get_num_from_bytes(data, idx, 'h', bigEndian)
+def get_short(data, idx, be=False):
+    return get_num_from_bytes(data, idx, 'h', be)
 
 
-def get_int(data, idx, bigEndian=False):
-    return get_num_from_bytes(data, idx, 'i', bigEndian)
+def get_int(data, idx, be=False):
+    return get_num_from_bytes(data, idx, 'i', be)
 
 
 def get_string(data, idx):
@@ -115,8 +115,8 @@ def get_bytes_from_num(num, fmt, bigEndian=False):
     return struct.pack("<>"[bigEndian] + fmt, num)
 
 
-def get_bytes_from_short(num):
-    return get_bytes_from_num(num, 'h', False)
+def get_bytes_from_short(num, be=False):
+    return get_bytes_from_num(num, 'h', be)
 
 
 def get_bytes_from_int(num, be=False):
