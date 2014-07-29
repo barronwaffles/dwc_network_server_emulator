@@ -98,11 +98,11 @@ def get_num_from_bytes(data, idx, fmt, bigEndian=False):
 
 
 def get_short(data, idx, be=False):
-    return get_num_from_bytes(data, idx, 'h', be)
+    return get_num_from_bytes(data, idx, 'H', be)
 
 
 def get_int(data, idx, be=False):
-    return get_num_from_bytes(data, idx, 'i', be)
+    return get_num_from_bytes(data, idx, 'I', be)
 
 
 def get_string(data, idx):
@@ -116,11 +116,11 @@ def get_bytes_from_num(num, fmt, bigEndian=False):
 
 
 def get_bytes_from_short(num, be=False):
-    return get_bytes_from_num(num, 'h', be)
+    return get_bytes_from_num(num, 'H', be)
 
 
 def get_bytes_from_int(num, be=False):
-    return get_bytes_from_num(num, 'i', be)
+    return get_bytes_from_num(num, 'I', be)
 
 
 # For server logging
