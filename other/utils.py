@@ -91,14 +91,22 @@ def base32_decode(s, reverse=False):
 
 # Number routines
 def get_num_from_bytes(data, idx, fmt, bigEndian=False):
-    return struct.unpack_from("<>"[bigEndian] + fmt, str(data), idx)[0]
+    return struct.unpack_from("<>"[bigEndian] + fmt, buffer(bytearray(data)), idx)[0]
 
 # Instead of passing slices, pass the buffer and index so we can calculate
 # the length automatically.
 
 
+def get_short_signed(data, idx, be=False):
+    return get_num_from_bytes(data, idx, 'h', be)
+
+
 def get_short(data, idx, be=False):
     return get_num_from_bytes(data, idx, 'H', be)
+
+
+def get_int_signed(data, idx, be=False):
+    return get_num_from_bytes(data, idx, 'i', be)
 
 
 def get_int(data, idx, be=False):
@@ -107,16 +115,24 @@ def get_int(data, idx, be=False):
 
 def get_string(data, idx):
     data = data[idx:]
-    end = data.index('\0')
-    return str(data[:end])
+    end = data.index('\x00')
+    return str(''.join(data[:end]))
 
 
 def get_bytes_from_num(num, fmt, bigEndian=False):
     return struct.pack("<>"[bigEndian] + fmt, num)
 
 
+def get_bytes_from_short_signed(num, be=False):
+    return get_bytes_from_num(num, 'h', be)
+
+
 def get_bytes_from_short(num, be=False):
     return get_bytes_from_num(num, 'H', be)
+
+
+def get_bytes_from_int_signed(num, be=False):
+    return get_bytes_from_num(num, 'i', be)
 
 
 def get_bytes_from_int(num, be=False):

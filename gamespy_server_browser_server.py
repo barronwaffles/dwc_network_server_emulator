@@ -128,12 +128,12 @@ class Session(LineReceiver):
 
             self.buffer += data
 
-            while True:
+            while len(self.buffer) > 0:
                 packet_len = utils.get_short(self.buffer, 0, True)
                 packet = None
 
-                if len(data) >= packet_len:
-                    packet = data[:packet_len]
+                if len(self.buffer) >= packet_len:
+                    packet = self.buffer[:packet_len]
                     self.buffer = self.buffer[packet_len:]
 
                 if packet == None:
@@ -158,7 +158,7 @@ class Session(LineReceiver):
                     game_name = utils.get_string(packet, idx)
                     idx += len(game_name) + 1
 
-                    challenge = packet[idx:idx+8]
+                    challenge = ''.join(packet[idx:idx+8])
                     idx += 8
 
                     filter = utils.get_string(packet, idx)
@@ -225,7 +225,7 @@ class Session(LineReceiver):
 
                     if packet_len == len(packet):
                         # Contains entire packet, send immediately.
-                        self.forward_data_to_client(packet[3:], dest)
+                        self.forward_data_to_client(packet[9:], dest)
                     else:
                         self.log(logging.ERROR, "ERROR: Could not find entire packet.")
 
@@ -235,7 +235,6 @@ class Session(LineReceiver):
                 else:
                     self.log(logging.DEBUG, "Received unknown command (%02x) from %s:%s..." % (ord(packet[2]), self.address.host, self.address.port))
                     self.log(logging.DEBUG, utils.pretty_print_hex(bytearray(packet)))
-                    self.log(logging.DEBUG, utils.pretty_print_hex(packet))
         except:
             self.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
@@ -284,7 +283,7 @@ class Session(LineReceiver):
                 if "natneg" in server_info:
                     flags |= ServerListFlags.CONNECT_NEGOTIATE_FLAG
 
-                ip = utils.get_bytes_from_int(int(server_info['publicip']), self.console)
+                ip = utils.get_bytes_from_int_signed(int(server_info['publicip']), self.console)
                 flags_buffer += ip
 
                 flags |= ServerListFlags.NONSTANDARD_PORT_FLAG
@@ -366,13 +365,11 @@ class Session(LineReceiver):
             #     self.server_cache[str(server['publicip']) + str(server['publicport'])] = server
 
         data += '\0'
-        data += utils.get_bytes_from_int(-1)
+        data += utils.get_bytes_from_int(0xffffffff)
         send_encrypted_data(self, challenge, data)
 
     def find_server_in_cache(self, addr, port, console):
-        ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in addr.split('.')]), 0)).value, console)
-        self.log(logging.DEBUG, "IP: %s, Port: %d, Console: %d" % (ip, port, console))
-
+        ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in addr.split('.')]), 0, console)).value)
         server = self.server_manager.find_server_by_address(ip, port)._getvalue()
         self.log(logging.DEBUG, "find_server_in_cache is returning: %s %s" % (server, ip))
 
@@ -431,7 +428,7 @@ class Session(LineReceiver):
 
 
             elif len(data) == 10 and bytearray(data)[0:6] == bytearray([0xfd, 0xfc, 0x1e, 0x66, 0x6a, 0xb2]):
-                natneg_session = utils.get_int(data,6)
+                natneg_session = utils.get_int_signed(data,6)
                 self.log(logging.DEBUG, "Adding %d to natneg server list: %s" % (natneg_session, server))
                 self.server_manager.add_natneg_server(natneg_session, server) # Store info in backend so we can get it later in natneg
 
