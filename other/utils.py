@@ -91,7 +91,7 @@ def base32_decode(s, reverse=False):
 
 # Number routines
 def get_num_from_bytes(data, idx, fmt, bigEndian=False):
-    return struct.unpack_from("<>"[bigEndian] + fmt, bytearray(data), idx)[0]
+    return struct.unpack_from("<>"[bigEndian] + fmt, str(data), idx)[0]
 
 # Instead of passing slices, pass the buffer and index so we can calculate
 # the length automatically.
