@@ -80,7 +80,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
                 logger.log(logging.DEBUG, post)
                 ret = {
-                    "datetime": time.strftime("%Y%m%d%H%M%S")
+                    "datetime": time.strftime("%Y%m%d%H%M%S"),
                     "retry": "0"
                 }
                 action = post["action"]
