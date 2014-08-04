@@ -416,6 +416,8 @@ class GameSpyBackendServer(object):
         logger.log(logging.DEBUG, "Deleted %d %s servers where session = %d" % (count, gameid, session))
 
     def find_server_by_address(self, ip, port, gameid = None):
+        def find_server(gameid):
+
         if gameid == None:
             # Search all servers
             for gameid in self.server_list:
@@ -435,42 +437,26 @@ class GameSpyBackendServer(object):
         localip_int_le = localaddr[2]
         localip_int_be = localaddr[3]
 
+        def find_server(gameid):
+            for server in self.server_list[gameid]:
+                logger.log(logging.DEBUG, "publicip: %s == %s ? %d localport: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip, server['localport'], str(localport), server['localport'] == str(localport)))
+                if server['publicip'] == publicip and server['localport'] == str(localport):
+                    # for x in range(0, 10):
+                    #     s = 'localip%d' % x
+                    #     if s in server:
+                    #         if server[s] == localip:
+                    #             return server
+                    return server
+
+                logger.log(logging.DEBUG, "Couldn't find a match for %s" % (publicip))
+
         if gameid == None:
             # Search all servers
             for gameid in self.server_list:
-                for server in self.server_list[gameid]:
-                    logger.log(logging.DEBUG, "publicip 1: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_le), server['publicip'] == str(localip_int_le), server['publicport'], str(localport), server['publicport'] == str(localport)))
-                    if server['publicip'] == str(localip_int_le) and server['publicport'] == str(localport):
-                        return server
-
-                    logger.log(logging.DEBUG, "publicip 2: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_be), server['publicip'] == str(localip_int_be), server['publicport'], str(localport), server['publicport'] == str(localport)))
-                    if server['publicip'] == str(localip_int_be) and server['publicport'] == str(localport):
-                        return server
-
-                    logger.log(logging.DEBUG, "publicip 3: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
-                    if server['publicip'] == publicip and (server['localport'] == str(localport) or server['publicport'] == str(localport)):
-                        for x in range(0, 10):
-                            s = 'localip%d' % x
-                            if s in server:
-                                if server[s] == localip:
-                                    return server
+                return find_server(gameid)
         else:
-            for server in self.server_list[gameid]:
-                logger.log(logging.DEBUG, "publicip 1: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_le), server['publicip'] == str(localip_int_le), server['publicport'], str(localport), server['publicport'] == str(localport)))
-                if server['publicip'] == str(localip_int_le) and server['publicport'] == str(localport):
-                    return server
+            return find_server(gameid)
 
-                logger.log(logging.DEBUG, "publicip 2: %s == %s ? %d port: %s == %s ? %d" % (server['publicip'], str(localip_int_be), server['publicip'] == str(localip_int_be), server['publicport'], str(localport), server['publicport'] == str(localport)))
-                if server['publicip'] == str(localip_int_be) and server['publicport'] == str(localport):
-                    return server
-
-                logger.log(logging.DEBUG, "publicip: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip))
-                if server['publicip'] == publicip and (server['localport'] == str(localport) or server['publicport'] == str(localport)):
-                    for x in range(0, 10):
-                        s = 'localip%d' % x
-                        if s in server:
-                            if server[s] == localip:
-                                return server
         return None
 
     def add_natneg_server(self, cookie, server):
