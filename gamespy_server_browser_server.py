@@ -20,7 +20,6 @@
 
 import logging
 import socket
-import ctypes
 import traceback
 
 from twisted.internet.protocol import Factory
@@ -180,7 +179,7 @@ class Session(LineReceiver):
                     if (options & LIMIT_RESULT_COUNT):
                         max_servers = utils.get_int(packet, idx)
                     elif (options & ALTERNATE_SOURCE_IP):
-                        source_ip = utils.get_int(packet, idx)
+                        source_ip = utils.get_ip(packet, idx)
                     elif (options & NO_SERVER_LIST):
                         send_ip = True
 
@@ -369,7 +368,7 @@ class Session(LineReceiver):
         send_encrypted_data(self, challenge, data)
 
     def find_server_in_cache(self, addr, port, console):
-        ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in addr.split('.')]), 0, console)).value)
+        ip = str(utils.get_ip(bytearray([int(x) for x in addr.split('.')]), 0, console))
         server = self.server_manager.find_server_by_address(ip, port)._getvalue()
         self.log(logging.DEBUG, "find_server_in_cache is returning: %s %s" % (server, ip))
 
@@ -409,9 +408,8 @@ class Session(LineReceiver):
             #if (len(data) == 24 and bytearray(data)[0:10] == bytearray([0x53, 0x42, 0x43, 0x4d, 0x03, 0x00, 0x00, 0x00, 0x01, 0x04])) or (len(data) == 40 and bytearray(data)[0:10] == bytearray([0x53, 0x42, 0x43, 0x4d, 0x0b, 0x00, 0x00, 0x00, 0x01, 0x04])):
             if self.own_server == None and len(data) >= 16 and bytearray(data)[0:4] in (bytearray([0xbb, 0x49, 0xcc, 0x4d]), bytearray([0x53, 0x42, 0x43, 0x4d])):
                 # Is the endianness the same between the DS and Wii here? It seems so but I'm not positive.
-                self_port = utils.get_short(bytearray(data[10:12]), 0)
-                self_ip = bytearray(data[12:16])
-                self_ip = '.'.join(["%d" % x for x in self_ip])
+                self_port = utils.get_short(bytearray(data[10:12]), 0, False) # Note to self: Port is little endian here.
+                self_ip = '.'.join(["%d" % x for x in bytearray(data[12:16])])
 
                 self.own_server, _ = self.find_server_in_cache(self_ip, self_port, self.console)
 

@@ -19,6 +19,7 @@ import logging
 import random
 import string
 import struct
+import ctypes
 
 
 def generate_random_str_from_set(ln, chs):
@@ -111,6 +112,10 @@ def get_int_signed(data, idx, be=False):
 
 def get_int(data, idx, be=False):
     return get_num_from_bytes(data, idx, 'I', be)
+
+
+def get_ip(data, idx, be=False):
+    return ctypes.c_int32(get_int(data, idx, be)).value
 
 
 def get_string(data, idx):

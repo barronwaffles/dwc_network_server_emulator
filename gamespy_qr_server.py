@@ -25,7 +25,6 @@ import socket
 import struct
 import threading
 import time
-import ctypes
 import Queue
 import traceback
 
@@ -320,7 +319,7 @@ class GameSpyQRServer(object):
 
             if 'publicip' in k and k['publicip'] == "0": #and k['dwc_hoststate'] == "2": # When dwc_hoststate == 2 then it doesn't send an IP, so calculate it ourselves
                 be = self.sessions[session_id].console != 0
-                k['publicip'] = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in address[0].split('.')]), 0, be)).value)
+                k['publicip'] = str(utils.get_ip(bytearray([int(x) for x in address[0].split('.')]), 0, be))
 
             if "statechanged" in k:
                 if k['statechanged'] == "2": # Close server

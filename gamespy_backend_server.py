@@ -416,8 +416,6 @@ class GameSpyBackendServer(object):
         logger.log(logging.DEBUG, "Deleted %d %s servers where session = %d" % (count, gameid, session))
 
     def find_server_by_address(self, ip, port, gameid = None):
-        def find_server(gameid):
-
         if gameid == None:
             # Search all servers
             for gameid in self.server_list:

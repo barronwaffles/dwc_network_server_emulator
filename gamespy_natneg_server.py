@@ -20,7 +20,6 @@
 
 import logging
 import socket
-import ctypes
 import struct
 import threading
 import time
@@ -114,8 +113,8 @@ class GameSpyNatNegServer(object):
             client_id = "%02x" % ord(recv_data[13])
 
             localip_raw = recv_data[15:19]
-            localip_int_le = utils.get_int(recv_data, 15)
-            localip_int_be = utils.get_int(recv_data, 15, True)
+            localip_int_le = utils.get_ip(recv_data, 15)
+            localip_int_be = utils.get_ip(recv_data, 15, True)
             localip = '.'.join(["%d" % ord(x) for x in localip_raw])
             localport_raw = recv_data[19:21]
             localport = utils.get_short(localport_raw, 0, True)
@@ -281,13 +280,13 @@ class GameSpyNatNegServer(object):
         console = False
         ipstr = self.session_list[session_id][client_id]['addr'][0]
 
-        ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in ipstr.split('.')]), 0, console)).value)
+        ip = str(utils.get_ip(bytearray([int(x) for x in ipstr.split('.')]), 0, console))
         console = not console
 
         server_info = next((s for s in servers if s['publicip'] == ip), None)
 
         if server_info == None:
-            ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in ipstr.split('.')]), 0, console)).value)
+            ip = str(utils.get_ip(bytearray([int(x) for x in ipstr.split('.')]), 0, console))
 
             server_info = next((s for s in servers if s['publicip'] == ip), None)
 
@@ -297,13 +296,13 @@ class GameSpyNatNegServer(object):
         console = False
         ipstr = self.session_list[session_id][client_id]['addr'][0]
 
-        ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in ipstr.split('.')]), 0, console)).value)
+        ip = str(utils.get_ip(bytearray([int(x) for x in ipstr.split('.')]), 0, console))
         console = not console
 
         serveraddr = self.server_manager.find_server_by_local_address(ip, self.session_list[session_id][client_id]['localaddr'], self.session_list[session_id][client_id]['gameid'])._getvalue()
 
         if serveraddr == None:
-            ip = str(ctypes.c_int32(utils.get_int(bytearray([int(x) for x in ipstr.split('.')]), 0, console)).value)
+            ip = str(utils.get_ip(bytearray([int(x) for x in ipstr.split('.')]), 0, console))
             console = 1
 
             serveraddr = self.server_manager.find_server_by_local_address(ip, self.session_list[session_id][client_id]['localaddr'],
