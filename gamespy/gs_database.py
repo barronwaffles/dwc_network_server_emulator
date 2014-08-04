@@ -192,7 +192,7 @@ class GamespyDatabase(object):
             #if r['password'] == md5.hexdigest():
             #    profileid = r['profileid']  # Valid password
 
-            if r['gsbrcd'] == gsbrcd:
+            if r['enabled'] == 1 and r['gsbrcd'] == gsbrcd:
                 profileid = r['profileid']  # Valid password
 
         return profileid
