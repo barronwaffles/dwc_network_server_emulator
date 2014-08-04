@@ -21,6 +21,15 @@ from twisted.internet.error import ReactorAlreadyRunning
 from multiprocessing.managers import BaseManager
 import time
 import datetime
+import json
+import logging
+import other.utils as utils
+
+logger_output_to_console = True
+logger_output_to_file = True
+logger_name = "InternalStatsServer"
+logger_filename = "internal_stats_server.log"
+logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
 class GameSpyServerDatabase(BaseManager):
     pass
@@ -34,31 +43,51 @@ class StatsPage(resource.Resource):
         self.stats = stats
 
     def render_GET(self, request):
-        # TODO: Make this easier to modify later
+        raw = False
+        force_update = False
 
-        server_list = self.stats.get_server_list()
+        if '/'.join(request.postpath) == "json":
+            raw = True
+            force_update = True
 
-        output = "<html>"
-        output += "<table border='1'>"
-        output += "<tr>"
-        output += "<td>Game ID</td><td># Players</td>"
-        output += "</tr>"
+        server_list = self.stats.get_server_list(force_update)
 
-        if server_list != None:
-            for game in server_list:
-                if not server_list[game]:
-                    continue
+        if raw == True:
+            # List of keys to be removed
+            restricted = [ "publicip", "__session__", "localip0", "localip1" ]
 
-                output += "<tr>"
-                output += "<td>" + game + "</td>"
-                output += "<td><center>%d</center></td>" % (len(server_list[game]))
-                output += "</tr>"
+            # Filter out certain fields before displaying raw data
+            if server_list != None:
+                for game in server_list:
+                    for server in server_list[game]:
+                        for r in restricted:
+                            if r in server:
+                                server.pop(r, None)
 
-        output += "</table>"
+            output = json.dumps(server_list)
 
-        output += "<br>"
-        output += "<i>Last updated: %s</i><br>" % (self.stats.get_last_update_time())
-        output += "</html>"
+        else:
+            output = "<html>"
+            output += "<table border='1'>"
+            output += "<tr>"
+            output += "<td>Game ID</td><td># Players</td>"
+            output += "</tr>"
+
+            if server_list != None:
+                for game in server_list:
+                    if not server_list[game]:
+                        continue
+
+                    output += "<tr>"
+                    output += "<td>" + game + "</td>"
+                    output += "<td><center>%d</center></td>" % (len(server_list[game]))
+                    output += "</tr>"
+
+            output += "</table>"
+
+            output += "<br>"
+            output += "<i>Last updated: %s</i><br>" % (self.stats.get_last_update_time())
+            output += "</html>"
 
         return output
 
@@ -84,13 +113,13 @@ class InternalStatsServer(object):
         except ReactorAlreadyRunning:
             pass
 
-    def get_server_list(self):
-        if self.next_update == 0 or self.next_update - time.time() <= 0:
+    def get_server_list(self, force_update = False):
+        if force_update == True or self.next_update == 0 or self.next_update - time.time() <= 0:
             self.last_update = time.time()
             self.next_update = time.time() + self.seconds_per_update
             self.server_list = self.server_manager.get_server_list()._getvalue()
 
-            print self.server_list
+            logger.log(logging.DEBUG, self.server_list)
 
         return self.server_list
 
