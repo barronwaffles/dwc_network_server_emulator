@@ -221,6 +221,9 @@ class GameSpyQRServer(object):
             if session_id in self.sessions and self.sessions[session_id].disconnected == True:
                 return
 
+            if session_id in self.sessions:
+                self.sessions[session_id].keepalive = int(time.time()) # Make sure the server doesn't get removed
+
         # Handle commands
         if recv_data[0] == '\x00': # Query
             self.log(logging.DEBUG, address, "NOT IMPLEMENTED! Received query from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
@@ -342,7 +345,6 @@ class GameSpyQRServer(object):
                     if session_id in self.sessions:
                         self.sessions[session_id].gamename = k['gamename']
 
-
         elif recv_data[0] == '\x04': # Add Error
             self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received add error from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
 
@@ -380,7 +382,8 @@ class GameSpyQRServer(object):
         for session_id in self.sessions:
             now = int(time.time())
             delta = now - self.sessions[session_id].keepalive
-            timeout = 60 * 5 # Remove clients that haven't responded in x seconds
+#            timeout = 60 * 5 # Remove clients that haven't responded in x seconds
+            timeout = 30 # Remove clients that haven't responded in x seconds
 
             if delta < 0 or delta >= timeout:
                 pruned.append(session_id)
