@@ -303,7 +303,6 @@ class GameSpyNatNegServer(object):
 
         if serveraddr == None:
             ip = str(utils.get_ip(bytearray([int(x) for x in ipstr.split('.')]), 0, console))
-            console = 1
 
             serveraddr = self.server_manager.find_server_by_local_address(ip, self.session_list[session_id][client_id]['localaddr'],
                                                                               self.session_list[session_id][client_id]['gameid'])._getvalue()

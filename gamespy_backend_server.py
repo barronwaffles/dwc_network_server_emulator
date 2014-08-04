@@ -446,7 +446,7 @@ class GameSpyBackendServer(object):
                     #             return server
                     return server
 
-                logger.log(logging.DEBUG, "Couldn't find a match for %s" % (publicip))
+            logger.log(logging.DEBUG, "Couldn't find a match for %s" % (publicip))
 
         if gameid == None:
             # Search all servers
