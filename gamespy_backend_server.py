@@ -436,17 +436,32 @@ class GameSpyBackendServer(object):
         localip_int_be = localaddr[3]
 
         def find_server(gameid):
+            best_match = None
+
             for server in self.server_list[gameid]:
                 logger.log(logging.DEBUG, "publicip: %s == %s ? %d localport: %s == %s ? %d" % (server['publicip'], publicip, server['publicip'] == publicip, server['localport'], str(localport), server['localport'] == str(localport)))
-                if server['publicip'] == publicip and server['localport'] == str(localport):
-                    # for x in range(0, 10):
-                    #     s = 'localip%d' % x
-                    #     if s in server:
-                    #         if server[s] == localip:
-                    #             return server
-                    return server
+                if server['publicip'] == publicip:
+                    if server['localport'] == str(localport):
+                        best_match = server
+                        break
 
-            logger.log(logging.DEBUG, "Couldn't find a match for %s" % (publicip))
+                    for x in range(0, 10):
+                         s = 'localip%d' % x
+                         if s in server:
+                             if server[s] == localip:
+                                 best_match = server
+
+                    if localport == 0 and best_match == None:
+                        # Kinda hackish. This sometimes happens.
+                        # Assuming two clients aren't trying to connect from the same IP, this might be safe.
+                        # The server wasn't verified to be the *correct* server, but it's on the same IP so it
+                        # has a chance of being correct. At least make an attempt to establish the connection.
+                        best_match = server
+
+            if best_match == None:
+                logger.log(logging.DEBUG, "Couldn't find a match for %s" % (publicip))
+
+            return best_match
 
         if gameid == None:
             # Search all servers

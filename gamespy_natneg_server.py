@@ -170,7 +170,7 @@ class GameSpyNatNegServer(object):
                     #if self.session_list[session_id][client_id]['serveraddr'] == None:
                     serveraddr = self.get_server_info(gameid, session_id, client_id)
                     if serveraddr == None:
-                        serveraddr = self.get_server_info_alt(gameid, session_id, client)
+                        serveraddr = self.get_server_info_alt(gameid, session_id, client_id)
 
                     self.session_list[session_id][client_id]['serveraddr'] = serveraddr
                     logger.log(logging.DEBUG, "Found server 2 from local ip/port: %s from %d" % (serveraddr, session_id))

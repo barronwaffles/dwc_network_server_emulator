@@ -326,10 +326,12 @@ class GameSpyQRServer(object):
 
             if "statechanged" in k:
                 if k['statechanged'] == "2": # Close server
-                    self.server_manager.delete_server(k['gamename'] , session_id)
+                     self.server_manager.delete_server(k['gamename'] , session_id)
 
-                    if session_id in self.sessions:
-                        self.sessions[session_id].disconnected = True
+                     if session_id in self.sessions:
+                     #     self.sessions[session_id].disconnected = True
+                         del self.sessions[session_id]
+
 
                 else: #if k['statechanged'] == "1": # Create server
                     #if k['publicport'] != "0" and k['publicip'] != "0":
@@ -379,16 +381,16 @@ class GameSpyQRServer(object):
         #self.log(logging.DEBUG, None, "Keep alive check on %d sessions" % (len(self.sessions)))
 
         pruned = []
+        now = int(time.time())
+
         for session_id in self.sessions:
-            now = int(time.time())
             delta = now - self.sessions[session_id].keepalive
-#            timeout = 60 * 5 # Remove clients that haven't responded in x seconds
-            timeout = 30 # Remove clients that haven't responded in x seconds
+            timeout = 60 * 5 # Remove clients that haven't responded in x seconds
 
             if delta < 0 or delta >= timeout:
                 pruned.append(session_id)
                 self.server_manager.delete_server(self.sessions[session_id].gamename, self.sessions[session_id].session)
-                self.log(logging.DEBUG, None, "Keep alive check removed %s:%s for game %s" % (self.sessions[session_id].address[0], self.sessions[session_id].address[1], self.sessions[session_id].gamename))
+                self.log(logging.DEBUG, None, "Keep alive check removed %s:%s for game %s. Client hasn't responded in %d seconds." % (self.sessions[session_id].address[0], self.sessions[session_id].address[1], self.sessions[session_id].gamename, delta))
 
         for session_id in pruned:
             del self.sessions[session_id]
