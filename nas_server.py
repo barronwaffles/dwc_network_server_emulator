@@ -222,17 +222,14 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         # If the list file exists, send the entire thing back to the client.
                         if os.path.isfile(os.path.join(dlcpath, "_list.txt")):
                             ret = self.filter_list(safeloadfi("_list.txt"), attr1, attr2, attr3)
-
+                            
+                            # this is super game-specific, but we need to handle gen 5 mystery gifts properly somehow
+                            if post["gamecd"].startswith("IRA") and attr1.startswith("MYSTERY"):
+                                ret = self.filter_list_g5_mystery_gift(ret, post["rhgamecd"])
+                                ret = self.filter_list_by_date(ret, post["token"])
+                            
                             if post["gamecd"] in gamecodes_return_random_file:
-                                # allow user to control which file to receive by setting the local date
-                                # selected file will be the one at index (day of year) mod (file count)
-                                try:
-                                    userData = self.server.db.get_nas_login(post['token'])
-                                    date = time.strptime(userData['devtime'], '%y%m%d%H%M%S')
-                                    files = ret.splitlines()
-                                    ret = files[(int(date.tm_yday) - 1) % len(files)] + '\r\n'
-                                except:
-                                    ret = self.filter_list_random_files(ret, 1)
+                                ret = self.filter_list_by_date(ret, post["token"])
 
                 if action == "contents":
                     # Get only the base filename just in case there is a path involved somewhere in the filename string.
@@ -284,7 +281,40 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         # nas(wii).nintendowifi.net has a URL query-like format but does not use encoding for special characters
         return "&".join("{!s}={!s}".format(k, v) for k, v in dict.items()) + "\r\n"
+    
+    # custom selection for generation 5 mystery gifts, so that the random or data-based selection still works properly
+    def filter_list_g5_mystery_gift(self, data, rhgamecd):
+        if rhgamecd[2] == 'A':
+            filterBit = 0x100000
+        elif rhgamecd[2] == 'B':
+            filterBit = 0x200000
+        elif rhgamecd[2] == 'D':
+            filterBit = 0x400000
+        elif rhgamecd[2] == 'E':
+            filterBit = 0x800000
+        else:
+            # unknown game, can't filter
+            return data
+        
+        output = []
+        for line in data.splitlines():
+            lineBits = int(line.split('\t')[3], 16)
+            if lineBits & filterBit == filterBit:
+                output.append(line)
+        return '\r\n'.join(output) + '\r\n'
 
+    def filter_list_by_date(self, data, token):
+        # allow user to control which file to receive by setting the local date
+        # selected file will be the one at index (day of year) mod (file count)
+        try:
+            userData = self.server.db.get_nas_login(token)
+            date = time.strptime(userData['devtime'], '%y%m%d%H%M%S')
+            files = data.splitlines()
+            ret = files[(int(date.tm_yday) - 1) % len(files)] + '\r\n'
+        except:
+            ret = self.filter_list_random_files(data, 1)
+        return ret
+        
     def filter_list_random_files(self, data, count):
         # Get [count] random files from the filelist
         samples = random.sample(data.splitlines(), count)
