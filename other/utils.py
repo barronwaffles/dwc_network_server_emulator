@@ -75,6 +75,9 @@ def base32_encode(num, reverse=True):
         encoded += alpha[num & 0x1f]
         num = num >> 5
 
+    while len(encoded) < 9:
+      encoded += "0"
+
     if reverse == True:
         encoded = encoded[::-1]  # Reverse string
 

@@ -324,6 +324,11 @@ class GameSpyQRServer(object):
                 be = self.sessions[session_id].console != 0
                 k['publicip'] = str(utils.get_ip(bytearray([int(x) for x in address[0].split('.')]), 0, be))
 
+            if 'publicport' in k and 'localport' in k and k['publicport'] != k['localport']:
+                self.log(logging.DEBUG, address, "publicport %s doesn't match localport %s, so changing publicport to %s..." \
+                    % (k['publicport'], k['localport'], str(address[1])))
+                k['publicport'] = str(address[1])
+
             if "statechanged" in k:
                 if k['statechanged'] == "2": # Close server
                      self.server_manager.delete_server(k['gamename'] , session_id)
