@@ -55,7 +55,7 @@ class GameSpyQRServer(object):
             self.address = address
             self.console = 0
             self.playerid = 0
-
+            self.heartbeatdata = None
             self.gamename = ""
             self.keepalive = -1
 
@@ -236,9 +236,10 @@ class GameSpyQRServer(object):
 
             # Compare challenge
             client_challenge = recv_data[5:-1]
+
+            k = self.sessions[session_id].heartbeatdata 
             if client_challenge == challenge:
                 # Challenge succeeded
-
                 # Send message back to client saying it was accepted
                 packet = bytearray([0xfe, 0xfd, 0x0a]) # Send client registered command
                 packet.extend(session_id_raw) # Get the session ID
@@ -247,6 +248,9 @@ class GameSpyQRServer(object):
             else:
                 # Failed the challenge, request another during the next heartbeat
                 self.sessions[session_id].sent_challenge = False
+                self.server_manager.delete_server(k['gamename'] , session_id)
+                if session_id in self.sessions:
+                    del self.sessions[session_id]
 
         elif recv_data[0] == '\x02': # Echo
             self.log(logging.DEBUG, address, "NOT IMPLEMENTED! Received echo from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
@@ -267,6 +271,7 @@ class GameSpyQRServer(object):
             if "gamename" in k:
                 if k['gamename'] in self.secret_key_list:
                     self.sessions[session_id].secretkey = self.secret_key_list[k['gamename']]
+                    self.sessions[session_id].heartbeatdata = k
                 else:
                     self.log(logging.INFO, address, "Connection from unknown game '%s'!" % k['gamename'])
 
@@ -303,23 +308,6 @@ class GameSpyQRServer(object):
                             time.sleep(0.5)
 
 
-            if self.sessions[session_id].sent_challenge == False:
-                addr_hex =  ''.join(["%02X" % int(x) for x in address[0].split('.')])
-                port_hex = "%04X" % int(address[1])
-                server_challenge = utils.generate_random_str(6) + '00' + addr_hex + port_hex
-
-                self.sessions[session_id].challenge = server_challenge
-
-                packet = bytearray([0xfe, 0xfd, 0x01]) # Send challenge command
-                packet.extend(session_id_raw) # Get the session ID
-                packet.extend(server_challenge)
-                packet.extend('\x00')
-
-                self.write_queue.put((packet, address))
-                self.log(logging.DEBUG, address, "Sent challenge to %s:%s..." % (address[0], address[1]))
-
-                self.sessions[session_id].sent_challenge = True
-
             if 'publicip' in k and k['publicip'] == "0": #and k['dwc_hoststate'] == "2": # When dwc_hoststate == 2 then it doesn't send an IP, so calculate it ourselves
                 be = self.sessions[session_id].console != 0
                 k['publicip'] = str(utils.get_ip(bytearray([int(x) for x in address[0].split('.')]), 0, be))
@@ -329,8 +317,9 @@ class GameSpyQRServer(object):
                     % (k['publicport'], k['localport'], str(address[1])))
                 k['publicport'] = str(address[1])
 
-            if "statechanged" in k:
-                if k['statechanged'] == "2": # Close server
+
+            if self.sessions[session_id].sent_challenge:   
+                if "statechanged" in k and k['statechanged'] == "2": # Close server
                      self.server_manager.delete_server(k['gamename'] , session_id)
 
                      if session_id in self.sessions:
@@ -351,6 +340,26 @@ class GameSpyQRServer(object):
 
                     if session_id in self.sessions:
                         self.sessions[session_id].gamename = k['gamename']
+            else:
+                addr_hex =  ''.join(["%02X" % int(x) for x in address[0].split('.')])
+                port_hex = "%04X" % int(address[1])
+                server_challenge = utils.generate_random_str(6) + '00' + addr_hex + port_hex
+
+                self.sessions[session_id].challenge = server_challenge
+
+                packet = bytearray([0xfe, 0xfd, 0x01]) # Send challenge command
+                packet.extend(session_id_raw) # Get the session ID
+                packet.extend(server_challenge)
+                packet.extend('\x00')
+
+                self.write_queue.put((packet, address))
+                self.log(logging.DEBUG, address, "Sent challenge to %s:%s..." % (address[0], address[1]))
+
+                self.sessions[session_id].sent_challenge = True
+                self.server_manager.update_server_list(k['gamename'], session_id, k, self.sessions[session_id].console)._getvalue()
+                if session_id in self.sessions:
+                    self.sessions[session_id].gamename = k['gamename']
+
 
         elif recv_data[0] == '\x04': # Add Error
             self.log(logging.WARNING, address, "NOT IMPLEMENTED! Received add error from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
