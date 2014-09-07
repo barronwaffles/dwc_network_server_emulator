@@ -335,9 +335,8 @@ class GameSpyQRServer(object):
                 be = self.sessions[session_id].console != 0
                 k['publicip'] = str(utils.get_ip(bytearray([int(x) for x in address[0].split('.')]), 0, be))
 
-            if 'publicport' in k and 'localport' in k and k['publicport'] != k['localport']:
-                self.log(logging.DEBUG, address, session_id, "publicport %s doesn't match localport %s, so changing publicport to %s..." \
-                    % (k['publicport'], k['localport'], str(address[1])))
+            if 'dwc_suspend' in k and k['dwc_suspend'] == "1":
+                self.log(logging.DEBUG, address, session_id, "dwc_suspend=1, settiing publicport to %s..." % (str(address[1])))
                 k['publicport'] = str(address[1])
 
             if self.sessions[session_id].sent_challenge == True:
