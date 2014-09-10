@@ -293,6 +293,15 @@ class GameSpyQRServer(object):
                 #self.log(logging.DEBUG, address, session_id, "%s = %s" % (d[i], d[i+1]))
                 k[d[i]] = d[i+1]
 
+            if "gamename" in k and 'dwc_pid' in k:
+              try:
+                profile = self.db.get_profile_from_profileid(k['dwc_pid'])  
+                naslogin = self.db.get_nas_login_from_userid(profile['userid'])
+                k['ingamesn'] = str(naslogin['ingamesn'])#convert to string from unicode(which is just a base64 string anyway)
+              except Exception,e:
+                pass#If the game doesn't have, don't worry about it.
+
+
             if "gamename" in k:
                 if k['gamename'] in self.secret_key_list:
                     self.sessions[session_id].secretkey = self.secret_key_list[k['gamename']]

@@ -376,6 +376,16 @@ class GamespyDatabase(object):
         else:
             return json.loads(r["data"])
 
+    def get_nas_login_from_userid(self, userid):
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT data FROM nas_logins WHERE userid = ?", (userid,))
+            r = self.get_dict(row)
+
+        if r == None:
+            return None
+        else:
+            return json.loads(r["data"])
+
     def generate_authtoken(self, userid, data):
         # Since the auth token passed back to the game will be random, we can make it small enough that there
         # should never be a crash due to the size of the token.
