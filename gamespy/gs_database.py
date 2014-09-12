@@ -111,6 +111,7 @@ class GamespyDatabase(object):
                 tx.nonquery("CREATE TABLE buddies (userProfileId INT, buddyProfileId INT, time INT, status INT, notified INT, gameid TEXT, blocked INT)")
                 tx.nonquery("CREATE TABLE pending_messages (sourceid INT, targetid INT, msg TEXT)")
                 tx.nonquery("CREATE TABLE gamestat_profile (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
+                tx.nonquery("CREATE UNIQUE INDEX gamestatprofile_triple on gamestat_profile(profileid,dindex,ptype)")
                 tx.nonquery("CREATE TABLE gameinfo (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
                 tx.nonquery("CREATE TABLE nas_logins (userid TEXT, authtoken TEXT, data TEXT)")
 
@@ -502,7 +503,7 @@ class GamespyDatabase(object):
     # Gamestats-related functions
     def pd_insert(self, profileid, dindex, ptype, data):
         with Transaction(self.conn) as tx:
-            tx.nonquery("INSERT OR IGNORE INTO gamestat_profile (profileid, dindex, ptype, data) VALUES(?,?,?,?)", (profileid, dindex, ptype, data))
+            tx.nonquery("INSERT OR REPLACE INTO gamestat_profile (profileid, dindex, ptype, data) VALUES(?,?,?,?)", (profileid, dindex, ptype, data))
             tx.nonquery("UPDATE gamestat_profile SET data = ? WHERE profileid = ? AND dindex = ? AND ptype = ?", (data, profileid, dindex, ptype))
 
     def pd_get(self, profileid, dindex, ptype):
