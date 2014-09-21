@@ -403,7 +403,7 @@ class GameSpyQRServer(object):
             if delta < 0 or delta >= timeout:
                 pruned.append(session_id)
                 self.server_manager.delete_server(self.sessions[session_id].gamename, self.sessions[session_id].session)
-                self.log(logging.DEBUG, None, session_id, "Keep alive check removed %s:%s for game %s. Client hasn't responded in %d seconds." % (self.sessions[session_id].address[0], self.sessions[session_id].address[1], self.sessions[session_id].gamename, delta))
+                self.log(logging.DEBUG, None, "Keep alive check removed %s:%s for game %s. Client hasn't responded in %d seconds." % (self.sessions[session_id].address[0], self.sessions[session_id].address[1], self.sessions[session_id].gamename, delta))
 
         for session_id in pruned:
             del self.sessions[session_id]
