@@ -261,8 +261,8 @@ class Gamestats(LineReceiver):
 
         current_data = self.db.pd_get(self.profileid, data_parsed['dindex'], data_parsed['ptype'])
         if current_data and data and 'data' in current_data:
-          current_data = current_data['data'].replace('\x00','').lstrip('\\').split('\\')
-          new_data = data.replace('\x00','').lstrip('\\').split('\\')
+          current_data = current_data['data'].lstrip('\\').split('\\')
+          new_data = data.lstrip('\\').split('\\')
 
           current_data = dict(zip(current_data[0::2],current_data[1::2]))
           new_data = dict(zip(new_data[0::2],new_data[1::2]))

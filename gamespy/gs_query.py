@@ -50,7 +50,7 @@ def parse_gamespy_message(message):
                 messages['__cmd_val__'] = value
                 found_command = True
 
-            messages[key] = value.replace('\x00','')
+            messages[key] = value
 
         stack.append(messages)
         messages = {}
