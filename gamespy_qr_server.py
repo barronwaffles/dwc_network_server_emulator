@@ -275,7 +275,7 @@ class GameSpyQRServer(object):
             else:
                 # Failed the challenge, request another during the next heartbeat
                 self.sessions[session_id].sent_challenge = False
-                self.server_manager.delete_server(k['gamename'] , session_id)
+                self.server_manager.delete_server(self.sessions[session_id].gamename, session_id)
 
         elif recv_data[0] == '\x02': # Echo
             self.log(logging.DEBUG, address, session_id, "NOT IMPLEMENTED! Received echo from %s:%s... %s" % (address[0], address[1], recv_data[5:]))
