@@ -1,8 +1,13 @@
-import re,struct,utils,logging,hashlib,base64,sqlite3
+import re,struct,utils,logging,hashlib,base64,sqlite3,time,json
 
 salt='QFFeWypIFepXgAhZxeNy'
 
 lbheader='\x05\x00\x00\x00A\x00\x00\x00<\x05\x00\x00;\x03\x00\x00'
+
+rankinglabels = ["Beginner","Rookie","SuperRookie","UltraRookie","Fighter","SuperFighter",\
+"UltraFighter","Ace","SuperAce","UltraAce","Champ","SuperChamp","UltraChamp","Master",\
+"SuperMaster","UltraMaster","King","SuperKing","UltraKing","Star","SuperStar",\
+"UltraStar","Hero","SuperHero","UltraHero","LegendHero","UltimateHero"]
 
 respheaders ="""HTTP/1.1 200 OK\r
 Date: Thu, 19 May 2011 07:34:16 GMT\r
@@ -51,7 +56,7 @@ dbfilename = 'tatvscapwii_leaderboard.db'
 logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
 conn = sqlite3.connect(dbfilename)
-conn.cursor().execute('CREATE TABLE IF NOT EXISTS leaderboard (ingamesn TEXT, profileid INT UNIQUE, battlepoints INT, chartdata TEXT, lastrankmatch TEXT)')
+conn.cursor().execute('CREATE TABLE IF NOT EXISTS leaderboard (ingamesn TEXT, profileid INT UNIQUE, battlepoints INT, chartdata TEXT, utctimestamp INT)')
 conn.commit()
 conn.close()
 
@@ -61,7 +66,38 @@ def emptyreply():
   replypayload += hashlib.sha1(salt+base64.urlsafe_b64encode(replypayload)+salt).hexdigest()
   return respheaders.replace("_CONTENT_LENGTH",str(len(replypayload)))+replypayload
 
+def leaderboard_best_ingame():
+    replypayload = '' 
+    conn = sqlite3.connect(dbfilename)
+    count = 0
+    for row in conn.cursor().execute('select chartdata from leaderboard order by battlepoints desc limit 20'):
+      replypayload += base64.urlsafe_b64decode(str(row[0]))
+      count += 1
+    conn.close()
+    replypayload = lbheader.replace("A",struct.pack('B',count))+replypayload
+    replypayload += hashlib.sha1(salt+base64.urlsafe_b64encode(replypayload)+salt).hexdigest()
+    return respheaders.replace("_CONTENT_LENGTH",str(len(replypayload)))+replypayload 
 
+def leaderboard_json(limit):
+    records = []
+    conn = sqlite3.connect(dbfilename)
+    count = 0
+    for row in conn.cursor().execute('select * from leaderboard order by battlepoints desc limit ?',(limit,)):
+      binarydata = base64.urlsafe_b64decode(str(row[3]))
+      r = {}
+      r['ingamesn'] = row[0]
+      r['dwc_pid'] = str(row[1])
+      r['BP'] = str(row[2])
+      r['utctimestamp'] = str(int(row[4]))
+      r['totalmatches'] = str(struct.unpack(">H",binarydata[34:36])[0])
+      r['wins'] = str(struct.unpack(">H",binarydata[22:24])[0])
+      r['losses'] = str(struct.unpack(">H",binarydata[30:32])[0])
+      r['draws'] = str(struct.unpack(">H",binarydata[26:28])[0])
+      r['ranking'] = rankinglabels[struct.unpack("B",binarydata[63])[0]] 
+      records.append(r)
+    replypayload = json.dumps(records)      
+    return respheaders.replace("_CONTENT_LENGTH",str(len(replypayload)))+replypayload 
+  
 def handle_request(httpserver):
   p = httpserver.path
   address = str(httpserver.client_address)
@@ -71,44 +107,18 @@ def handle_request(httpserver):
     logger.log(logging.INFO,address+" Replying with token")
     httpserver.wfile.write(tokenreply)
 
+  elif 'limit' in p:
+    limit = re.findall('limit=(\d+)',p)[0]
+    logger.log(logging.INFO,address+"reply with leaderboard data limit "+limit)
+    httpserver.wfile.write(leaderboard_json(limit))
+
   elif "hash=" in p and "put2.asp" in p:
     d = re.findall('data=(.*)',p)[0]
     binarydata = base64.urlsafe_b64decode(d)
-
     if binarydata[16] == '\x00' and len(binarydata) == 104:#This is data for overall best chart.
       ingamesn = binarydata[72:].replace('\x00','').lstrip(' ').rstrip(' ')
       pid = struct.unpack("<I",binarydata[4:8])[0]
       bp = struct.unpack("<H",binarydata[20:22])[0]
-      conn = sqlite3.connect(dbfilename)
-      conn.cursor().execute('INSERT OR REPLACE INTO leaderboard values (?,?,?,?,?)',(ingamesn,pid,bp,d,'---'))
-      conn.commit()
-      conn.close()
-      logger.log(logging.INFO,address+" Leaderboard entry: %s %s %s" % (ingamesn,str(pid),str(bp)))
-
-    logger.log(logging.INFO,address+" Replying with done")
-    httpserver.wfile.write(donereply)
-
-  elif "hash=" in p and "get2.asp" in p:
-    d = re.findall('data=(.*)',p)[0]
-    binarydata = base64.urlsafe_b64decode(d)
-
-    if binarydata[16] == '\x00' and binarydata[32] == '\x14':
-      logger.log(logging.INFO,address+"reply with leaderboard data")
-      pass
-    elif binarydata[16] == '\x00' and binarydata[32] == '\x02': 
-      logger.log(logging.INFO,address+"reply with emptydata because no selfdata")
-      httpserver.wfile.write(emptyreply())
-      return
-    else: 
-      logger.log(logging.INFO,address+"Reply with emptydata")
-      httpserver.wfile.write(emptyreply())
-      return
-
-    replypayload = '' 
-    conn = sqlite3.connect(dbfilename)
-    count = 0
-    for row in conn.cursor().execute('select chartdata from leaderboard order by battlepoints desc'):
-      binarydata = base64.urlsafe_b64decode(str(row[0]))
       binarydata = binarydata[4:]#remove 4-byte checksum
       #structure needs rearranging(and dropping of 4 bytes) for leaderboard.
       part1 = binarydata[:4]
@@ -116,19 +126,29 @@ def handle_request(httpserver):
       part3 = binarydata[8:16]
       part4 = binarydata[20:]
       binarydata = part1+part2+part3+part4+'\x00\x00\x00\x00'
-      replypayload += binarydata
-      count += 1
+      d = base64.urlsafe_b64encode(binarydata)
+      conn = sqlite3.connect(dbfilename)
+      conn.cursor().execute('INSERT OR REPLACE INTO leaderboard values (?,?,?,?,?)',(ingamesn,pid,bp,d,time.time()))
+      conn.commit()
+      conn.close()
+      logger.log(logging.INFO,address+" Leaderboard entry: %s %s %s" % (ingamesn,str(pid),str(bp)))
+    logger.log(logging.INFO,address+" Replying with done")
+    httpserver.wfile.write(donereply)
 
-    conn.close()
-    replypayload = lbheader.replace("A",struct.pack('B',count))+replypayload
-    replypayload += hashlib.sha1(salt+base64.urlsafe_b64encode(replypayload)+salt).hexdigest()
-    httpserver.wfile.write( respheaders.replace("_CONTENT_LENGTH",str(len(replypayload)))+replypayload )
+  elif "hash=" in p and "get2.asp" in p:
+    d = re.findall('data=(.*)',p)[0]
+    binarydata = base64.urlsafe_b64decode(d)
+    if binarydata[16] == '\x00' and binarydata[32] == '\x14':
+      logger.log(logging.INFO,address+"reply with leaderboard data")
+      httpserver.wfile.write(leaderboard_best_ingame())
+    elif binarydata[16] == '\x00' and binarydata[32] == '\x02': 
+      logger.log(logging.INFO,address+"reply with emptydata because no selfdata support right now")
+      httpserver.wfile.write(emptyreply())
+    else: 
+      logger.log(logging.INFO,address+"Reply with emptydata")
+      httpserver.wfile.write(emptyreply())
 
   else:
     logger.log(logging.INFO,address+" I have no idea what's going on")
     httpserver.wfile.write('Do not know what to tell you')
-
-
-
-
 
