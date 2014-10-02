@@ -9,45 +9,18 @@ rankinglabels = ["Beginner","Rookie","SuperRookie","UltraRookie","Fighter","Supe
 "SuperMaster","UltraMaster","King","SuperKing","UltraKing","Star","SuperStar",\
 "UltraStar","Hero","SuperHero","UltraHero","LegendHero","UltimateHero"]
 
-respheaders ="""HTTP/1.1 200 OK\r
+httpheaders ="""HTTP/1.1 200 OK\r
 Date: Thu, 19 May 2011 07:34:16 GMT\r
-Server: Microsoft-IIS/6.0\r
+Server: Microsoft-IIS/6.0(but not really)\r
 p3p: CP='NOI ADMa OUR STP'\r
-X-Powered-By: ASP.NET(but really altwfc's twisted python)\r
+X-Powered-By: ASP.NET(actually altwfc's twisted python)\r
 cluster-server: gstprdweb13.las1.colo.ignops.com\r
-Content-Length: _CONTENT_LENGTH\r
+Content-Length: _CL\r
 Content-Type: text/html\r
 Set-Cookie: ASPSESSIONIDSQQQDSCC=GIPIIGECEJLOAHGENKMFFPOC; path=/\r
 Cache-control: private\r\n\r\n"""
 
-tokenreply="""HTTP/1.1 200 OK\r
-Date: Thu, 19 May 2011 07:34:09 GMT\r
-Server: Microsoft-IIS/6.0\r
-p3p: CP='NOI ADMa OUR STP'\r
-X-Powered-By: ASP.NET\r
-cluster-server: gstprdweb13.las1.colo.ignops.com\r
-Content-Length: 32\r
-Content-Type: text/html\r
-Set-Cookie: ASPSESSIONIDCASRDSQR=KIFBODGCOEEENDODFFHCIKIG; path=/\r
-Cache-control: private\r
-\r
-Oro9JPebT0c3gPr0VshyZ1bF6PNL6T1k"""
-
-donereply="""HTTP/1.1 200 OK\r
-Date: Sat, 07 May 2011 13:08:35 GMT\r
-Server: Microsoft-IIS/6.0\r
-p3p: CP='NOI ADMa OUR STP'\r
-X-Powered-By: ASP.NET\r
-cluster-server: gstprdweb13.las1.colo.ignops.com\r
-Content-Length: 44\r
-Content-Type: text/html\r
-Set-Cookie: ASPSESSIONIDQQCADDRC=FNGBCLJCKMKJGCDPPGCPGNJG; path=/\r
-Cache-control: private\r
-\r
-doneb7e684e8313b5729fd1c70a3fc19e425700449f6"""
-
-
-# Logger settings
+#Logger settings
 logger_output_to_console = True
 logger_output_to_file = True
 logger_name = "TATVSCAPWIIgamestats2"
@@ -64,7 +37,7 @@ def emptyreply():
   replypayload = '\x00'*200
   replypayload = lbheader.replace("A",struct.pack('B',0))+replypayload
   replypayload += hashlib.sha1(salt+base64.urlsafe_b64encode(replypayload)+salt).hexdigest()
-  return respheaders.replace("_CONTENT_LENGTH",str(len(replypayload)))+replypayload
+  return httpheaders.replace("_CL",str(len(replypayload)))+replypayload
 
 def leaderboard_best_ingame():
     replypayload = '' 
@@ -76,7 +49,7 @@ def leaderboard_best_ingame():
     conn.close()
     replypayload = lbheader.replace("A",struct.pack('B',count))+replypayload
     replypayload += hashlib.sha1(salt+base64.urlsafe_b64encode(replypayload)+salt).hexdigest()
-    return respheaders.replace("_CONTENT_LENGTH",str(len(replypayload)))+replypayload 
+    return httpheaders.replace("_CL",str(len(replypayload)))+replypayload 
 
 def leaderboard_json(limit):
     records = []
@@ -96,7 +69,7 @@ def leaderboard_json(limit):
       r['ranking'] = rankinglabels[struct.unpack("B",binarydata[63])[0]] 
       records.append(r)
     replypayload = json.dumps(records)      
-    return respheaders.replace("_CONTENT_LENGTH",str(len(replypayload)))+replypayload 
+    return httpheaders.replace("_CL",str(len(replypayload)))+replypayload 
   
 def handle_request(httpserver):
   p = httpserver.path
@@ -105,7 +78,7 @@ def handle_request(httpserver):
 
   if "pid=" in p and "hash=" not in p:
     logger.log(logging.INFO,address+" Replying with token")
-    httpserver.wfile.write(tokenreply)
+    httpserver.wfile.write ( httpheaders.replace("_CL","32")+"Oro9JPebT0c3gPr0VshyZ1bF6PNL6T1k" )
 
   elif 'limit' in p:
     limit = re.findall('limit=(\d+)',p)[0]
@@ -127,13 +100,13 @@ def handle_request(httpserver):
       part4 = binarydata[20:]
       binarydata = part1+part2+part3+part4+'\x00\x00\x00\x00'
       d = base64.urlsafe_b64encode(binarydata)
+      logger.log(logging.INFO,address+" Leaderboard entry: ingamesn:%s dwc_pid:%s BP:%s" % (ingamesn,str(pid),str(bp)))
       conn = sqlite3.connect(dbfilename)
       conn.cursor().execute('INSERT OR REPLACE INTO leaderboard values (?,?,?,?,?)',(ingamesn,pid,bp,d,time.time()))
       conn.commit()
       conn.close()
-      logger.log(logging.INFO,address+" Leaderboard entry: %s %s %s" % (ingamesn,str(pid),str(bp)))
     logger.log(logging.INFO,address+" Replying with done")
-    httpserver.wfile.write(donereply)
+    httpserver.wfile.write ( httpheaders.replace("_CL","44")+"doneb7e684e8313b5729fd1c70a3fc19e425700449f6" )
 
   elif "hash=" in p and "get2.asp" in p:
     d = re.findall('data=(.*)',p)[0]
