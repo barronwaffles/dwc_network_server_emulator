@@ -30,6 +30,7 @@ import traceback
 import gamespy.gs_database as gs_database
 import gamespy.gs_utility as gs_utils
 import other.utils as utils
+import other.tatvscapwii_gamestats2 as tatvscapwii_gamestats2
 
 logger_output_to_console = True
 logger_output_to_file = True
@@ -41,8 +42,8 @@ logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_
 # this is used for Mystery Gift distribution on Generation 4 Pokemon games
 gamecodes_return_random_file = ['ADAD', 'ADAE', 'ADAF', 'ADAI', 'ADAJ', 'ADAK', 'ADAS', 'CPUD', 'CPUE', 'CPUF', 'CPUI', 'CPUJ', 'CPUK', 'CPUS', 'IPGD', 'IPGE', 'IPGF', 'IPGI', 'IPGJ', 'IPGK', 'IPGS']
 
-#address = ("0.0.0.0", 80)
-address = ("127.0.0.1", 9000)
+address = ("0.0.0.0", 8080)
+#address = ("127.0.0.1", 9000)
 
 class NasServer(object):
     def start(self):
@@ -60,14 +61,30 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         return "Nintendo Wii (http)"
 
     def do_GET(self):
+        if self.path.startswith("/tatvscapwii"):
+          tatvscapwii_gamestats2.handle_request(self)
+          return
+
         try:
             # conntest server
+            response = """
+            <!DOCTYPE html>
+            <html>
+            <body>
+            <p style="font-size:60px">Altwfc is running!</p>
+            <p style="font-size:30px">Learn more at https://github.com/polaris-/dwc_network_server_emulator </p>
+            <p style="font-size:20px">For TatsunokoVScapcom Riivolution users - http://youtu.be/fwgzj4htczI </p>
+            <p style="font-size:20px">For everyone else, dns1 & dns2.stabletransit.com points *.nintendowifi.net to this server </p>
+            <p style="font-size:10px">When the official altwfc is back up, this will go down... or only allow TatsunokoVScapcom.</p>
+            </body>
+            </html>
+            """
             self.send_response(200)
             self.send_header("Content-type", "text/html")
             self.send_header("X-Organization", "Nintendo")
             self.send_header("Server", "BigIP")
             self.end_headers()
-            self.wfile.write("ok")
+            self.wfile.write(response)
         except:
             logger.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
@@ -75,6 +92,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         try:
             length = int(self.headers['content-length'])
             post = self.str_to_dict(self.rfile.read(length))
+
 
             if self.path == "/ac":
                 logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
