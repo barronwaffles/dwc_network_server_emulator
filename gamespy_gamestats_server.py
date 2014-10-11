@@ -20,6 +20,7 @@
 import logging
 import time
 import traceback
+import re
 
 from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import serverFromString
@@ -253,10 +254,25 @@ class Gamestats(LineReceiver):
 
         if data_str in data:
             idx = data.index(data_str) + len(data_str)
-            data = data[idx:idx+length]
+            data = data[idx:idx+length].rstrip("\\")
         else:
             logger.log(logging.ERROR, "ERROR: Could not find \data\ in setpd command: %s", data)
             data = ""
+
+        current_data = self.db.pd_get(self.profileid, data_parsed['dindex'], data_parsed['ptype'])
+        if current_data and data and 'data' in current_data:
+            current_data = current_data['data'].lstrip('\\').split('\\')
+            new_data = data.lstrip('\\').split('\\')
+
+            current_data = dict(zip(current_data[0::2],current_data[1::2]))
+            new_data = dict(zip(new_data[0::2],new_data[1::2]))
+            for k in new_data.keys():
+                current_data[k] = new_data[k]
+
+            data = "\\"
+            for k in current_data.keys():
+              data += k+"\\"+current_data[k]+"\\"
+            data = data.rstrip("\\") # Don't put trailing \ into db
 
         self.db.pd_insert(self.profileid, data_parsed['dindex'], data_parsed['ptype'], data)
 
@@ -284,7 +300,7 @@ class Gamestats(LineReceiver):
             else:
                 self.log(logging.WARNING, "Could not get data section from profile for %d" % pid)
 
-            if len(keys) > 0 and keys[0] != "":
+            if len(keys):
                 for key in (key for key in keys if key not in ("__cmd__", "__cmd_val__", "")):
                     data += "\\" + key + "\\"
 
@@ -305,6 +321,23 @@ class Gamestats(LineReceiver):
             ('length', len(data)),
             ('data', data),
         ])
+
+        msg = msg.replace("\\data\\","\\data\\\\") # data needs to be preceded by an extra slash
+
+        datastring = ""
+        try:
+            datastring = re.findall('.*data\\\\(.*)',msg)[0].replace("\\final\\","")
+        except:
+            pass
+
+        # This works because the data string is a key-value pair, splitting the
+        # string by \ should yield a list with an even number of elements. But,
+        # because of the extra \ prepended to the datastring, it'll be odd.
+        # So ultimately I expect the list to have an odd number of elements.
+        # If it's even, len(list)%2 will be zero... and that means the last
+        # field in the datastring is empty and doesn't have a closing \.
+        if datastring and not len(datastring.split('\\')) % 2:
+            msg = msg.replace("\\final\\","\\\\final\\") # An empty field must be terminated by \ before \final\
 
         self.log(logging.DEBUG, "SENDING: '%s'..." % msg)
         msg = self.crypt(msg)
