@@ -126,6 +126,7 @@ class GamespyDatabase(object):
             tx.nonquery("CREATE INDEX IF NOT EXISTS buddies_userProfileId_idx ON buddies (userProfileId)")
             tx.nonquery("CREATE INDEX IF NOT EXISTS buddies_buddyProfileId_idx ON buddies (buddyProfileId)")
             tx.nonquery("CREATE INDEX IF NOT EXISTS gamestat_profile_profileid_idx ON gamestat_profile (profileid)")
+            tx.nonquery("CREATE UNIQUE INDEX IF NOT EXISTS gamestatprofile_triple on gamestat_profile(profileid,dindex,ptype)")
 
     def get_dict(self, row):
         if not row:
@@ -376,6 +377,16 @@ class GamespyDatabase(object):
         else:
             return json.loads(r["data"])
 
+    def get_nas_login_from_userid(self, userid):
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT data FROM nas_logins WHERE userid = ?", (userid,))
+            r = self.get_dict(row)
+
+        if r == None:
+            return None
+        else:
+            return json.loads(r["data"])
+
     def generate_authtoken(self, userid, data):
         # Since the auth token passed back to the game will be random, we can make it small enough that there
         # should never be a crash due to the size of the token.
@@ -492,7 +503,7 @@ class GamespyDatabase(object):
     # Gamestats-related functions
     def pd_insert(self, profileid, dindex, ptype, data):
         with Transaction(self.conn) as tx:
-            tx.nonquery("INSERT OR IGNORE INTO gamestat_profile (profileid, dindex, ptype, data) VALUES(?,?,?,?)", (profileid, dindex, ptype, data))
+            tx.nonquery("INSERT OR REPLACE INTO gamestat_profile (profileid, dindex, ptype, data) VALUES(?,?,?,?)", (profileid, dindex, ptype, data))
             tx.nonquery("UPDATE gamestat_profile SET data = ? WHERE profileid = ? AND dindex = ? AND ptype = ?", (data, profileid, dindex, ptype))
 
     def pd_get(self, profileid, dindex, ptype):
