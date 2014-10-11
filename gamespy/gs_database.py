@@ -111,6 +111,7 @@ class GamespyDatabase(object):
                 tx.nonquery("CREATE TABLE buddies (userProfileId INT, buddyProfileId INT, time INT, status INT, notified INT, gameid TEXT, blocked INT)")
                 tx.nonquery("CREATE TABLE pending_messages (sourceid INT, targetid INT, msg TEXT)")
                 tx.nonquery("CREATE TABLE gamestat_profile (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
+                tx.nonquery("CREATE UNIQUE INDEX IF NOT EXISTS gamestatprofile_triple ON gamestat_profile (profileid, dindex, ptype)")
                 tx.nonquery("CREATE TABLE gameinfo (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
                 tx.nonquery("CREATE TABLE nas_logins (userid TEXT, authtoken TEXT, data TEXT)")
 
@@ -126,7 +127,6 @@ class GamespyDatabase(object):
             tx.nonquery("CREATE INDEX IF NOT EXISTS buddies_userProfileId_idx ON buddies (userProfileId)")
             tx.nonquery("CREATE INDEX IF NOT EXISTS buddies_buddyProfileId_idx ON buddies (buddyProfileId)")
             tx.nonquery("CREATE INDEX IF NOT EXISTS gamestat_profile_profileid_idx ON gamestat_profile (profileid)")
-            tx.nonquery("CREATE UNIQUE INDEX IF NOT EXISTS gamestatprofile_triple on gamestat_profile(profileid,dindex,ptype)")
 
     def get_dict(self, row):
         if not row:
