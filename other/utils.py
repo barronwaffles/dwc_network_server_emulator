@@ -16,11 +16,12 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+import logging.handlers
 import random
 import string
 import struct
 import ctypes
-
+import os
 
 def generate_random_str_from_set(ln, chs):
     return ''.join(random.choice(chs) for _ in range(ln))
@@ -149,6 +150,15 @@ def get_bytes_from_int(num, be=False):
 
 # For server logging
 def create_logger(loggername, filename, level, log_to_console, log_to_file):
+    log_folder = "logs"
+    
+    # Create log folder if it doesn't exist
+    if not os.path.exists(log_folder):
+        os.makedirs(log_folder)
+      
+    # Build full path to log file
+    filename = os.path.join(log_folder, filename)
+
     logging.addLevelName(-1, "TRACE")
 
     fmt = "[%(asctime)s | " + loggername + "] %(message)s"
@@ -166,7 +176,8 @@ def create_logger(loggername, filename, level, log_to_console, log_to_file):
         logger.addHandler(console_logger)
 
     if log_to_file == True and filename != "":
-        file_logger = logging.FileHandler(filename)
+        # Use a rotating log set to rotate every night at midnight with a max of 10 backups
+        file_logger = logging.handlers.TimedRotatingFileHandler(filename, when='midnight', backupCount=10) #logging.FileHandler(filename)
         file_logger.setFormatter(logging.Formatter(fmt, datefmt=date_format))
         logger.addHandler(file_logger)
 
