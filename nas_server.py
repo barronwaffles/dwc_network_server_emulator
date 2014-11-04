@@ -223,13 +223,15 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         if os.path.isfile(os.path.join(dlcpath, "_list.txt")):
                             ret = self.filter_list(safeloadfi("_list.txt"), attr1, attr2, attr3)
                             
-                            # this is super game-specific, but we need to handle gen 5 mystery gifts properly somehow
-                            if post["gamecd"].startswith("IRA") and attr1.startswith("MYSTERY"):
-                                ret = self.filter_list_g5_mystery_gift(ret, post["rhgamecd"])
-                                ret = self.filter_list_by_date(ret, post["token"])
-                            
-                            if post["gamecd"] in gamecodes_return_random_file:
-                                ret = self.filter_list_by_date(ret, post["token"])
+                            # Don't try to filter any further if the list is empty.
+                            if ret.strip() != "":
+                                # this is super game-specific, but we need to handle gen 5 mystery gifts properly somehow
+                                if post["gamecd"].startswith("IRA") and attr1.startswith("MYSTERY"):
+                                    ret = self.filter_list_g5_mystery_gift(ret, post["rhgamecd"])
+                                    ret = self.filter_list_by_date(ret, post["token"])
+                                
+                                if post["gamecd"] in gamecodes_return_random_file:
+                                    ret = self.filter_list_by_date(ret, post["token"])
 
                 if action == "contents":
                     # Get only the base filename just in case there is a path involved somewhere in the filename string.
