@@ -340,6 +340,7 @@ class GameSpyBackendServer(object):
             else:
                 # There are no filters, so just return the server.
                 result = True
+                valid_filter = True
 
             if stop_search == True:
                 break
