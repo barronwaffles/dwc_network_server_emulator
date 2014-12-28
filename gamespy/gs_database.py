@@ -199,6 +199,15 @@ class GamespyDatabase(object):
         return profileid
 
     def create_user(self, userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth, gameid):
+
+        #Check for console ban
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT * FROM users WHERE userid = ? and gameid = ? and enabled = 0 limit 1", (userid, gameid))
+            r = self.get_dict(row)
+        if r != None:
+            logger.log(logging.INFO, "--- REJECTING BANNED CONSOLE --- userid=%s,gameid=%s", userid,gameid)
+            return None
+        
         if self.check_user_exists(userid, gsbrcd) == 0:
             profileid = self.get_next_free_profileid()
 
