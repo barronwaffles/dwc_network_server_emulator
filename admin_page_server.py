@@ -95,7 +95,6 @@ class AdminPage(resource.Resource):
                 ingamesn = str(nasdata['devname'])
             if ingamesn:
                 ingamesn = gs_utils.base64_decode(ingamesn)
-                ingamesn = base64.urlsafe_b64decode(ingamesn)
                 if is_console:
                     ingamesn = codecs.utf_16_be_decode(ingamesn)[0]
                 else:
