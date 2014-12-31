@@ -23,6 +23,8 @@ import logging
 import time
 import urlparse
 import BaseHTTPServer
+import SocketServer
+import threading
 import os
 import random
 import traceback
@@ -47,12 +49,15 @@ address = ("127.0.0.1", 9000)
 class NasServer(object):
     def start(self):
         httpd = NasHTTPServer((address[0], address[1]), NasHTTPServerHandler)
+        t = threading.Thread(target=httpd.serve_forever)
+        t.daemon = True
+        t.start()
         logger.log(logging.INFO, "Now listening for connections on %s:%d...", address[0], address[1])
         httpd.serve_forever()
 
-class NasHTTPServer(BaseHTTPServer.HTTPServer):
+class NasHTTPServer(SocketServer.ThreadingMixIn,BaseHTTPServer.HTTPServer):
     def __init__(self, server_address, RequestHandlerClass):
-        self.db = gs_database.GamespyDatabase()
+        #self.db = gs_database.GamespyDatabase()
         BaseHTTPServer.HTTPServer.__init__(self, server_address, RequestHandlerClass)
 
 class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -60,6 +65,9 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         return "Nintendo Wii (http)"
 
     def do_GET(self):
+        self.server = lambda:None
+        self.server.db = gs_database.GamespyDatabase()
+
         try:
             # conntest server
             self.send_response(200)
@@ -72,6 +80,9 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             logger.log(logging.ERROR, "Unknown exception: %s" % traceback.format_exc())
 
     def do_POST(self):
+        self.server = lambda:None
+        self.server.db = gs_database.GamespyDatabase()
+
         try:
             length = int(self.headers['content-length'])
             post = self.str_to_dict(self.rfile.read(length))
