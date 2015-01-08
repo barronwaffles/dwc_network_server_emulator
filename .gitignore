@@ -232,3 +232,4 @@ tools/data/*
 *.db-journal
 test*.py
 .private/*
+logs/*
