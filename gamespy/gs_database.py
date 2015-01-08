@@ -94,7 +94,15 @@ class GamespyDatabase(object):
         self.conn.row_factory = sqlite3.Row
 
         #self.initialize_database()
+        
+    def __del__(self):
+        self.close()
 
+    def close(self):        
+        if self.conn != None:
+            self.conn.close()
+            self.conn = None
+            
     def initialize_database(self):
         with Transaction(self.conn) as tx:
             row = tx.queryone("SELECT COUNT(*) FROM sqlite_master WHERE name = 'users' AND type = 'table'")
