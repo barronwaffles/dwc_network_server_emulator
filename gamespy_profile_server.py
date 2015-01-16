@@ -439,6 +439,8 @@ class PlayerSession(LineReceiver):
                 if dest_profileid in self.sessions:
                     self.log(logging.DEBUG, "SENDING TO %s:%s: %s" % (self.sessions[dest_profileid].address.host, self.sessions[dest_profileid].address.port, msg))
                     self.sessions[dest_profileid].transport.write(bytes(msg))
+                    self.send_status_to_friends(dest_profileid)
+                    self.get_status_from_friends(dest_profileid)
                 else:
                     if data_parsed['__cmd_val__'] == "1":
                         self.log(logging.DEBUG, "Saving message to %d: %s" % (dest_profileid, msg))
@@ -475,21 +477,71 @@ class PlayerSession(LineReceiver):
 
             if newprofileid in self.sessions:
                 logger.log(logging.DEBUG, "User is online, sending direct request from profile id %d to profile id %d..." % (self.profileid, newprofileid))
-                self.send_buddy_request(self.sessions[newprofileid], self.profileid)
+                
+                # TODO: Add a way to check if a profile id is already a buddy using SQL
+                other_player_authorized = False
+                target_buddy_list = self.db.get_buddy_list(newprofileid)
+                logger.log(logging.DEBUG, target_buddy_list)
+                for buddy in target_buddy_list:
+                    if buddy['buddyProfileId'] == self.profileid and buddy['blocked'] == 0:
+                        other_player_authorized = True
+                        break
+                
+                if other_player_authorized == True:
+                    logger.log(logging.DEBUG, "Automatic authorization: %d (target) already has %d (source) as a friend." % (newprofileid, self.profileid))
+                    
+                    # Force them both to add each other
+                    self.send_buddy_request(self.sessions[newprofileid], self.profileid)
+                    self.send_buddy_request(self.sessions[self.profileid], newprofileid)
+                    
+                    self.send_bm4(newprofileid)
+                    
+                    self.db.auth_buddy(newprofileid, self.profileid)
+                    self.db.auth_buddy(self.profileid, newprofileid)
+                    
+                    self.send_status_to_friends(newprofileid)
+                    self.get_status_from_friends(newprofileid)
+                    
+                else:
+                    self.send_buddy_request(self.sessions[newprofileid], self.profileid)
+        else:
+            # Trying to add someone who is already a friend. Just send status updates
+            self.send_status_to_friends(newprofileid)
+            self.get_status_from_friends(newprofileid)
+                
+        self.buddies = self.db.get_buddy_list(self.profileid)
 
+    def send_bm4(self, playerid):        
+        date = int(time.time())
+        msg = gs_query.create_gamespy_message([
+            ('__cmd__', "bm"),
+            ('__cmd_val__', "4"),
+            ('f', playerid),
+            ('date', date),
+            ('msg', ""),
+        ])
+        
+        self.transport.write(bytes(msg))
 
     def perform_delbuddy(self, data_parsed):
         # Sample: \delbuddy\\sesskey\61913621\delprofileid\1\final\
         self.db.delete_buddy(self.profileid, int(data_parsed['delprofileid']))
+        self.buddies = self.db.get_buddy_list(self.profileid)
 
     def perform_authadd(self, data_parsed):
         # Sample: \authadd\\sesskey\231587549\fromprofileid\217936895\sig\f259f26d3273f8bda23c7c5e4bd8c5aa\final\
         # Authorize the other person's friend request.
-        self.db.auth_buddy(int(data_parsed['fromprofileid']), self.profileid)
-
+        target_profile = int(data_parsed['fromprofileid'])
+        self.db.auth_buddy(target_profile, self.profileid)
         self.get_buddy_authorized()
+        self.buddies = self.db.get_buddy_list(self.profileid)
+                    
+        self.send_bm4(target_profile)
+        
+        self.send_status_to_friends(target_profile)
+        self.get_status_from_friends(target_profile)
 
-    def send_status_to_friends(self):
+    def send_status_to_friends(self, buddy_profileid = None):
         # TODO: Cache buddy list so we don't have to query the database every time
         self.buddies = self.db.get_buddy_list(self.profileid)
 
@@ -506,17 +558,24 @@ class PlayerSession(LineReceiver):
             ('msg', status_msg),
         ])
 
-        for buddy in self.buddies:
+        buddy_list = self.buddies
+        if buddy_profileid != None:
+            buddy_list = [{"buddyProfileId":buddy_profileid}]
+            
+        for buddy in buddy_list:
             if buddy['buddyProfileId'] in self.sessions:
                 #self.log(logging.DEBUG, "Sending status to buddy id %s (%s:%d): %s" % (str(buddy['buddyProfileId']), self.sessions[buddy['buddyProfileId']].address.host, self.sessions[buddy['buddyProfileId']].address.port, msg))
                 self.sessions[buddy['buddyProfileId']].transport.write(bytes(msg))
 
-
-    def get_status_from_friends(self):
+    def get_status_from_friends(self, buddy_profileid = None):
         # This will be called when the player logs in. Grab the player's buddy list and check the current sessions to
         # see if anyone is online. If they are online, make them send an update to the calling client.
         self.buddies = self.db.get_buddy_list(self.profileid)
 
+        buddy_list = self.buddies
+        if buddy_profileid != None:
+            buddy_list = [{"buddyProfileId":buddy_profileid}]
+        
         for buddy in self.buddies:
             if buddy['status'] != 1:
                 continue
