@@ -404,6 +404,18 @@ class GamespyDatabase(object):
         else:
             return json.loads(r["data"])
 
+    def get_next_available_userid(self):
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT max(userid) FROM users")
+            r = self.get_dict(row)
+        if r == None:
+            return '0000000000002'#Because all zeroes means Dolphin. Don't wanna get confused during debugging later.
+        else:
+            userid = str(int(json.loads(r['max(userid)'])) + 1)
+            while len(userid) < 13:
+                userid = "0"+userid
+            return userid
+
     def generate_authtoken(self, userid, data):
         # Since the auth token passed back to the game will be random, we can make it small enough that there
         # should never be a crash due to the size of the token.

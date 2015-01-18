@@ -102,6 +102,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 if action == "acctcreate":
                     # TODO: test for duplicate accounts
                     ret["returncd"] = "002"
+                    ret['userid'] = self.server.db.get_next_available_userid()
 
                     logger.log(logging.DEBUG, "acctcreate response to %s", self.client_address)
                     logger.log(logging.DEBUG, ret)
