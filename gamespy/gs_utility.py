@@ -118,6 +118,7 @@ def login_profile_via_parsed_authtoken(authtoken_parsed, db):
     password = authtoken_parsed['gsbrcd']
     gsbrcd = authtoken_parsed['gsbrcd']
     gameid = gsbrcd[:4]
+    macadr = authtoken_parsed['macadr']
     uniquenick = utils.base32_encode(int(userid)) + gsbrcd
     email = uniquenick + "@nds" # The Wii also seems to use @nds.
 
@@ -128,7 +129,7 @@ def login_profile_via_parsed_authtoken(authtoken_parsed, db):
 
     valid_user = db.check_user_exists(userid, gsbrcd)
     if valid_user == False:
-        profileid = db.create_user(userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth, gameid)
+        profileid = db.create_user(userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth, gameid, macadr)
     else:
         profileid = db.perform_login(userid, password, gsbrcd)
 
