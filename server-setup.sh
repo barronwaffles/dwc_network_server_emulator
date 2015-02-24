@@ -127,6 +127,6 @@ echo "Username and password configured!"
 echo "NOTE: To get to the admin page type in the IP of your server :9009/banhammer"
 clear
 echo "Now, I BELIEVE everything should be in working order. If not, you might have to do some troubleshooting"
-echo "Assuming my coding hasn't gotten the best of me, you should be in the directory with all the python script along with a new .json file for the admin page info"
+echo "Assuming my coding hasnt gotten the best of me, you should be in the directory with all the python script along with a new .json file for the admin page info"
 echo "I will now exit...."
 exit 1
