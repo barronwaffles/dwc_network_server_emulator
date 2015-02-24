@@ -19,7 +19,7 @@ apt-get upgrade -y >/dev/null
 clear
 echo "Upgrades complete!"
 echo "Now installing required packages..."
-apt-get install apache python 2.7 python-twisted git -y >/dev/null
+apt-get install apache python2.7 python-twisted git -y >/dev/null
 echo "Installing Apache, Python 2.7, Python Twisted and GitHub....."
 clear
 echo "Where is your Apache config directory?"
