@@ -8,10 +8,10 @@ if [ "$UID" -ne "$ROOT_UID" ] ; then
 fi
 
 echo "Hello and welcome to my installation script. I assume you're running this as root?"
+sleep 5s
 echo "Okay! Gotta love when a plan comes together!"
 echo "Let me install a few upgrade and packages on your system for you...."
 echo "If you already have a package installed, I'll simply skip over it or upgrade it"
-clear
 apt-get update -y >/dev/null
 echo "Updated repo lists...."
 echo "Installing package upgrades... go kill some time as this may take a few minutes..."
@@ -19,12 +19,12 @@ apt-get upgrade -y >/dev/null
 clear
 echo "Upgrades complete!"
 echo "Now installing required packages..."
-apt-get install apache python2.7 python-twisted git -y >/dev/null
-echo "Installing Apache, Python 2.7, Python Twisted and GitHub....."
+apt-get install apache2 python2.7 python-twisted git dnsmasq -y >/dev/null
+echo "Installing Apache, Python 2.7, Python Twisted, GitHub and DNSMasq....."
 clear
 echo "Where is your Apache config directory?"
 echo "For example: /etc/apache2
-read -e APACHEDIR
+read -p APACHEDIR
 echo "The path your provided is: $APACHEDIR"
 echo "Now I will clone the github repo to the directory of where this script is"
 git clone https://github.com/BeanJr/dwc_network_server_emulator
@@ -91,6 +91,7 @@ EOF
 
 clear
 echo "Okay! Let's hope nothing broke during this process..."
+sleep 5s
 echo "Now let's enable the sites so Apache can use them"
 a2ensite gamestats2.gs.nintendowifi.net gamestats.gs.nintendowifi.net nas-naswii-dls1-conntest.nintendowifi.net sake.gs.nintendowifi.net
 echo "Now let's enable some modules so we can make all of this work..."
@@ -98,20 +99,31 @@ a2enmod proxy.conf proxy_http.load proxy.load
 echo "Great! Everything appears to be set up as far as Apache"
 service apache2 restart
 service apache2 reload
-echo "If any errors occour (besides the hostname/server name error) please look into this yourself as my bash scripting knowledge is very limited"
+echo "If any errors occour besides the hostname or server name error please look into this yourself as my bash scripting knowledge is very limited"
+sleep 5s
+echo "----------Lets configure DNSMASQ now----------"
+sleep 3s
+echo "What is your EXTERNAL IP?"
+read -p IP
+cat >>/etc/dnsmasq.conf <<EOF
+address=/nintendowifi.net/$IP
+EOF
+clear
+echo "DNSMasq setup completed!"
 echo "Let's go back to the home directory where all this began"
 cd
 clear
 cd dwc_network_server_emulator
 echo "Now, let's set up the admin page login info...."
+sleep 3s
 echo "Please type your user name: "
 read -p USR
 echo "Please enter the password you want to use: "
-read -p PASS
+read -s PASS
 cat > adminpageconf.json <<EOF
 {"username":"$USR","password":"$PASS"}
 EOF
-echo "Username and password set!"
+echo "Username and password configured!"
 echo "NOTE: To get to the admin page type in the IP of your server :9009/banhammer"
 clear
 echo "Now, I BELIEVE everything should be in working order. If not, you might have to do some troubleshooting"
