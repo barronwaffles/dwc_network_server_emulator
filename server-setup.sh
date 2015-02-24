@@ -34,7 +34,7 @@ echo "I've changed directory to $APACHEDIR"
 echo "Creating sites to sites-available for virtual hosting of the server"
 echo "changing directory to sites-available"
 cd "$APACHEDIR/sites-available/"
-cat > gamestats2.gs.nintendowifi.net <<EOF
+cat > /$APACHDRIR/gamestats2.gs.nintendowifi.net <<EOF
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
         ServerName gamestats2.gs.nintendowifi.net
@@ -47,7 +47,7 @@ cat > gamestats2.gs.nintendowifi.net <<EOF
 </VirtualHost>
 EOF
 
-cat > gamestats.gs.nintendowifi.net <<EOF
+cat > /$APACHDRIR/gamestats.gs.nintendowifi.net <<EOF
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
         ServerName gamestats.gs.nintendowifi.net
@@ -58,7 +58,7 @@ cat > gamestats.gs.nintendowifi.net <<EOF
 </VirtualHost>
 EOF
 
-cat > nas-naswii-dls1-conntest.nintendowifi.net <<EOF
+cat > /$APACHDRIR/nas-naswii-dls1-conntest.nintendowifi.net <<EOF
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
         ServerName naswii.nintendowifi.net
@@ -75,7 +75,7 @@ cat > nas-naswii-dls1-conntest.nintendowifi.net <<EOF
 </VirtualHost>
 EOF
 
-cat > sake.gs.nintendowifi.net <<EOF
+cat > /$APACHDRIR/sake.gs.nintendowifi.net <<EOF
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
         ServerName sake.gs.nintendowifi.net
@@ -113,7 +113,7 @@ echo "DNSMasq setup completed!"
 echo "Let's go back to the home directory where all this began"
 cd
 clear
-cd dwc_network_server_emulator
+cd "dwc_network_server_emulator"
 echo "Now, let's set up the admin page login info...."
 sleep 3s
 echo "Please type your user name: "
