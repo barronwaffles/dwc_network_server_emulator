@@ -23,17 +23,17 @@ apt-get install apache2 python2.7 python-twisted git dnsmasq -y >/dev/null
 echo "Installing Apache, Python 2.7, Python Twisted, GitHub and DNSMasq....."
 clear
 echo "Where is your Apache config directory?"
-echo "For example: /etc/apache2
+echo "For example: /etc/apache2"
 read -p APACHEDIR
 echo "The path your provided is: $APACHEDIR"
 echo "Now I will clone the github repo to the directory of where this script is"
 git clone https://github.com/BeanJr/dwc_network_server_emulator
 echo "Now that that's out of the way, let's do some apache stuff"
-cd $APACHEDIR
+cd "$APACHEDIR"
 echo "I've changed directory to $APACHEDIR"
 echo "Creating sites to sites-available for virtual hosting of the server"
 echo "changing directory to sites-available"
-cd $APACHEDIR/sites-available/
+cd "$APACHEDIR/sites-available/"
 cat > gamestats2.gs.nintendowifi.net <<EOF
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
@@ -90,11 +90,11 @@ cat > sake.gs.nintendowifi.net <<EOF
 EOF
 
 clear
-echo "Okay! Let's hope nothing broke during this process..."
+echo "Okay! Lets hope nothing broke during this process..."
 sleep 5s
-echo "Now let's enable the sites so Apache can use them"
+echo "Now lets enable the sites so Apache can use them"
 a2ensite gamestats2.gs.nintendowifi.net gamestats.gs.nintendowifi.net nas-naswii-dls1-conntest.nintendowifi.net sake.gs.nintendowifi.net
-echo "Now let's enable some modules so we can make all of this work..."
+echo "Now lets enable some modules so we can make all of this work..."
 a2enmod proxy.conf proxy_http.load proxy.load
 echo "Great! Everything appears to be set up as far as Apache"
 service apache2 restart
@@ -128,5 +128,5 @@ echo "NOTE: To get to the admin page type in the IP of your server :9009/banhamm
 clear
 echo "Now, I BELIEVE everything should be in working order. If not, you might have to do some troubleshooting"
 echo "Assuming my coding hasnt gotten the best of me, you should be in the directory with all the python script along with a new .json file for the admin page info"
-echo "I will now exit...."
+echo "I will now quit...."
 exit 1
