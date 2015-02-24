@@ -24,7 +24,7 @@ echo "Installing Apache, Python 2.7, Python Twisted, GitHub and DNSMasq....."
 clear
 echo "Where is your Apache config directory?"
 echo "For example: /etc/apache2"
-read -p APACHEDIR
+read -e APACHEDIR
 echo "The path your provided is: $APACHEDIR"
 echo "Now I will clone the github repo to the directory of where this script is"
 git clone https://github.com/BeanJr/dwc_network_server_emulator
@@ -104,7 +104,7 @@ sleep 5s
 echo "----------Lets configure DNSMASQ now----------"
 sleep 3s
 echo "What is your EXTERNAL IP?"
-read -p IP
+read -e IP
 cat >>/etc/dnsmasq.conf <<EOF
 address=/nintendowifi.net/$IP
 EOF
