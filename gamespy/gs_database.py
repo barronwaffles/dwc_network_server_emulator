@@ -410,7 +410,7 @@ class GamespyDatabase(object):
         with Transaction(self.conn) as tx:
             row = tx.queryone("SELECT max(userid) FROM users")
             r = self.get_dict(row)
-        if r == None:
+        if r == None or r['max(userid)'] == None:
             return '0000000000002'#Because all zeroes means Dolphin. Don't wanna get confused during debugging later.
         else:
             userid = str(int(json.loads(r['max(userid)'])) + 1)
