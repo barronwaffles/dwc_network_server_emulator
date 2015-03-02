@@ -117,7 +117,7 @@ cd "dwc_network_server_emulator"
 echo "Now, let's set up the admin page login info...."
 sleep 3s
 echo "Please type your user name: "
-read -p USR
+read -e USR
 echo "Please enter the password you want to use: "
 read -s PASS
 cat > adminpageconf.json <<EOF
