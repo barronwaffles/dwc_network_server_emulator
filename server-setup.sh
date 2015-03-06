@@ -27,6 +27,7 @@ echo "For example: /etc/apache2"
 read -e APACHEDIR
 echo "The path your provided is: $APACHEDIR"
 echo "Now I will clone the github repo to the directory of where this script is"
+git config --global http.sslVerify false
 git clone https://github.com/BeanJr/dwc_network_server_emulator
 echo "Now that that's out of the way, let's do some apache stuff"
 cd "$APACHEDIR"
