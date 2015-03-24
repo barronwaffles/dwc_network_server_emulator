@@ -48,8 +48,7 @@ clear
 echo "Now, I BELIEVE everything should be in working order. If not, you might have to do some troubleshooting"
 echo "Assuming my coding hasnt gotten the best of me, you should be in the directory with all the python script along with a new .json file for the admin page info"
 echo "I will now reboot...."
-echo "NOTE: I've left the git clone in your home folder. Do whatever you want with it
+echo "NOTE: I've left the git clone in your home folder. Do whatever you want with it"
 echo "Rebooting in 15 seconds...."
 sleep 15s
 reboot
-exit 1
