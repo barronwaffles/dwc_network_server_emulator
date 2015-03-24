@@ -35,7 +35,7 @@ echo "I've changed directory to $APACHEDIR"
 echo "Creating sites to sites-available for virtual hosting of the server"
 echo "changing directory to sites-available"
 cd "$APACHEDIR/sites-available/"
-cat > /"$APACHDRIR/gamestats2.gs.nintendowifi.net" <<EOF
+cat > /"$APACHEDIR/gamestats2.gs.nintendowifi.net" <<EOF
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
         ServerName gamestats2.gs.nintendowifi.net
@@ -48,7 +48,7 @@ cat > /"$APACHDRIR/gamestats2.gs.nintendowifi.net" <<EOF
 </VirtualHost>
 EOF
 
-cat > /"$APACHDRIR/gamestats.gs.nintendowifi.net" <<EOF
+cat > /"$APACHEDIR/gamestats.gs.nintendowifi.net" <<EOF
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
         ServerName gamestats.gs.nintendowifi.net
@@ -59,7 +59,7 @@ cat > /"$APACHDRIR/gamestats.gs.nintendowifi.net" <<EOF
 </VirtualHost>
 EOF
 
-cat > /"$APACHDRIR/nas-naswii-dls1-conntest.nintendowifi.net" <<EOF
+cat > /"$APACHEDIR/nas-naswii-dls1-conntest.nintendowifi.net" <<EOF
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
         ServerName naswii.nintendowifi.net
@@ -76,7 +76,7 @@ cat > /"$APACHDRIR/nas-naswii-dls1-conntest.nintendowifi.net" <<EOF
 </VirtualHost>
 EOF
 
-cat > /"$APACHDRIR/sake.gs.nintendowifi.net" <<EOF
+cat > /"$APACHEDIR/sake.gs.nintendowifi.net" <<EOF
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
         ServerName sake.gs.nintendowifi.net
