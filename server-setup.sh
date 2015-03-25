@@ -1,5 +1,6 @@
 #!/bin/bash
 ROOT_UID="0"
+APACHEDIR=/etc/apache2
 #Please put this script into your home folder
 #Check if run as root
 if [ "$UID" -ne "$ROOT_UID" ] ; then
@@ -22,20 +23,13 @@ echo "Now installing required packages..."
 apt-get install apache2 python2.7 python-twisted git dnsmasq -y >/dev/null
 echo "Installing Apache, Python 2.7, Python Twisted, GitHub and DNSMasq....."
 clear
-echo "Where is your Apache config directory?"
-echo "For example: /etc/apache2"
-read -e APACHEDIR
-echo "The path your provided is: $APACHEDIR"
 echo "Now I will clone the github repo to the directory of where this script is"
 git config --global http.sslVerify false
 git clone https://github.com/kyle95wm/dwc_network_server_emulator
 echo "Now that that's out of the way, let's do some apache stuff"
-cd "$APACHEDIR"
-echo "I've changed directory to $APACHEDIR"
 echo "Creating sites to sites-available for virtual hosting of the server"
 echo "changing directory to sites-available"
-cd "$APACHEDIR/sites-available/"
-cat > /"$APACHEDIR/gamestats2.gs.nintendowifi.net" <<EOF
+cat > "$APACHEDIR/sites-available/gamestats2.gs.nintendowifi.net" <<EOF
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
         ServerName gamestats2.gs.nintendowifi.net
@@ -48,7 +42,7 @@ cat > /"$APACHEDIR/gamestats2.gs.nintendowifi.net" <<EOF
 </VirtualHost>
 EOF
 
-cat > /"$APACHEDIR/gamestats.gs.nintendowifi.net" <<EOF
+cat > "$APACHEDIR/sites-available/gamestats.gs.nintendowifi.net" <<EOF
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
         ServerName gamestats.gs.nintendowifi.net
@@ -59,7 +53,7 @@ cat > /"$APACHEDIR/gamestats.gs.nintendowifi.net" <<EOF
 </VirtualHost>
 EOF
 
-cat > /"$APACHEDIR/nas-naswii-dls1-conntest.nintendowifi.net" <<EOF
+cat > "$APACHEDIR/sites-available/nas-naswii-dls1-conntest.nintendowifi.net" <<EOF
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
         ServerName naswii.nintendowifi.net
@@ -76,7 +70,7 @@ cat > /"$APACHEDIR/nas-naswii-dls1-conntest.nintendowifi.net" <<EOF
 </VirtualHost>
 EOF
 
-cat > /"$APACHEDIR/sake.gs.nintendowifi.net" <<EOF
+cat > "$APACHEDIR/sites-available/sake.gs.nintendowifi.net" <<EOF
 <VirtualHost *:80>
         ServerAdmin webmaster@localhost
         ServerName sake.gs.nintendowifi.net
