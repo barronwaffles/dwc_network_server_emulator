@@ -1,0 +1,8 @@
+<VirtualHost *:80>
+        ServerAdmin webmaster@localhost
+        ServerName gamestats.gs.nintendowifi.net
+        ServerAlias "gamestats.gs.nintendowifi.net, gamestats.gs.nintendowifi.net"
+        ProxyPreserveHost On
+        ProxyPass / http://127.0.0.1:9002/
+        ProxyPassReverse / http://127.0.0.1:9002/
+</VirtualHost>
