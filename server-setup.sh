@@ -11,6 +11,7 @@ mod1="proxy.conf"
 mod2="proxy_http.load"
 mod3="proxy.load"
 mod4="proxy" #This is a fallback module for use with OS's that don't support mod1, mod2 or mod3
+cp="/etc/apache2/sites-enabled"
 #Don't forget to install the git package before running this script
 #Check if run as root
 if [ "$UID" -ne "$ROOT_UID" ] ; then
@@ -40,11 +41,15 @@ cp ./$vh/$vh2 $apache/$vh2
 cp ./$vh/$vh3 $apache/$vh3
 cp ./$vh/$vh4 $apache/$vh4
 sleep 5s
+echo "Copying virtual hosts to sites-enabled for virtual hosting of the server"
+cp ./$vh/$vh1 $cp/$vh1
+cp ./$vh/$vh2 $cp/$vh2
+cp ./$vh/$vh3 $cp/$vh3
+cp ./$vh/$vh4 $cp/$vh4
+sleep 5s
 clear
 echo "Okay! Lets hope nothing broke during this process..."
 sleep 5s
-echo "Now lets enable the sites so Apache can use them"
-a2ensite $vh1 $vh2 $vh3 $vh4
 echo "Now lets enable some modules so we can make all of this work..."
 a2enmod $mod1 $mod2 $mod3 $mod4
 echo "Great! Everything appears to be set up as far as Apache"
