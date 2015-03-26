@@ -64,6 +64,7 @@ EOF
 clear
 echo "DNSMasq setup completed!"
 clear
+service dnsmasq restart
 echo "Now, let's set up the admin page login info...."
 sleep 3s
 echo "Please type your user name: "
