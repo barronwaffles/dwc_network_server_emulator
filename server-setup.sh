@@ -10,6 +10,7 @@ vh4="sake.gs.nintendowifi.net"
 mod1="proxy.conf"
 mod2="proxy_http.load"
 mod3="proxy.load"
+mod4="proxy" #This is a fallback module for use with OS's that don't support mod1, mod2 or mod3
 #Don't forget to install the git package before running this script
 #Check if run as root
 if [ "$UID" -ne "$ROOT_UID" ] ; then
@@ -45,7 +46,7 @@ sleep 5s
 echo "Now lets enable the sites so Apache can use them"
 a2ensite $vh1 $vh2 $vh3 $vh4
 echo "Now lets enable some modules so we can make all of this work..."
-a2enmod $mod1 $mod2 $mod3
+a2enmod $mod1 $mod2 $mod3 $mod4
 echo "Great! Everything appears to be set up as far as Apache"
 service apache2 restart
 service apache2 reload
