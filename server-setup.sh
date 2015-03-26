@@ -1,7 +1,16 @@
 #!/bin/bash
+#Variables used by the script in various sections to pre-fill long commandds
 ROOT_UID="0"
-APACHEDIR=/etc/apache2
-#Please put this script into your home folder
+apache="/etc/apache2/sites-available"
+vh="./apache-hosts"
+vh1="gamestats2.gs.nintendowifi.net"
+vh2="gamestats.gs.nintendowifi.net"
+vh3="nas-naswii-dls1-conntest.nintendowifi.net"
+vh4="sake.gs.nintendowifi.net"
+mod1="proxy.conf"
+mod2="proxy_http.load"
+mod3="proxy.load"
+#Don't forget to install the git package before running this script
 #Check if run as root
 if [ "$UID" -ne "$ROOT_UID" ] ; then
 	echo "You must be root to do that!"
@@ -20,82 +29,30 @@ apt-get upgrade -y >/dev/null
 clear
 echo "Upgrades complete!"
 echo "Now installing required packages..."
-apt-get install apache2 python2.7 python-twisted git dnsmasq -y >/dev/null
-echo "Installing Apache, Python 2.7, Python Twisted, GitHub and DNSMasq....."
+apt-get install apache2 python2.7 python-twisted dnsmasq -y >/dev/null
+echo "Installing Apache, Python 2.7, Python Twisted and DNSMasq....."
 clear
-echo "Now I will clone the github repo to the directory of where this script is"
-git config --global http.sslVerify false
-git clone https://github.com/kyle95wm/dwc_network_server_emulator
 echo "Now that that's out of the way, let's do some apache stuff"
-echo "Creating sites to sites-available for virtual hosting of the server"
-echo "changing directory to sites-available"
-cat > "$APACHEDIR/sites-available/gamestats2.gs.nintendowifi.net" <<EOF
-<VirtualHost *:80>
-        ServerAdmin webmaster@localhost
-        ServerName gamestats2.gs.nintendowifi.net
-        ServerAlias "gamestats2.gs.nintendowifi.net, gamestats2.gs.nintendowifi.net"
- 
-        ProxyPreserveHost On
- 
-        ProxyPass / http://127.0.0.1:9002/
-        ProxyPassReverse / http://127.0.0.1:9002/
-</VirtualHost>
-EOF
-
-cat > "$APACHEDIR/sites-available/gamestats.gs.nintendowifi.net" <<EOF
-<VirtualHost *:80>
-        ServerAdmin webmaster@localhost
-        ServerName gamestats.gs.nintendowifi.net
-        ServerAlias "gamestats.gs.nintendowifi.net, gamestats.gs.nintendowifi.net"
-        ProxyPreserveHost On
-        ProxyPass / http://127.0.0.1:9002/
-        ProxyPassReverse / http://127.0.0.1:9002/
-</VirtualHost>
-EOF
-
-cat > "$APACHEDIR/sites-available/nas-naswii-dls1-conntest.nintendowifi.net" <<EOF
-<VirtualHost *:80>
-        ServerAdmin webmaster@localhost
-        ServerName naswii.nintendowifi.net
-        ServerAlias "naswii.nintendowifi.net, naswii.nintendowifi.net"
-        ServerAlias "nas.nintendowifi.net"
-        ServerAlias "nas.nintendowifi.net, nas.nintendowifi.net"
-        ServerAlias "dls1.nintendowifi.net"
-        ServerAlias "dls1.nintendowifi.net, dls1.nintendowifi.net"
-        ServerAlias "conntest.nintendowifi.net"
-        ServerAlias "conntest.nintendowifi.net, conntest.nintendowifi.net"
-        ProxyPreserveHost On
-        ProxyPass / http://127.0.0.1:9000/
-        ProxyPassReverse / http://127.0.0.1:9000/
-</VirtualHost>
-EOF
-
-cat > "$APACHEDIR/sites-available/sake.gs.nintendowifi.net" <<EOF
-<VirtualHost *:80>
-        ServerAdmin webmaster@localhost
-        ServerName sake.gs.nintendowifi.net
-        ServerAlias sake.gs.nintendowifi.net *.sake.gs.nintendowifi.net
-        ServerAlias secure.sake.gs.nintendowifi.net
-        ServerAlias secure.sake.gs.nintendowifi.net *.secure.sake.gs.nintendowifi.net
- 
-        ProxyPass / http://127.0.0.1:8000/
- 
-        CustomLog ${APACHE_LOG_DIR}/access.log combined
-</VirtualHost>
-EOF
-
+echo "Copying virtual hosts to sites-available for virtual hosting of the server"
+cp ./$vh/$vh1 $apache/$vh1
+cp ./$vh/$vh2 $apache/$vh2
+cp ./$vh/$vh3 $apache/$vh3
+cp ./$vh/$vh4 $apache/$vh4
+sleep 5s
 clear
 echo "Okay! Lets hope nothing broke during this process..."
 sleep 5s
 echo "Now lets enable the sites so Apache can use them"
-a2ensite gamestats2.gs.nintendowifi.net gamestats.gs.nintendowifi.net nas-naswii-dls1-conntest.nintendowifi.net sake.gs.nintendowifi.net
+a2ensite $vh1 $vh2 $vh3 $vh4
 echo "Now lets enable some modules so we can make all of this work..."
-a2enmod proxy.conf proxy_http.load proxy.load
+a2enmod $mod1 $mod2 $mod3
 echo "Great! Everything appears to be set up as far as Apache"
 service apache2 restart
 service apache2 reload
-echo "If any errors occour besides the hostname or server name error please look into this yourself as my bash scripting knowledge is very limited"
+apachectl graceful
+echo "If any errors occour besides the hostname or server name error please look into this yourself"
 sleep 5s
+clear
 echo "----------Lets configure DNSMASQ now----------"
 sleep 3s
 echo "What is your EXTERNAL IP?"
@@ -105,17 +62,14 @@ address=/nintendowifi.net/$IP
 EOF
 clear
 echo "DNSMasq setup completed!"
-echo "Let's go back to the home directory where all this began"
-cd
 clear
-cd "dwc_network_server_emulator"
 echo "Now, let's set up the admin page login info...."
 sleep 3s
 echo "Please type your user name: "
 read -e USR
 echo "Please enter the password you want to use: "
 read -s PASS
-cat > adminpageconf.json <<EOF
+cat > ./adminpageconf.json <<EOF
 {"username":"$USR","password":"$PASS"}
 EOF
 echo "Username and password configured!"
@@ -124,4 +78,4 @@ clear
 echo "Now, I BELIEVE everything should be in working order. If not, you might have to do some troubleshooting"
 echo "Assuming my coding hasnt gotten the best of me, you should be in the directory with all the python script along with a new .json file for the admin page info"
 echo "I will now quit...."
-exit 1
+exit 0
