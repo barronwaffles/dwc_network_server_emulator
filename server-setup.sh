@@ -22,14 +22,14 @@ sleep 5s
 echo "Okay! Gotta love when a plan comes together!"
 echo "Let me install a few upgrade and packages on your system for you...."
 echo "If you already have a package installed, I'll simply skip over it or upgrade it"
-apt-get update -y >/dev/null
+apt-get update -y --fix-missing
 echo "Updated repo lists...."
 echo "Installing package upgrades... go kill some time as this may take a few minutes..."
-apt-get upgrade -y >/dev/null
+apt-get upgrade -y
 clear
 echo "Upgrades complete!"
 echo "Now installing required packages..."
-apt-get install apache2 python2.7 python-twisted dnsmasq -y >/dev/null
+apt-get install apache2 python2.7 python-twisted dnsmasq -y
 echo "Installing Apache, Python 2.7, Python Twisted and DNSMasq....."
 clear
 echo "Now that that's out of the way, let's do some apache stuff"
