@@ -12,6 +12,7 @@ mod2="proxy_http.load"
 mod3="proxy.load"
 mod4="proxy" #This is a fallback module for use with OS's that don't support mod1, mod2 or mod3
 cp="/etc/apache2/sites-enabled"
+fqdn="localhost"
 #Don't forget to install the git package before running this script
 #Check if run as root
 if [ "$UID" -ne "$ROOT_UID" ] ; then
@@ -56,6 +57,10 @@ if [ $? != "0" ] ; then
 	a2enmod $mod4
 fi
 echo "Great! Everything appears to be set up as far as Apache"
+echo "Fixing that nagging Apache FQDN error...."
+cat >>/etc/apache2/apache2.conf <<EOF
+ServerName $fqdn
+EOF
 service apache2 restart
 service apache2 reload
 apachectl graceful
