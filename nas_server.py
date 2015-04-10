@@ -222,8 +222,14 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         ret = "%d" % count
 
                 if action == "list":
-                    num = int(post["num"])
-                    offset = int(post["offset"])
+                    num = post.get("num", None)
+                    offset = post.get("offset", None)
+
+                    if num != None:
+                        num = int(num)
+
+                    if offset != None:
+                        offset = int(offset)
 
                     attr1 = post.get("attr1", None)
                     attr2 = post.get("attr2", None)
@@ -233,7 +239,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         # Look for a list file first.
                         # If the list file exists, send the entire thing back to the client.
                         if os.path.isfile(os.path.join(dlcpath, "_list.txt")):
-                            ret = self.filter_list(safeloadfi("_list.txt"), attr1, attr2, attr3)
+                            ret = self.filter_list(safeloadfi("_list.txt"), attr1, attr2, attr3, num, offset)
                             
                             # Don't try to filter any further if the list is empty.
                             if ret.strip() != "":
@@ -334,8 +340,8 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         samples = random.sample(data.splitlines(), count)
         return '\r\n'.join(samples) + '\r\n'
 
-    def filter_list(self, data, attr1 = None, attr2 = None, attr3 = None):
-        if attr1 == None and attr2 == None and attr3 == None:
+    def filter_list(self, data, attr1 = None, attr2 = None, attr3 = None, num = None, offset = None):
+        if attr1 == None and attr2 == None and attr3 == None and num == None and offset == None:
             # Nothing to filter, just return the input data
             return data
 
@@ -343,6 +349,12 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         nc = lambda a, b: (a is None or a == b)
         attrs = lambda data: (len(data) == 6 and nc(attr1, data[2]) and nc(attr2, data[3]) and nc(attr3, data[4]))
         output = filter(lambda line: attrs(line.split("\t")), data.splitlines())
+
+        if offset != None:
+            output = output[offset:]
+
+        if num != None:
+            output = output[:num]
 
         # if nothing matches, at least return a newline; Pokemon BW at least expects this and will error without it
         return '\r\n'.join(output) + '\r\n'
