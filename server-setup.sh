@@ -52,6 +52,9 @@ echo "Okay! Lets hope nothing broke during this process..."
 sleep 5s
 echo "Now lets enable some modules so we can make all of this work..."
 a2enmod $mod1 $mod2 $mod3 $mod4
+if [ $? != "0"] then:
+	a2enmod $mod4
+fi
 echo "Great! Everything appears to be set up as far as Apache"
 service apache2 restart
 service apache2 reload
