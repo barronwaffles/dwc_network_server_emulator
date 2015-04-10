@@ -1,0 +1,14 @@
+<VirtualHost *:80>
+        ServerAdmin webmaster@localhost
+        ServerName naswii.nintendowifi.net
+        ServerAlias "naswii.nintendowifi.net, naswii.nintendowifi.net"
+        ServerAlias "nas.nintendowifi.net"
+        ServerAlias "nas.nintendowifi.net, nas.nintendowifi.net"
+        ServerAlias "dls1.nintendowifi.net"
+        ServerAlias "dls1.nintendowifi.net, dls1.nintendowifi.net"
+        ServerAlias "conntest.nintendowifi.net"
+        ServerAlias "conntest.nintendowifi.net, conntest.nintendowifi.net"
+        ProxyPreserveHost On
+        ProxyPass / http://127.0.0.1:9000/
+        ProxyPassReverse / http://127.0.0.1:9000/
+</VirtualHost>
