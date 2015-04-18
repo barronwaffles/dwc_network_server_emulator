@@ -22,3 +22,8 @@ Luigi Auriemma's Gslist and enctypex_decoder - http://aluigi.altervista.org/pape
 Instructions on how to connect to the public test server are on the wiki: https://github.com/polaris-/dwc_network_server_emulator/wiki  
 Compatibility list: https://github.com/polaris-/dwc_network_server_emulator/wiki/Compatibility  
 Available Nintendo DS Download Content List: https://github.com/polaris-/dwc_network_server_emulator/wiki/Nintendo-DS-Download-Content  
+
+#Instructions for setup for your own server can be found at
+https://github.com/polaris-/dwc_network_server_emulator/wiki/Setting-up-a-server-from-a-fresh-installation-of-Linux
+
+#Beanjr's install script is constantly being updated
