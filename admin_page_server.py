@@ -97,7 +97,6 @@ class AdminPage(resource.Resource):
     def render_whitelist(self, request):
         address = request.getClientIP()
         dbconn = sqlite3.connect('gpcm.db')
-        dbconn.cursor().execute('CREATE TABLE IF NOT EXISTS whitelist (userid TEXT, gameid TEXT, macadr TEXT)')
         logger.log(logging.INFO,address+" Viewed whitelist")
         responsedata = ("<html><meta charset='utf-8'>\r\n"
             "<title>altwfc admin page - WhiteList</title>"
