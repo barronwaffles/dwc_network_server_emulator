@@ -122,6 +122,7 @@ class GamespyDatabase(object):
                 tx.nonquery("CREATE UNIQUE INDEX gamestatprofile_triple on gamestat_profile(profileid,dindex,ptype)")
                 tx.nonquery("CREATE TABLE gameinfo (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
                 tx.nonquery("CREATE TABLE nas_logins (userid TEXT, authtoken TEXT, data TEXT)")
+                tx.nonquery("CREATE TABLE IF NOT EXISTS whitelist (userid TEXT, gameid TEXT, macadr TEXT)")
 
             # Create some indexes for performance.
             tx.nonquery("CREATE UNIQUE INDEX IF NOT EXISTS users_profileid_idx ON users (profileid)")
