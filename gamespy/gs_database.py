@@ -414,7 +414,11 @@ class GamespyDatabase(object):
         if r == None:
             return '0000000000002'#Because all zeroes means Dolphin. Don't wanna get confused during debugging later.
         else:
-            userid = str(int(json.loads(r['max(userid)'])) + 1)
+            userid = '2'
+            try:
+                userid = str(int(json.loads(r['max(userid)'])) + 1)
+            except Exception,e:
+                print "WARNING: Something went wrong so just returning 0000000000002...",str(e)
             while len(userid) < 13:
                 userid = "0"+userid
             return userid
