@@ -409,12 +409,12 @@ class GamespyDatabase(object):
 
     def get_next_available_userid(self):
         with Transaction(self.conn) as tx:
-            row = tx.queryone("SELECT max(userid) FROM users")
+            row = tx.queryone("SELECT max(userid) AS maxuser FROM users")
             r = self.get_dict(row)
-        if r == None:
+        if r == None or r['maxuser'] == None:
             return '0000000000002'#Because all zeroes means Dolphin. Don't wanna get confused during debugging later.
         else:
-            userid = str(int(json.loads(r['max(userid)'])) + 1)
+            userid = str(int(r['maxuser']) + 1)
             while len(userid) < 13:
                 userid = "0"+userid
             return userid
