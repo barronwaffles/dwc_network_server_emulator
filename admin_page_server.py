@@ -1,3 +1,21 @@
+#    DWC Network Server Emulator
+#    Copyright (C) 2014 SMTDDR
+#    Copyright (C) 2014 kyle95wm
+#    Copyright (C) 2014 AdmiralCurtiss
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as
+#    published by the Free Software Foundation, either version 3 of the
+#    License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from twisted.web import server, resource
 from twisted.internet import reactor
 from twisted.internet.error import ReactorAlreadyRunning
@@ -8,6 +26,7 @@ import collections
 import json
 import time
 import datetime
+import os.path
 import logging
 import other.utils as utils
 import gamespy
@@ -26,19 +45,25 @@ logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_
 #
 # NOTE: Must use double-quotes or json module will fail
 # NOTE2: Do not check the .json file into public git!
+
 adminpageconf = None
-try:
-    adminpageconf = file('adminpageconf.json').read().strip()
-except Exception,e:
-    logger.log(logging.INFO,"ERROR reading adminpageconf.json: "+str(e))
-    logger.log(logging.INFO," *** WARN: adminpageconf.json could not be read. Creating one with default values")
-    adminpageconf = '{"username":"admin","password":"opensesame"}'
-    fd = open('adminpageconf.json','w')
-    fd.write(adminpageconf)
-    fd.close()
-adminpageconf = json.loads(adminpageconf)
-admin_username = str(adminpageconf['username']) 
-admin_password = str(adminpageconf['password']) 
+admin_username = None
+admin_password = None
+
+if os.path.exists('adminpageconf.json'):
+    try:
+        adminpageconf = json.loads(file('adminpageconf.json').read().strip())
+        admin_username = str(adminpageconf['username']) 
+        admin_password = str(adminpageconf['password']) 
+    except Exception as e:
+        logger.log(logging.WARNING, "Couldn't read adminpageconf.json. Admin page will not be available.")
+        logger.log(logging.WARNING, str(e))
+        adminpageconf = None
+        admin_username = None
+        admin_password = None
+else:
+    logger.log(logging.INFO, "adminpageconf.json not found. Admin page will not be available.")
+    
 
 class AdminPage(resource.Resource):
     isLeaf = True
@@ -55,13 +80,8 @@ class AdminPage(resource.Resource):
             expected_auth = base64.encodestring(admin_username+":"+admin_password).strip()
             actual_auth = request.getAllHeaders()['authorization'].replace("Basic ","").strip()
             if actual_auth == expected_auth:
-                if actual_auth == 'YWRtaW46b3BlbnNlc2FtZQ==':
-                    error_message = ( 'You must change the default values in adminpageconf.json'
-                    '<a href="http://%20:%20@'+request.getHeader('host')+'">[LOG OUT]</a>' )
-                    response_code = 500
-                else:
-                    logger.log(logging.INFO,address+" Auth Success")
-                    is_auth = True
+                logger.log(logging.INFO,address+" Auth Success")
+                is_auth = True
         except Exception,e:
                 logger.log(logging.INFO,address+" Auth Error: "+str(e))
         if not is_auth:
@@ -125,7 +145,16 @@ class AdminPage(resource.Resource):
         request.setHeader("Content-Type", "text/html; charset=utf-8")
         return responsedata
 
+    def render_not_available(self, request):
+        request.setResponseCode(403)
+        request.setHeader('WWW-Authenticate', 'Basic realm="ALTWFC"')
+        request.write('No admin credentials set. Admin page is not available.')
+   
     def render_GET(self, request):
+        if not adminpageconf:
+            self.render_not_available(request)
+            return ""
+        
         if not self.is_authorized(request):
             return ""
         if request.path == "/whitelist":
@@ -202,6 +231,10 @@ class AdminPage(resource.Resource):
         return responsedata.encode('utf-8')
 
     def render_POST(self, request):
+        if not adminpageconf:
+            self.render_not_available(request)
+            return ""
+        
         if not self.is_authorized(request):
             return ""
         if request.path == "/updatewhitelist":
