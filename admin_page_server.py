@@ -71,6 +71,29 @@ class AdminPage(resource.Resource):
     def __init__(self,adminpage):
         self.adminpage = adminpage
 
+    def get_header(self, title = None):
+        if not title:
+            title = 'AltWfc Admin Page'
+        s = (
+        '<html>'
+        '<head>'
+            '<title>' + title + '</title>'
+        '</head>'
+        '<body>'
+            '<p>'
+                '<a href="/banhammer">Blacklist</a> '
+                '<a href="/whitelist">Whitelist</a> '
+            '</p>'
+        )
+        return s
+    
+    def get_footer(self):
+        s = (
+        '</body>'
+        '</html>'
+        )
+        return s
+
     def is_authorized(self, request):
         is_auth = False
         response_code = 401
@@ -112,14 +135,15 @@ class AdminPage(resource.Resource):
         dbconn.close()
         logger.log(logging.INFO,address+" "+responsedata)
         request.setHeader("Content-Type", "text/html; charset=utf-8")
+        request.setHeader("Location", "/whitelist")
+        request.setResponseCode(303)
         return responsedata
 
     def render_whitelist(self, request):
         address = request.getClientIP()
         dbconn = sqlite3.connect('gpcm.db')
         logger.log(logging.INFO,address+" Viewed whitelist")
-        responsedata = ("<html><meta charset='utf-8'>\r\n"
-            "<title>altwfc admin page - WhiteList</title>"
+        responsedata = (""
             '<a href="http://%20:%20@'+request.getHeader('host')+'">[CLICK HERE TO LOG OUT]</a>'
             "<form action='updatewhitelist' method='POST'>"
             "userid:<input type='text' name='userid'>\r\n"
@@ -140,28 +164,17 @@ class AdminPage(resource.Resource):
                 "<input type='hidden' name='macadr' value='"+macadr+"'>"
                 "<input type='hidden' name='actiontype' value='remove'>\r\n"
                 "<input type='submit' value='Remove from whitelist'></form></td></tr>\r\n")
-        responsedata += "</table></html>" 
+        responsedata += "</table>" 
         dbconn.close()
         request.setHeader("Content-Type", "text/html; charset=utf-8")
         return responsedata
-
+        
     def render_not_available(self, request):
         request.setResponseCode(403)
         request.setHeader('WWW-Authenticate', 'Basic realm="ALTWFC"')
         request.write('No admin credentials set. Admin page is not available.')
-   
-    def render_GET(self, request):
-        if not adminpageconf:
-            self.render_not_available(request)
-            return ""
-        
-        if not self.is_authorized(request):
-            return ""
-        if request.path == "/whitelist":
-            return self.render_whitelist(request)
-        if request.path != "/banhammer":
-            request.setResponseCode(500)
-            return "wrong url path"
+    
+    def render_blacklist(self, request):
         sqlstatement = (''
             'select users.profileid,enabled,data,users.gameid,console,users.userid '
             'from nas_logins '
@@ -176,11 +189,9 @@ class AdminPage(resource.Resource):
             'order by users.gameid '
             '') 
         dbconn = sqlite3.connect('gpcm.db')
-        responsedata = ("<html><meta charset='utf-8'>\r\n"
-            "<title>altwfc admin page</title>"
+        responsedata = (""
             '<a href="http://%20:%20@'+request.getHeader('host')+'">[CLICK HERE TO LOG OUT]</a>'
             "<br><br>"
-            '<a href="http://'+request.getHeader('host')+'/whitelist">WhiteList</a>'
             "<table border='1'>" 
             "<tr><td>ingamesn or devname</td><td>gameid</td>"
             "<td>Enabled</td><td>newest dwc_pid</td>"
@@ -225,23 +236,12 @@ class AdminPage(resource.Resource):
                 "<input type='hidden' name='gameid' value='"+gameid+"'>"
                 "<input type='hidden' name='ingamesn' value='"+ingamesn+"'>"
                 "<input type='submit' value='----- unban -----'></form></td></tr>")
-        responsedata += "</table></html>" 
+        responsedata += "</table>" 
         dbconn.close()
         request.setHeader("Content-Type", "text/html; charset=utf-8")
         return responsedata.encode('utf-8')
-
-    def render_POST(self, request):
-        if not adminpageconf:
-            self.render_not_available(request)
-            return ""
         
-        if not self.is_authorized(request):
-            return ""
-        if request.path == "/updatewhitelist":
-            return self.update_whitelist(request)
-        if request.path != "/enableuser" and request.path != "/disableuser":
-            request.setResponseCode(500)
-            return "wrong url path"
+    def enable_disable_user(self, request, enable=True):
         address = request.getClientIP()
         responsedata = ""
         userid = request.args['userid'][0]
@@ -253,7 +253,7 @@ class AdminPage(resource.Resource):
             return "Bad data"
 
         dbconn = sqlite3.connect('gpcm.db')
-        if request.path == "/enableuser":
+        if enable:
             dbconn.cursor().execute('update users set enabled=1 '
             'where gameid=? and userid=?',(gameid,userid))
             responsedata = "Enabled %s with gameid=%s, userid=%s" % \
@@ -267,13 +267,50 @@ class AdminPage(resource.Resource):
         dbconn.close()
         logger.log(logging.INFO,address+" "+responsedata)
         request.setHeader("Content-Type", "text/html; charset=utf-8")
+        request.setHeader("Location", "/banhammer")
+        request.setResponseCode(303)
         return responsedata
 
+    def render_GET(self, request):
+        if not adminpageconf:
+            self.render_not_available(request)
+            return ""
+        if not self.is_authorized(request):
+            return ""
+        
+        title = None
+        response = ''
+        if request.path == "/whitelist":
+            title = 'AltWfc Whitelist'
+            response = self.render_whitelist(request)
+        elif request.path == "/banhammer":
+            title = 'AltWfc Blacklist'
+            response = self.render_blacklist(request)
+        
+        return self.get_header(title) + response + self.get_footer()
 
+    def render_POST(self, request):
+        if not adminpageconf:
+            self.render_not_available(request)
+            return ""
+        if not self.is_authorized(request):
+            return ""
+        
+        if request.path == "/updatewhitelist":
+            return self.update_whitelist(request)
+        elif request.path == "/enableuser":
+            return self.enable_disable_user(request, True)
+        elif request.path == "/disableuser":
+            return self.enable_disable_user(request, False)
+        else:
+            return self.get_header() + self.get_footer()
+
+port = 9009
 class AdminPageServer(object):
     def start(self):
         site = server.Site(AdminPage(self))
-        reactor.listenTCP(9009, site)
+        reactor.listenTCP(port, site)
+        logger.log(logging.INFO, "Now listening for connections on port %d...", port)
         try:
             if reactor.running == False:
                 reactor.run(installSignalHandlers=0)
