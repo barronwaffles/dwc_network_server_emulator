@@ -300,7 +300,17 @@ class PlayerSession(LineReceiver):
             #     self.statstring = profile['stat']
             #     self.locstring = profile['loc']
         else:
-            self.log(logging.WARNING, "Invalid password")
+            self.log(logging.INFO, "Invalid password or banned user")
+            msg = gs_query.create_gamespy_message([
+                ('__cmd__', "error"),
+                ('__cmd_val__', ""),
+                ('err', '256'),
+                ('fatal', ''),
+                ('errmsg', 'Login failed.'),
+                ('id', data_parsed['id']),
+            ])
+            self.log(logging.DEBUG, "SENDING: %s" % msg)
+            self.transport.write(bytes(msg))
 
     def perform_logout(self, data_parsed):
         self.log(logging.INFO, "Session %s has logged off" % (data_parsed['sesskey']))
