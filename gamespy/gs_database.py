@@ -211,7 +211,7 @@ class GamespyDatabase(object):
 
         #Check for console ban
         with Transaction(self.conn) as tx:
-            row = tx.queryone("SELECT * FROM users WHERE userid = ? and gameid = ? and enabled = 0 "
+            row = tx.queryone("SELECT * FROM users WHERE userid = ? and gameid = ? and enabled = 0 and bssid = ? "
                 "and gameid not in (select gameid from whitelist where gameid=? and macadr=?) limit 1"
                 ,(userid, gameid, gameid, macadr))
             r = self.get_dict(row)
