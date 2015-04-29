@@ -246,6 +246,7 @@ class AdminPage(resource.Resource):
                 "<input type='hidden' name='ingamesn' value='"+ingamesn+"'>"
                 "<input type='hidden' name='cfc' value='"+cfc+"'>"
                 "<input type='hidden' name='csnum' value='"+csnum+"'>"
+                "<input type='hidden' name='macadr' value='"+macadr+"'>"
                 "<input type='submit' value='----- unban -----'></form></td></tr>")
         responsedata += "</table>" 
         dbconn.close()
