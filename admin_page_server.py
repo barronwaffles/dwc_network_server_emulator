@@ -195,7 +195,7 @@ class AdminPage(resource.Resource):
             "<table border='1'>" 
             "<tr><td>ingamesn or devname</td><td>gameid</td>"
             "<td>Enabled</td><td>newest dwc_pid</td>"
-            "<td>gsbrcd</td><td>userid</td>><td>CFC</td><td>SN</td><td>MAC</td></tr>\r\n")
+            "<td>gsbrcd</td><td>userid</td><td>CFC</td><td>SN</td><td>MAC</td></tr>\r\n")
         for row in dbconn.cursor().execute(sqlstatement):
             dwc_pid = str(row[0])
             enabled = str(row[1])
