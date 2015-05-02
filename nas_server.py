@@ -112,18 +112,30 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 elif action == "login":
                     challenge = utils.generate_random_str(8)
                     post["challenge"] = challenge
-                    authtoken = self.server.db.generate_authtoken(post["userid"], post)
-                    ret.update({
-                        "returncd": "001",
-                        "locator": "gamespy.com",
-                        "challenge": challenge,
-                        "token": authtoken,
-                    })
+                    
+                    if self.server.db.check_user_enabled(post["userid"], post["gsbrcd"]):
+                        authtoken = self.server.db.generate_authtoken(post["userid"], post)
+                        ret.update({
+                            "returncd": "001",
+                            "locator": "gamespy.com",
+                            "challenge": challenge,
+                            "token": authtoken,
+                        })
 
-                    logger.log(logging.DEBUG, "login response to %s", self.client_address)
-                    logger.log(logging.DEBUG, ret)
+                        logger.log(logging.DEBUG, "login response to %s", self.client_address)
+                        logger.log(logging.DEBUG, ret)
 
-                    ret = self.dict_to_str(ret)
+                        ret = self.dict_to_str(ret)
+                    else:
+                        # user is banned
+                        ret.update({
+                            "returncd": "3912",
+                            "locator": "gamespy.com",
+                        })
+                        logger.log(logging.DEBUG, "login response to %s (user banned)", self.client_address)
+                        logger.log(logging.DEBUG, ret)
+
+                        ret = self.dict_to_str(ret)
 
                 elif action == "SVCLOC" or action == "svcloc": # Get service based on service id number
                     ret["returncd"] = "007"

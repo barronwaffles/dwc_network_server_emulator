@@ -170,6 +170,12 @@ class GamespyDatabase(object):
 
         return valid_user
 
+    def check_user_enabled(self, userid, gsbrcd):
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT enabled FROM users WHERE userid = ? AND gsbrcd = ?", (userid, gsbrcd))
+            enabled = int(row[0])
+        return enabled > 0
+    
     def check_profile_exists(self, profileid):
         with Transaction(self.conn) as tx:
             row = tx.queryone("SELECT COUNT(*) FROM users WHERE profileid = ?", (profileid,))
