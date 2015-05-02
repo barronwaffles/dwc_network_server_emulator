@@ -113,7 +113,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     challenge = utils.generate_random_str(8)
                     post["challenge"] = challenge
                     
-                    if self.server.db.check_user_enabled(post["userid"], post["gsbrcd"]):
+                    if not self.server.db.check_user_exists(post["userid"], post["gsbrcd"]) or self.server.db.check_user_enabled(post["userid"], post["gsbrcd"]):
                         authtoken = self.server.db.generate_authtoken(post["userid"], post)
                         ret.update({
                             "returncd": "001",
