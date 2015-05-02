@@ -86,9 +86,13 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         try:
             length = int(self.headers['content-length'])
             post = self.str_to_dict(self.rfile.read(length))
+            if self.client_address[0] == '127.0.0.1':
+                client_address = (self.headers.get('x-forwarded-for', self.client_address[0]), self.client_address[1])
+            else:
+                client_address = self.client_address
 
             if self.path == "/ac":
-                logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
+                logger.log(logging.DEBUG, "Request to %s from %s", self.path, client_address)
                 logger.log(logging.DEBUG, post)
                 ret = {
                     "datetime": time.strftime("%Y%m%d%H%M%S"),
@@ -104,7 +108,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     ret["returncd"] = "002"
                     ret['userid'] = self.server.db.get_next_available_userid()
 
-                    logger.log(logging.DEBUG, "acctcreate response to %s", self.client_address)
+                    logger.log(logging.DEBUG, "acctcreate response to %s", client_address)
                     logger.log(logging.DEBUG, ret)
 
                     ret = self.dict_to_str(ret)
@@ -122,7 +126,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             "token": authtoken,
                         })
 
-                        logger.log(logging.DEBUG, "login response to %s", self.client_address)
+                        logger.log(logging.DEBUG, "login response to %s", client_address)
                         logger.log(logging.DEBUG, ret)
 
                         ret = self.dict_to_str(ret)
@@ -132,7 +136,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             "returncd": "3912",
                             "locator": "gamespy.com",
                         })
-                        logger.log(logging.DEBUG, "login response to %s (user banned)", self.client_address)
+                        logger.log(logging.DEBUG, "login response to %s (user banned)", client_address)
                         logger.log(logging.DEBUG, ret)
 
                         ret = self.dict_to_str(ret)
@@ -157,16 +161,16 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             ret["servicetoken"] = authtoken
                             ret["svchost"] = "n/a"
 
-                    logger.log(logging.DEBUG, "svcloc response to %s", self.client_address)
+                    logger.log(logging.DEBUG, "svcloc response to %s", client_address)
                     logger.log(logging.DEBUG, ret)
 
                     ret = self.dict_to_str(ret)
                 else:
-                    logger.log(logging.WARNING, "Unknown action request %s from %s!", self.path, self.client_address)
+                    logger.log(logging.WARNING, "Unknown action request %s from %s!", self.path, client_address)
 
 
             elif self.path == "/pr":
-                logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
+                logger.log(logging.DEBUG, "Request to %s from %s", self.path, client_address)
                 logger.log(logging.DEBUG, post)
                 words = len(post["words"].split('\t'))
                 wordsret = "0" * words
@@ -183,13 +187,13 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 self.send_header("Content-type", "text/plain")
                 self.send_header("NODE", "wifiappe1")
 
-                logger.log(logging.DEBUG, "pr response to %s", self.client_address)
+                logger.log(logging.DEBUG, "pr response to %s", client_address)
                 logger.log(logging.DEBUG, ret)
 
                 ret = self.dict_to_str(ret)
 
             elif self.path == "/download":
-                logger.log(logging.DEBUG, "Request to %s from %s", self.path, self.client_address)
+                logger.log(logging.DEBUG, "Request to %s from %s", self.path, client_address)
                 logger.log(logging.DEBUG, post)
 
                 action = post["action"]
@@ -280,13 +284,13 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
                 self.send_header("X-DLS-Host", "http://127.0.0.1/")
 
-                logger.log(logging.DEBUG, "download response to %s", self.client_address)
+                logger.log(logging.DEBUG, "download response to %s", client_address)
 
                 #if dlc_contenttype == False:
                 #    logger.log(logging.DEBUG, ret)
             else:
                 self.send_response(404)
-                logger.log(logging.WARNING, "Unknown path request %s from %s!", self.path, self.client_address)
+                logger.log(logging.WARNING, "Unknown path request %s from %s!", self.path, client_address)
                 return
 
             self.send_header("Content-Length", str(len(ret)))
