@@ -285,7 +285,9 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 #if dlc_contenttype == False:
                 #    logger.log(logging.DEBUG, ret)
             else:
+                self.send_response(404)
                 logger.log(logging.WARNING, "Unknown path request %s from %s!", self.path, self.client_address)
+                return
 
             self.send_header("Content-Length", str(len(ret)))
             self.end_headers()
