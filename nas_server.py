@@ -88,6 +88,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             post = self.str_to_dict(self.rfile.read(length))
             if self.client_address[0] == '127.0.0.1':
                 client_address = (self.headers.get('x-forwarded-for', self.client_address[0]), self.client_address[1])
+                post['ipaddr'] = client_address[0]
             else:
                 client_address = self.client_address
 
