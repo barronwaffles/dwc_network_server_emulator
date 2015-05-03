@@ -195,7 +195,7 @@ class AdminPage(resource.Resource):
             "<table border='1'>" 
             "<tr><td>ingamesn or devname</td><td>gameid</td>"
             "<td>Enabled</td><td>newest dwc_pid</td>"
-            "<td>gsbrcd</td><td>userid</td></tr>\r\n")
+            "<td>gsbrcd</td><td>userid</td><td>MAC</td></tr>\r\n")
         for row in dbconn.cursor().execute(sqlstatement):
             dwc_pid = str(row[0])
             enabled = str(row[1])
@@ -204,6 +204,7 @@ class AdminPage(resource.Resource):
             is_console = int(str(row[4]))
             userid = str(row[5])
             gsbrcd = str(nasdata['gsbrcd'])
+            macadr = str (nasdata['macadr'])
             ingamesn = ''
             if 'ingamesn' in nasdata:
                 ingamesn = str(nasdata['ingamesn'])
@@ -224,17 +225,20 @@ class AdminPage(resource.Resource):
             responsedata += "<td>"+dwc_pid+"</td>"
             responsedata += "<td>"+gsbrcd+"</td>"
             responsedata += "<td>"+userid+"</td>"
+            responsedata += "<td>"+macadr+"</td>"
             if enabled == "1":
                 responsedata += ("<td><form action='disableuser' method='POST'>"
                 "<input type='hidden' name='userid' value='"+userid+"'>"
                 "<input type='hidden' name='gameid' value='"+gameid+"'>"
                 "<input type='hidden' name='ingamesn' value='"+ingamesn+"'>"
+                "<input type='hidden' name='macadr' value='"+macadr+"'>"
                 "<input type='submit' value='Ban'></form></td></tr>")
             else:
                 responsedata += ("<td><form action='enableuser' method='POST'>"
                 "<input type='hidden' name='userid' value='"+userid+"'>"
                 "<input type='hidden' name='gameid' value='"+gameid+"'>"
                 "<input type='hidden' name='ingamesn' value='"+ingamesn+"'>"
+                "<input type='hidden' name='macadr' value='"+macadr+"'>"
                 "<input type='submit' value='----- unban -----'></form></td></tr>")
         responsedata += "</table>" 
         dbconn.close()
@@ -319,4 +323,3 @@ class AdminPageServer(object):
 
 if __name__ == "__main__":
     AdminPageServer().start()
-
