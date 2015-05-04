@@ -43,7 +43,7 @@ logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_
 # this is used for Mystery Gift distribution on Generation 4 Pokemon games
 gamecodes_return_random_file = ['ADAD', 'ADAE', 'ADAF', 'ADAI', 'ADAJ', 'ADAK', 'ADAS', 'CPUD', 'CPUE', 'CPUF', 'CPUI', 'CPUJ', 'CPUK', 'CPUS', 'IPGD', 'IPGE', 'IPGF', 'IPGI', 'IPGJ', 'IPGK', 'IPGS']
 
-#address = ("0.0.0.0", 8080)
+#address = ("0.0.0.0", 80)
 address = ("127.0.0.1", 9000)
 
 class NasServer(object):
@@ -114,7 +114,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             "returncd": "3913",
                             "locator": "gamespy.com",
                             "retry": "1",
-                            "reason":"because you're banned"
+                            "reason": "User banned."
                         }
                     else:
                         ret["returncd"] = "002"
@@ -133,7 +133,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             "returncd": "3914",
                             "locator": "gamespy.com",
                             "retry": "1",
-                            "reason":"because you're banned"
+                            "reason": "User banned."
                         }
                     else:
                         challenge = utils.generate_random_str(8)
