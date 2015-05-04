@@ -124,12 +124,17 @@ class AdminPage(resource.Resource):
             request.setResponseCode(500)
             logger.log(logging.INFO,address+" Bad data "+gameid+" "+ipaddr)
             return "Bad data"
+            
+        # this strips the region identifier from game IDs, not sure if this actually always accurate but limited testing suggests it is
+        if len(gameid) > 3:
+            gameid = gameid[:-1]
+            
         if actiontype == 'ban':
-            dbconn.cursor().execute('insert into banned values(?,?)',(gameid[:-1],ipaddr))
-            responsedata = "Added gameid=%s, ipaddr=%s" %  (gameid[:-1],ipaddr)
+            dbconn.cursor().execute('insert into banned values(?,?)',(gameid,ipaddr))
+            responsedata = "Added gameid=%s, ipaddr=%s" %  (gameid,ipaddr)
         else:
-            dbconn.cursor().execute('delete from banned where gameid=? and ipaddr=?',(gameid[:-1],ipaddr))
-            responsedata = "Removed gameid=%s, ipaddr=%s" %  (gameid[:-1],ipaddr)
+            dbconn.cursor().execute('delete from banned where gameid=? and ipaddr=?',(gameid,ipaddr))
+            responsedata = "Removed gameid=%s, ipaddr=%s" %  (gameid,ipaddr)
         dbconn.commit()
         dbconn.close()
         logger.log(logging.INFO,address+" "+responsedata)
