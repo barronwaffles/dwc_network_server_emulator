@@ -105,26 +105,22 @@ class GamespyDatabase(object):
 
     def initialize_database(self):
         with Transaction(self.conn) as tx:
-            row = tx.queryone("SELECT COUNT(*) FROM sqlite_master WHERE name = 'users' AND type = 'table'")
-            count = int(row[0])
-
             # I highly doubt having everything in a database be of the type TEXT is a good practice,
             # but I'm not good with databases and I'm not 100% positive that, for instance, that all
             # user id's will be ints, or all passwords will be ints, etc, despite not seeing any
             # evidence yet to say otherwise as far as Nintendo DS games go.
 
-            if count < 1:
-                tx.nonquery("CREATE TABLE users (profileid INT, userid TEXT, password TEXT, gsbrcd TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, firstname TEXT, lastname TEXT, stat TEXT, partnerid TEXT, console INT, csnum TEXT, cfc TEXT, bssid TEXT, devname BLOB, birth TEXT, gameid TEXT, enabled INT, zipcode TEXT, aim TEXT)")
-                tx.nonquery("CREATE TABLE sessions (session TEXT, profileid INT, loginticket TEXT)")
-                tx.nonquery("CREATE TABLE buddies (userProfileId INT, buddyProfileId INT, time INT, status INT, notified INT, gameid TEXT, blocked INT)")
-                tx.nonquery("CREATE TABLE pending_messages (sourceid INT, targetid INT, msg TEXT)")
-                tx.nonquery("CREATE TABLE gamestat_profile (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
-                tx.nonquery("CREATE UNIQUE INDEX gamestatprofile_triple on gamestat_profile(profileid,dindex,ptype)")
-                tx.nonquery("CREATE TABLE gameinfo (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
-                tx.nonquery("CREATE TABLE nas_logins (userid TEXT, authtoken TEXT, data TEXT)")
-                tx.nonquery("CREATE TABLE IF NOT EXISTS whitelist (userid TEXT, gameid TEXT, macadr TEXT)")
+            tx.nonquery("CREATE TABLE IF NOT EXISTS users (profileid INT, userid TEXT, password TEXT, gsbrcd TEXT, email TEXT, uniquenick TEXT, pid TEXT, lon TEXT, lat TEXT, loc TEXT, firstname TEXT, lastname TEXT, stat TEXT, partnerid TEXT, console INT, csnum TEXT, cfc TEXT, bssid TEXT, devname BLOB, birth TEXT, gameid TEXT, enabled INT, zipcode TEXT, aim TEXT)")
+            tx.nonquery("CREATE TABLE IF NOT EXISTS sessions (session TEXT, profileid INT, loginticket TEXT)")
+            tx.nonquery("CREATE TABLE IF NOT EXISTS buddies (userProfileId INT, buddyProfileId INT, time INT, status INT, notified INT, gameid TEXT, blocked INT)")
+            tx.nonquery("CREATE TABLE IF NOT EXISTS pending_messages (sourceid INT, targetid INT, msg TEXT)")
+            tx.nonquery("CREATE TABLE IF NOT EXISTS gamestat_profile (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
+            tx.nonquery("CREATE TABLE IF NOT EXISTS gameinfo (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
+            tx.nonquery("CREATE TABLE IF NOT EXISTS nas_logins (userid TEXT, authtoken TEXT, data TEXT)")
+            tx.nonquery("CREATE TABLE IF NOT EXISTS banned (gameid TEXT, ipaddr TEXT)")
 
             # Create some indexes for performance.
+            tx.nonquery("CREATE UNIQUE INDEX IF NOT EXISTS gamestatprofile_triple on gamestat_profile(profileid,dindex,ptype)")
             tx.nonquery("CREATE UNIQUE INDEX IF NOT EXISTS users_profileid_idx ON users (profileid)")
             tx.nonquery("CREATE INDEX IF NOT EXISTS users_userid_idx ON users (userid)")
             tx.nonquery("CREATE INDEX IF NOT EXISTS pending_messages_targetid_idx ON pending_messages (targetid)")
@@ -215,16 +211,6 @@ class GamespyDatabase(object):
 
     def create_user(self, userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth, gameid, macadr):
 
-        #Check for console ban
-        with Transaction(self.conn) as tx:
-            row = tx.queryone("SELECT * FROM users WHERE userid = ? and gameid = ? and enabled = 0 "
-                "and gameid not in (select gameid from whitelist where gameid=? and macadr=?) limit 1"
-                ,(userid, gameid, gameid, macadr))
-            r = self.get_dict(row)
-        if r != None:
-            logger.log(logging.INFO, "--- REJECTING BANNED CONSOLE --- userid=%s,gameid=%s,macadr=%s", userid,gameid,macadr)
-            return None
-        
         if self.check_user_exists(userid, gsbrcd) == 0:
             profileid = self.get_next_free_profileid()
 
@@ -412,6 +398,11 @@ class GamespyDatabase(object):
             return None
         else:
             return json.loads(r["data"])
+
+    def is_banned(self,postdata):
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT COUNT(*) FROM banned WHERE gameid = ? AND ipaddr = ?",(postdata['gamecd'][:-1],postdata['ipaddr']))
+            return int(row[0]) > 0
 
     def get_next_available_userid(self):
         with Transaction(self.conn) as tx:
