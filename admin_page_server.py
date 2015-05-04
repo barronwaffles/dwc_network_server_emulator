@@ -139,7 +139,12 @@ class AdminPage(resource.Resource):
         dbconn.close()
         logger.log(logging.INFO,address+" "+responsedata)
         request.setHeader("Content-Type", "text/html; charset=utf-8")
-        request.setHeader("Location", "/banhammer")
+        
+        referer = request.getHeader('referer')
+        if not referer:
+            referer = "/banhammer"
+        request.setHeader("Location", referer)
+        
         request.setResponseCode(303)
         return responsedata
 
