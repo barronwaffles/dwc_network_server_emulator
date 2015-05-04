@@ -532,8 +532,12 @@ class GamespyDatabase(object):
     # Gamestats-related functions
     def pd_insert(self, profileid, dindex, ptype, data):
         with Transaction(self.conn) as tx:
-            tx.nonquery("INSERT OR REPLACE INTO gamestat_profile (profileid, dindex, ptype, data) VALUES(?,?,?,?)", (profileid, dindex, ptype, data))
-            tx.nonquery("UPDATE gamestat_profile SET data = ? WHERE profileid = ? AND dindex = ? AND ptype = ?", (data, profileid, dindex, ptype))
+            row = tx.queryone("SELECT COUNT(*) FROM gamestat_profile WHERE profileid = ? AND dindex = ? AND ptype = ?", (profileid, dindex, ptype))
+            count = int(row[0])
+            if count > 0:
+                tx.nonquery("UPDATE gamestat_profile SET data = ? WHERE profileid = ? AND dindex = ? AND ptype = ?", (data, profileid, dindex, ptype))
+            else:
+                tx.nonquery("INSERT INTO gamestat_profile (profileid, dindex, ptype, data) VALUES(?,?,?,?)", (profileid, dindex, ptype, data))
 
     def pd_get(self, profileid, dindex, ptype):
         with Transaction(self.conn) as tx:
