@@ -139,25 +139,16 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         challenge = utils.generate_random_str(8)
                         post["challenge"] = challenge
                         
-                        if not self.server.db.check_user_exists(post["userid"], post["gsbrcd"]) or self.server.db.check_user_enabled(post["userid"], post["gsbrcd"]):
-                            authtoken = self.server.db.generate_authtoken(post["userid"], post)
-                            ret.update({
-                                "returncd": "001",
-                                "locator": "gamespy.com",
-                                "challenge": challenge,
-                                "token": authtoken,
-                            })
+                        authtoken = self.server.db.generate_authtoken(post["userid"], post)
+                        ret.update({
+                            "returncd": "001",
+                            "locator": "gamespy.com",
+                            "challenge": challenge,
+                            "token": authtoken,
+                        })
 
-                            logger.log(logging.DEBUG, "login response to %s", client_address)
-                            logger.log(logging.DEBUG, ret)
-                        else:
-                            # user is banned
-                            ret.update({
-                                "returncd": "3912",
-                                "locator": "gamespy.com",
-                            })
-                            logger.log(logging.DEBUG, "login response to %s (user banned)", client_address)
-                            logger.log(logging.DEBUG, ret)
+                        logger.log(logging.DEBUG, "login response to %s", client_address)
+                        logger.log(logging.DEBUG, ret)
 
                     ret = self.dict_to_str(ret)
 
