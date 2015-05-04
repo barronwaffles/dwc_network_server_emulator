@@ -130,7 +130,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         logger.log(logging.DEBUG, "login denied for banned user "+str(post))
                         ret = {
                             "datetime": time.strftime("%Y%m%d%H%M%S"),
-                            "returncd": "3917",
+                            "returncd": "0102",
                             "locator": "gamespy.com",
                             "retry": "1",
                             "reason": "User banned."
