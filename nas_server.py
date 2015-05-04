@@ -43,7 +43,7 @@ logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_
 # this is used for Mystery Gift distribution on Generation 4 Pokemon games
 gamecodes_return_random_file = ['ADAD', 'ADAE', 'ADAF', 'ADAI', 'ADAJ', 'ADAK', 'ADAS', 'CPUD', 'CPUE', 'CPUF', 'CPUI', 'CPUJ', 'CPUK', 'CPUS', 'IPGD', 'IPGE', 'IPGF', 'IPGI', 'IPGJ', 'IPGK', 'IPGS']
 
-#address = ("0.0.0.0", 80)
+#address = ("0.0.0.0", 8080)
 address = ("127.0.0.1", 9000)
 
 class NasServer(object):
@@ -88,9 +88,10 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             post = self.str_to_dict(self.rfile.read(length))
             if self.client_address[0] == '127.0.0.1':
                 client_address = (self.headers.get('x-forwarded-for', self.client_address[0]), self.client_address[1])
-                post['ipaddr'] = client_address[0]
             else:
                 client_address = self.client_address
+
+            post['ipaddr'] = client_address[0]
 
             if self.path == "/ac":
                 logger.log(logging.DEBUG, "Request to %s from %s", self.path, client_address)
@@ -106,41 +107,59 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
                 if action == "acctcreate":
                     # TODO: test for duplicate accounts
-                    ret["returncd"] = "002"
-                    ret['userid'] = self.server.db.get_next_available_userid()
+                    if self.server.db.is_banned(post):
+                        logger.log(logging.DEBUG, "acctcreate denied for banned user "+str(post))
+                        ret = {
+                            "datetime": time.strftime("%Y%m%d%H%M%S"),
+                            "returncd": "3913",
+                            "locator": "gamespy.com",
+                            "retry": "1",
+                            "reason":"because you're banned"
+                        }
+                    else:
+                        ret["returncd"] = "002"
+                        ret['userid'] = self.server.db.get_next_available_userid()
 
-                    logger.log(logging.DEBUG, "acctcreate response to %s", client_address)
-                    logger.log(logging.DEBUG, ret)
+                        logger.log(logging.DEBUG, "acctcreate response to %s", client_address)
+                        logger.log(logging.DEBUG, ret)
 
                     ret = self.dict_to_str(ret)
 
                 elif action == "login":
-                    challenge = utils.generate_random_str(8)
-                    post["challenge"] = challenge
-                    
-                    if not self.server.db.check_user_exists(post["userid"], post["gsbrcd"]) or self.server.db.check_user_enabled(post["userid"], post["gsbrcd"]):
-                        authtoken = self.server.db.generate_authtoken(post["userid"], post)
-                        ret.update({
-                            "returncd": "001",
+                    if self.server.db.is_banned(post):
+                        logger.log(logging.DEBUG, "login denied for banned user "+str(post))
+                        ret = {
+                            "datetime": time.strftime("%Y%m%d%H%M%S"),
+                            "returncd": "3914",
                             "locator": "gamespy.com",
-                            "challenge": challenge,
-                            "token": authtoken,
-                        })
-
-                        logger.log(logging.DEBUG, "login response to %s", client_address)
-                        logger.log(logging.DEBUG, ret)
-
-                        ret = self.dict_to_str(ret)
+                            "retry": "1",
+                            "reason":"because you're banned"
+                        }
                     else:
-                        # user is banned
-                        ret.update({
-                            "returncd": "3912",
-                            "locator": "gamespy.com",
-                        })
-                        logger.log(logging.DEBUG, "login response to %s (user banned)", client_address)
-                        logger.log(logging.DEBUG, ret)
+                        challenge = utils.generate_random_str(8)
+                        post["challenge"] = challenge
+                        
+                        if not self.server.db.check_user_exists(post["userid"], post["gsbrcd"]) or self.server.db.check_user_enabled(post["userid"], post["gsbrcd"]):
+                            authtoken = self.server.db.generate_authtoken(post["userid"], post)
+                            ret.update({
+                                "returncd": "001",
+                                "locator": "gamespy.com",
+                                "challenge": challenge,
+                                "token": authtoken,
+                            })
 
-                        ret = self.dict_to_str(ret)
+                            logger.log(logging.DEBUG, "login response to %s", client_address)
+                            logger.log(logging.DEBUG, ret)
+                        else:
+                            # user is banned
+                            ret.update({
+                                "returncd": "3912",
+                                "locator": "gamespy.com",
+                            })
+                            logger.log(logging.DEBUG, "login response to %s (user banned)", client_address)
+                            logger.log(logging.DEBUG, ret)
+
+                    ret = self.dict_to_str(ret)
 
                 elif action == "SVCLOC" or action == "svcloc": # Get service based on service id number
                     ret["returncd"] = "007"
