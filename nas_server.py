@@ -111,7 +111,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         logger.log(logging.DEBUG, "acctcreate denied for banned user "+str(post))
                         ret = {
                             "datetime": time.strftime("%Y%m%d%H%M%S"),
-                            "returncd": "3913",
+                            "returncd": "0103", #Return error code 20103 to banned user
                             "locator": "gamespy.com",
                             "retry": "1",
                             "reason": "User banned."
@@ -130,7 +130,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         logger.log(logging.DEBUG, "login denied for banned user "+str(post))
                         ret = {
                             "datetime": time.strftime("%Y%m%d%H%M%S"),
-                            "returncd": "3914",
+                            "returncd": "0102", #Return error code 20102 to banned user
                             "locator": "gamespy.com",
                             "retry": "1",
                             "reason": "User banned."
