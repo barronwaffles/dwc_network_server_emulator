@@ -171,6 +171,11 @@ class PlayerSession(LineReceiver):
 
             commands, self.remaining_message = gs_query.parse_gamespy_message(data)
 
+            if self.gameid and self.db.is_banned({'gamecd':self.gameid,'ipaddr':self.address.host}):
+                self.log(logging.DEBUG, "**** Banned user, closing network socket for %s|%s..." % (self.gameid,self.address.host))
+                self.transport.abortConnection()
+                return
+
             cmds = {
                 "login": self.perform_login,
                 "logout": self.perform_logout,
