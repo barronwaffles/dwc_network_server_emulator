@@ -221,6 +221,7 @@ pip-log.txt
 .idea/vcs.xml
 .idea/workspace.xml
 gpcm.db
+adminpageconf.json
 .idea/dictionaries/Nagato.xml
 .idea/modules.xml
 
