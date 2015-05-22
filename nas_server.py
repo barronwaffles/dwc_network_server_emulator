@@ -130,10 +130,19 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         logger.log(logging.DEBUG, "login denied for banned user "+str(post))
                         ret = {
                             "datetime": time.strftime("%Y%m%d%H%M%S"),
-                            "returncd": "3914",
+                            "returncd": "3917",
                             "locator": "gamespy.com",
                             "retry": "1",
                             "reason": "User banned."
+                        }
+                    elif self.server.db.is_console_banned(post):
+                        logger.log(logging.DEBUG, "login denied for banned console"+str(post))
+                        ret = {
+                            "datetime": time.strftime("%Y%m%d%H%M%S"),
+                            "returncd": "3914",
+                            "locator": "gamespy.com",
+                            "retry": "1",
+                            "reason": "User's console is banned."
                         }
                     else:
                         challenge = utils.generate_random_str(8)
