@@ -107,7 +107,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
                 if action == "acctcreate":
                     # TODO: test for duplicate accounts
-                    if self.server.db.is_banned(post):
+                    if self.server.db.is_ip_banned(post):
                         logger.log(logging.DEBUG, "acctcreate denied for banned user "+str(post))
                         ret = {
                             "datetime": time.strftime("%Y%m%d%H%M%S"),
@@ -126,7 +126,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     ret = self.dict_to_str(ret)
 
                 elif action == "login":
-                    if self.server.db.is_banned(post):
+                    if self.server.db.is_ip_banned(post):
                         logger.log(logging.DEBUG, "login denied for banned user "+str(post))
                         ret = {
                             "datetime": time.strftime("%Y%m%d%H%M%S"),
@@ -135,11 +135,29 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             "retry": "1",
                             "reason": "User banned."
                         }
-                    elif self.server.db.is_console_banned(post):
+                    elif self.server.db.is_console_macadr_banned(post):
                         logger.log(logging.DEBUG, "login denied for banned console"+str(post))
                         ret = {
                             "datetime": time.strftime("%Y%m%d%H%M%S"),
                             "returncd": "3914",
+                            "locator": "gamespy.com",
+                            "retry": "1",
+                            "reason": "User's console is banned."
+                        }
+                    elif self.server.db.is_console_cfc_banned(post):
+                        logger.log(logging.DEBUG, "login denied for banned console"+str(post))
+                        ret = {
+                            "datetime": time.strftime("%Y%m%d%H%M%S"),
+                            "returncd": "3915",
+                            "locator": "gamespy.com",
+                            "retry": "1",
+                            "reason": "User's console is banned."
+                        }
+                    elif self.server.db.is_console_csnum_banned(post):
+                        logger.log(logging.DEBUG, "login denied for banned console"+str(post))
+                        ret = {
+                            "datetime": time.strftime("%Y%m%d%H%M%S"),
+                            "returncd": "3915",
                             "locator": "gamespy.com",
                             "retry": "1",
                             "reason": "User's console is banned."

@@ -117,8 +117,10 @@ class GamespyDatabase(object):
             tx.nonquery("CREATE TABLE IF NOT EXISTS gamestat_profile (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
             tx.nonquery("CREATE TABLE IF NOT EXISTS gameinfo (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
             tx.nonquery("CREATE TABLE IF NOT EXISTS nas_logins (userid TEXT, authtoken TEXT, data TEXT)")
-            tx.nonquery("CREATE TABLE IF NOT EXISTS banned (gameid TEXT, ipaddr TEXT)")
-            tx.nonquery("CREATE TABLE IF NOT EXISTS console_banned (macadr TEXT)")
+            tx.nonquery("CREATE TABLE IF NOT EXISTS ip_banned (gameid TEXT, ipaddr TEXT)")
+            tx.nonquery("CREATE TABLE IF NOT EXISTS console_macadr_banned (macadr TEXT)")
+            tx.nonquery("CREATE TABLE IF NOT EXISTS console_csnum_banned (csnum TEXT)")
+            tx.nonquery("CREATE TABLE IF NOT EXISTS console_cfc_banned (cfc TEXT)")
 
             # Create some indexes for performance.
             tx.nonquery("CREATE UNIQUE INDEX IF NOT EXISTS gamestatprofile_triple on gamestat_profile(profileid,dindex,ptype)")
@@ -400,13 +402,21 @@ class GamespyDatabase(object):
         else:
             return json.loads(r["data"])
 
-    def is_banned(self,postdata):
+    def is_ip_banned(self,postdata):
         with Transaction(self.conn) as tx:
-            row = tx.queryone("SELECT COUNT(*) FROM banned WHERE gameid = ? AND ipaddr = ?",(postdata['gamecd'][:-1],postdata['ipaddr']))
+            row = tx.queryone("SELECT COUNT(*) FROM ip_banned WHERE gameid = ? AND ipaddr = ?",(postdata['gamecd'][:-1],postdata['ipaddr']))
             return int(row[0]) > 0
-    def is_console_banned(self,postdata):
+    def is_console_macadr_banned(self,postdata):
          with Transaction(self.conn) as tx:
-            row = tx.queryone("SELECT COUNT(*) FROM console_banned WHERE macadr = ?",(postdata['macadr'],))
+            row = tx.queryone("SELECT COUNT(*) FROM console_macadr_banned WHERE macadr = ?",(postdata['macadr'],))
+            return int(row[0]) > 0
+    def is_console_csnum_banned(self,postdata):
+         with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT COUNT(*) FROM console_csnum_banned WHERE csnum = ?",(postdata['csnum'],))
+            return int(row[0]) > 0
+    def is_console_cfc_banned(self,postdata):
+         with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT COUNT(*) FROM console_cfc_banned WHERE cfc = ?",(postdata['cfc'],))
             return int(row[0]) > 0
     def get_next_available_userid(self):
         with Transaction(self.conn) as tx:
