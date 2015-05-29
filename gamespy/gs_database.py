@@ -410,14 +410,14 @@ class GamespyDatabase(object):
          with Transaction(self.conn) as tx:
             row = tx.queryone("SELECT COUNT(*) FROM console_macadr_banned WHERE macadr = ?",(postdata['macadr'],))
             return int(row[0]) > 0
-    def is_console_csnum_banned(self,postdata):
-         with Transaction(self.conn) as tx:
-            row = tx.queryone("SELECT COUNT(*) FROM console_csnum_banned WHERE csnum = ?",(postdata['csnum'],))
-            return int(row[0]) > 0
-    def is_console_cfc_banned(self,postdata):
-         with Transaction(self.conn) as tx:
-            row = tx.queryone("SELECT COUNT(*) FROM console_cfc_banned WHERE cfc = ?",(postdata['cfc'],))
-            return int(row[0]) > 0
+    #def is_console_csnum_banned(self,postdata):
+         #with Transaction(self.conn) as tx:
+            #row = tx.queryone("SELECT COUNT(*) FROM console_csnum_banned WHERE csnum = ?",(postdata['csnum'],))
+            #return int(row[0]) > 0
+    #def is_console_cfc_banned(self,postdata):
+         #with Transaction(self.conn) as tx:
+            #row = tx.queryone("SELECT COUNT(*) FROM console_cfc_banned WHERE cfc = ?",(postdata['cfc'],))
+            #return int(row[0]) > 0
     def get_next_available_userid(self):
         with Transaction(self.conn) as tx:
             row = tx.queryone("SELECT max(userid) AS maxuser FROM users")
