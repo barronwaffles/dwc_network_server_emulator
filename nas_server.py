@@ -144,24 +144,24 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             "retry": "1",
                             "reason": "User's console is banned."
                         }
-                    #elif self.server.db.is_console_cfc_banned(post):
-                        #logger.log(logging.DEBUG, "login denied for banned console"+str(post))
-                        #ret = {
-                            #"datetime": time.strftime("%Y%m%d%H%M%S"),
-                            #"returncd": "3915",
-                            #"locator": "gamespy.com",
-                            #"retry": "1",
-                            #"reason": "User's console is banned."
-                        #}
-                    #elif self.server.db.is_console_csnum_banned(post):
-                        #logger.log(logging.DEBUG, "login denied for banned console"+str(post))
-                        #ret = {
-                            #"datetime": time.strftime("%Y%m%d%H%M%S"),
-                            #"returncd": "3915",
-                            #"locator": "gamespy.com",
-                            #"retry": "1",
-                            #"reason": "User's console is banned."
-                        #}
+                    elif self.server.db.is_console_cfc_banned(post):
+                        logger.log(logging.DEBUG, "login denied for banned console"+str(post))
+                        ret = {
+                            "datetime": time.strftime("%Y%m%d%H%M%S"),
+                            "returncd": "3915",
+                            "locator": "gamespy.com",
+                            "retry": "1",
+                            "reason": "User's console is banned."
+                        }
+                    elif self.server.db.is_console_csnum_banned(post):
+                        logger.log(logging.DEBUG, "login denied for banned console"+str(post))
+                        ret = {
+                            "datetime": time.strftime("%Y%m%d%H%M%S"),
+                            "returncd": "3915",
+                            "locator": "gamespy.com",
+                            "retry": "1",
+                            "reason": "User's console is banned."
+                        }
                     else:
                         challenge = utils.generate_random_str(8)
                         post["challenge"] = challenge

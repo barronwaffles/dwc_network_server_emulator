@@ -407,17 +407,28 @@ class GamespyDatabase(object):
             row = tx.queryone("SELECT COUNT(*) FROM ip_banned WHERE gameid = ? AND ipaddr = ?",(postdata['gamecd'][:-1],postdata['ipaddr']))
             return int(row[0]) > 0
     def is_console_macadr_banned(self,postdata):
+      if 'macadr' in postdata:
          with Transaction(self.conn) as tx:
             row = tx.queryone("SELECT COUNT(*) FROM console_macadr_banned WHERE macadr = ?",(postdata['macadr'],))
             return int(row[0]) > 0
-    #def is_console_csnum_banned(self,postdata):
-         #with Transaction(self.conn) as tx:
-            #row = tx.queryone("SELECT COUNT(*) FROM console_csnum_banned WHERE csnum = ?",(postdata['csnum'],))
-            #return int(row[0]) > 0
-    #def is_console_cfc_banned(self,postdata):
-         #with Transaction(self.conn) as tx:
-            #row = tx.queryone("SELECT COUNT(*) FROM console_cfc_banned WHERE cfc = ?",(postdata['cfc'],))
-            #return int(row[0]) > 0
+      else:
+         return False
+
+    def is_console_csnum_banned(self,postdata):
+      if 'csnum' in postdata:
+         with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT COUNT(*) FROM console_csnum_banned WHERE csnum = ?",(postdata['csnum'],))
+            return int(row[0]) > 0
+      else:
+         return False
+
+    def is_console_cfc_banned(self,postdata):
+      if 'cfc' in postdata:
+         with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT COUNT(*) FROM console_cfc_banned WHERE cfc = ?",(postdata['cfc'],))
+            return int(row[0]) > 0
+      else:
+         return False
     def get_next_available_userid(self):
         with Transaction(self.conn) as tx:
             row = tx.queryone("SELECT max(userid) AS maxuser FROM users")
