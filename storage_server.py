@@ -303,6 +303,10 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             
             ret = '<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><soap:Body>'
             
+            if "<!DOCTYPE" in post.upper():
+                logger.log(logging.ERROR, "User tried to redefine a DOCTYPE")
+                return
+
             dom = minidom.parseString(post)
             data = dom.getElementsByTagName('SOAP-ENV:Body')[0].getElementsByTagName('ns1:' + shortaction)[0]
             gameid = str(int(data.getElementsByTagName('ns1:gameid')[0].firstChild.data))
