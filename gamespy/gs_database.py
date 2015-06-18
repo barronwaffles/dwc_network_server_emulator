@@ -117,7 +117,7 @@ class GamespyDatabase(object):
             tx.nonquery("CREATE TABLE IF NOT EXISTS gamestat_profile (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
             tx.nonquery("CREATE TABLE IF NOT EXISTS gameinfo (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
             tx.nonquery("CREATE TABLE IF NOT EXISTS nas_logins (userid TEXT, authtoken TEXT, data TEXT)")
-            tx.nonquery("CREATE TABLE IF NOT EXISTS ip_banned (gameid TEXT, ipaddr TEXT)")
+            tx.nonquery("CREATE TABLE IF NOT EXISTS ip_banned (ipaddr TEXT)")
             tx.nonquery("CREATE TABLE IF NOT EXISTS console_macadr_banned (macadr TEXT)")
             tx.nonquery("CREATE TABLE IF NOT EXISTS console_csnum_banned (csnum TEXT)")
             tx.nonquery("CREATE TABLE IF NOT EXISTS console_cfc_banned (cfc TEXT)")
@@ -404,7 +404,7 @@ class GamespyDatabase(object):
 
     def is_ip_banned(self,postdata):
         with Transaction(self.conn) as tx:
-            row = tx.queryone("SELECT COUNT(*) FROM ip_banned WHERE gameid = ? AND ipaddr = ?",(postdata['gamecd'][:-1],postdata['ipaddr']))
+            row = tx.queryone("SELECT COUNT(*) FROM ip_banned WHERE ipaddr = ?",(postdata['ipaddr'],))
             return int(row[0]) > 0
     def is_console_macadr_banned(self,postdata):
       if 'macadr' in postdata:

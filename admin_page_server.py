@@ -206,24 +206,15 @@ class AdminPage(resource.Resource):
     def update_banlist(self, request):
         address = request.getClientIP()
         dbconn = sqlite3.connect('gpcm.db')
-        gameid = request.args['gameid'][0].upper().strip()
         ipaddr = request.args['ipaddr'][0].strip()
         actiontype = request.args['action'][0]
-        if not gameid.isalnum(): 
-            request.setResponseCode(500)
-            logger.log(logging.INFO,address+" Bad data "+gameid+" "+ipaddr)
-            return "Bad data"
-            
-        # this strips the region identifier from game IDs, not sure if this actually always accurate but limited testing suggests it is
-        if len(gameid) > 3:
-            gameid = gameid[:-1]
             
         if actiontype == 'ban':
-            dbconn.cursor().execute('insert into ip_banned values(?,?)',(gameid,ipaddr))
-            responsedata = "Added gameid=%s, ipaddr=%s" %  (gameid,ipaddr)
+            dbconn.cursor().execute('insert into ip_banned values(?)',(ipaddr,))
+            responsedata = "Added ipaddr=%s" %  (ipaddr)
         else:
-            dbconn.cursor().execute('delete from ip_banned where gameid=? and ipaddr=?',(gameid,ipaddr))
-            responsedata = "Removed gameid=%s, ipaddr=%s" %  (gameid,ipaddr)
+            dbconn.cursor().execute('delete from ip_banned where ipaddr=?',(ipaddr,))
+            responsedata = "ipaddr=%s" %  (ipaddr)
         dbconn.commit()
         dbconn.close()
         logger.log(logging.INFO,address+" "+responsedata)
@@ -318,11 +309,9 @@ class AdminPage(resource.Resource):
             "<table border='1'>"
             "<tr><td>gameid</td><td>ipAddr</td></tr>\r\n")
         for row in dbconn.cursor().execute("select * from ip_banned"):
-            gameid = str(row[0])
-            ipaddr = str(row[1])
-            responsedata += ("<tr><td>"+gameid+"</td><td>"+ipaddr+"</td>"
+            ipaddr = str(row[0])
+            responsedata += ("<tr><td>"+ipaddr+"</td>"
                 "<td><form action='updatebanlist' method='POST'>"
-                "<input type='hidden' name='gameid' value='"+gameid+"'>"
                 "<input type='hidden' name='ipaddr' value='"+ipaddr+"'>"
                 "<input type='hidden' name='action' value='unban'>\r\n"
                 "<input type='submit' value='----- UNBAN -----'></form></td></tr>\r\n")
@@ -353,7 +342,7 @@ class AdminPage(resource.Resource):
         dbconn = sqlite3.connect('gpcm.db')
         banned_list = []
         for row in dbconn.cursor().execute("SELECT * FROM IP_BANNED"):
-            banned_list.append(str(row[0])+":"+str(row[1]))
+            banned_list.append(str(row[0]))
         responsedata = (""
             '<a href="http://%20:%20@'+request.getHeader('host')+'">[CLICK HERE TO LOG OUT]</a>'
             "<br><br>"
@@ -397,7 +386,7 @@ class AdminPage(resource.Resource):
             responsedata += "<td>"+macadr+"</td>"
             responsedata += "<td>"+cfc+"</td>"
             responsedata +="<td>"+csnum+"</td>"
-            if gameid[:-1]+":"+ipaddr in banned_list:
+            if ipaddr in banned_list:
                 responsedata += ("<td><form action='updatebanlist' method='POST'>"
                 "<input type='hidden' name='gameid' value='"+gameid+"'>"
                 "<input type='hidden' name='ipaddr' value='"+ipaddr+"'>"

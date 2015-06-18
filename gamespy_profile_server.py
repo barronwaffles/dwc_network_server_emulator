@@ -171,8 +171,8 @@ class PlayerSession(LineReceiver):
 
             commands, self.remaining_message = gs_query.parse_gamespy_message(data)
 
-            if self.gameid and self.db.is_ip_banned({'gamecd':self.gameid,'ipaddr':self.address.host}):
-                self.log(logging.DEBUG, "**** Banned user, closing network socket for %s|%s..." % (self.gameid,self.address.host))
+            if self.db.is_ip_banned({'ipaddr':self.address.host}):
+                self.log(logging.DEBUG, "**** Banned user, closing network socket for %s..." % (self.address.host))
                 self.transport.abortConnection()
                 return
 
