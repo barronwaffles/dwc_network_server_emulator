@@ -307,7 +307,7 @@ class AdminPage(resource.Resource):
         responsedata = (""
             '<a href="http://%20:%20@'+request.getHeader('host')+'">[CLICK HERE TO LOG OUT]</a>'
             "<table border='1'>"
-            "<tr><td>gameid</td><td>ipAddr</td></tr>\r\n")
+            "<tr><td>ipAddr</td></tr>\r\n")
         for row in dbconn.cursor().execute("select * from ip_banned"):
             ipaddr = str(row[0])
             responsedata += ("<tr><td>"+ipaddr+"</td>"
