@@ -82,6 +82,7 @@ class AdminPage(resource.Resource):
         '<body>'
             '<p>'
                 '<a href="/banhammer">All Users</a> | '
+                '<a href="/consoles">Consoles</a> | '
                 '<a href="/banlist">Active Bans</a> '
             '</p>'
         )
@@ -145,6 +146,39 @@ class AdminPage(resource.Resource):
             referer = "/banhammer"
         request.setHeader("Location", referer)
         
+        request.setResponseCode(303)
+        return responsedata
+    def update_consolelist(self, request):
+        address = request.getClientIP()
+        dbconn = sqlite3.connect('gpcm.db')
+        macadr = request.args['macadr'][0].strip()
+        actiontype = request.args['action'][0]
+        if not macadr.isalnum():
+            request.setResponseCode(500)
+            logger.log(logging.INFO,address+" Bad data "+macadr+" ")
+            return "Bad data"
+        if actiontype == 'add':
+            dbconn.cursor().execute('insert into pending values(?)',(macadr,))
+            dbconn.cursor().execute('insert into registered values(?)',(macadr,))
+            responsedata = "Added macadr=%s" % (macadr)
+        elif actiontype == 'activate':
+            dbconn.cursor().execute('insert into registered values(?)',(macadr,))
+            responsedata = "Activated console belonging to %s" % (macadr)
+        else:
+            dbconn.cursor().execute('delete from pending where macadr=?',(macadr,))
+            dbconn.cursor().execute('delete from registered where macadr=?',(macadr,))
+            responsedata = "Removed macadr=%s" % (macadr)
+        dbconn.commit()
+        dbconn.close()
+        logger.log(logging.INFO,address+" "+responsedata)
+        request.setHeader("Content-Type", "text/html; charset=utf-8")
+        request.setHeader("Location", "/consoles")
+        referer = request.getHeader('referer')
+        request.setResponseCode(303)
+        if not referer:
+            referer = "/banhammer"
+        request.setHeader("Location", referer)
+
         request.setResponseCode(303)
         return responsedata
 
@@ -277,6 +311,40 @@ class AdminPage(resource.Resource):
         request.setResponseCode(303)
         return responsedata
 
+    def render_consolelist(self, request):
+        address = request.getClientIP()
+        dbconn = sqlite3.connect('gpcm.db')
+        active_list = []
+        for row in dbconn.cursor().execute("SELECT * FROM REGISTERED"):
+            active_list.append(str(row[0]))
+        logger.log(logging.INFO,address+" Viewed console list")
+        responsedata = (""
+            '<a href="http://%20:%20@'+request.getHeader('host')+'">[CLICK HERE TO LOG OUT]</a>'
+            "<form action='updateconsolelist' method='POST'>"
+            "macadr:<input type='text' name='macadr'>\r\n"
+            "<input type='hidden' name='action' value='add'>\r\n"
+            "<input type='submit' value='Register and activate console'></form>\r\n"
+            "<table border='1'>"
+            "<tr><td>macadr</td></tr>\r\n")
+        for row in dbconn.cursor().execute("select * from pending"):
+            macadr = str(row[0])
+            if macadr in active_list:
+                responsedata += ("<tr><td>"+macadr+"</td>"
+                "<td><form action='updateconsolelist' method='POST'>"
+                "<input type='hidden' name='macadr' value='"+macadr+"'>"
+                "<input type='hidden' name='action' value='remove'>\r\n"
+                "<input type='submit' value='Un-register console'></form></td></tr>\r\n")
+            else:
+                responsedata += ("<tr><td>"+macadr+"</td>"
+                "<td><form action='updateconsolelist' method='POST'>"
+                "<input type='hidden' name='macadr' value='"+macadr+"'>"
+                "<input type='hidden' name='action' value='activate'>\r\n"
+                "<input type='submit' value='Activate console'></form></td></tr>\r\n")
+        responsedata += "</table>"
+        dbconn.close()
+        request.setHeader("Content-Type", "text/html; charset=utf-8")
+        return responsedata
+
     def render_GET(self, request):
         if not adminpageconf:
             self.render_not_available(request)
@@ -292,7 +360,9 @@ class AdminPage(resource.Resource):
         elif request.path == "/banhammer":
             title = 'AltWfc Users'
             response = self.render_blacklist(request)
-        
+        elif request.path == "/consoles":
+            title = "AltWfc Console List"
+            response = self.render_consolelist(request)
         return self.get_header(title) + response + self.get_footer()
 
     def render_POST(self, request):
@@ -304,6 +374,8 @@ class AdminPage(resource.Resource):
         
         if request.path == "/updatebanlist":
             return self.update_banlist(request)
+        if request.path == "/updateconsolelist":
+            return self.update_consolelist(request)
         else:
             return self.get_header() + self.get_footer()
 
