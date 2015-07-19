@@ -65,7 +65,6 @@ class RegPage(resource.Resource):
         actiontype = request.args['action'][0]
         if not macadr.isalnum():
             request.setResponseCode(500)
-            logger.log(logging.INFO,address+" Bad data "+macadr+" ")
             return "Bad data"
         if actiontype == 'add':
             dbconn.cursor().execute('insert into pending values(?)',(macadr,))

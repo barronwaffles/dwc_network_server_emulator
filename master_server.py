@@ -27,7 +27,6 @@ from gamespy_gamestats_server import GameSpyGamestatsServer
 from nas_server import NasServer
 from internal_stats_server import InternalStatsServer
 from admin_page_server import AdminPageServer
-from register_page import RegPageServer
 from storage_server import StorageServer
 from gamestats_server_http import GameStatsServer
 
@@ -55,7 +54,6 @@ if __name__ == "__main__":
         NasServer,
         InternalStatsServer,
         AdminPageServer,
-        RegPageServer,
         StorageServer,
         GameStatsServer,
     ]
