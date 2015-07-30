@@ -1,38 +1,40 @@
-#    DWC Network Server Emulator
-#    Copyright (C) 2014 polaris-
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-# Master server list server
-#
-# Basic idea:
-# The server listing does not need to be persistent, and it must be easily searchable for any unknown parameters.
-# So instead of using a SQL database, I've opted to create a server list database server which communicates between the
-# server browser and the qr server. The server list database will be stored in dictionaries as to allow dynamic columns
-# that can be easily searched. The main reason for this configuration is because it cannot be guaranteed what data
-# a game's server will required. For example, in addition to the common fields such as publicip, numplayers, dwc_pid, etc,
-# Lost Magic also uses fields such as LMname, LMsecN, LMrating, LMbtmode, and LMversion.
-#
-# It would be possible to create game-specific databases but this would be more of a hassle and less universal. It would
-# also be possible pickle a dictionary containing all of the fields and store it in a SQL database instead, but that
-# would require unpickling every server each time you want to match search queries which would cause overhead if there
-# are a lot of running servers. One trade off here is that we'll be using more memory by storing each server as a
-# dictionary in the memory instead of storing it in a SQL database.
-#
-# qr_server and server_browser both will act as clients to gs_server_database.
-# qr_server will send an add and/or delete to add or remove servers from the server list.
-# server_browser will send a request with the game name followed by optional search parameters to get a list of servers.
+"""DWC Network Server Emulator
+
+    Copyright (C) 2014 polaris-
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+ Master server list server
+
+ Basic idea:
+ The server listing does not need to be persistent, and it must be easily searchable for any unknown parameters.
+ So instead of using a SQL database, I've opted to create a server list database server which communicates between the
+ server browser and the qr server. The server list database will be stored in dictionaries as to allow dynamic columns
+ that can be easily searched. The main reason for this configuration is because it cannot be guaranteed what data
+ a game's server will required. For example, in addition to the common fields such as publicip, numplayers, dwc_pid, etc,
+ Lost Magic also uses fields such as LMname, LMsecN, LMrating, LMbtmode, and LMversion.
+
+ It would be possible to create game-specific databases but this would be more of a hassle and less universal. It would
+ also be possible pickle a dictionary containing all of the fields and store it in a SQL database instead, but that
+ would require unpickling every server each time you want to match search queries which would cause overhead if there
+ are a lot of running servers. One trade off here is that we'll be using more memory by storing each server as a
+ dictionary in the memory instead of storing it in a SQL database.
+
+ qr_server and server_browser both will act as clients to gs_server_database.
+ qr_server will send an add and/or delete to add or remove servers from the server list.
+ server_browser will send a request with the game name followed by optional search parameters to get a list of servers.
+"""
 
 import logging
 import time

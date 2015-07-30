@@ -1,8 +1,10 @@
-# Import the profile and friend data collected from the GameSpy servers by Wiimm
-# Put all *-nick and *-fc files to be imported into t into the data folder and then run this program to import them
-# into the database.
-#
-# This may take some time to import all of the data on bigger files if you check if each entry is already in the database.
+"""Import the profile and friend data collected from the GameSpy servers by Wiimm
+
+Put all *-nick and *-fc files to be imported into t into the data folder and then run this program to import them
+into the database.
+
+This may take some time to import all of the data on bigger files if you check if each entry is already in the database.
+"""
 
 import glob
 import sys

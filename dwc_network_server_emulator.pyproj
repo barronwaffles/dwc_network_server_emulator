@@ -1,5 +1,5 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <SchemaVersion>2.0</SchemaVersion>
@@ -24,7 +24,12 @@
     <DebugSymbols>true</DebugSymbols>
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
   <ItemGroup>
+    <Compile Include="admin_page_server.py" />
     <Compile Include="gamespy_backend_server.py" />
     <Compile Include="gamespy_gamestats_server.py" />
     <Compile Include="gamespy_natneg_server.py" />
@@ -32,6 +37,7 @@
     <Compile Include="gamespy_profile_server.py" />
     <Compile Include="gamespy_qr_server.py" />
     <Compile Include="gamespy_server_browser_server.py" />
+    <Compile Include="gamestats_server_http.py" />
     <Compile Include="internal_stats_server.py" />
     <Compile Include="master_server.py" />
     <Compile Include="nas_server.py" />
@@ -56,5 +62,6 @@
     <Folder Include="www\gamestats.gs.nintendowifi.net\" />
     <Folder Include="www\gamestats.gs.nintendowifi.net\public_html" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
+  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
 </Project>
