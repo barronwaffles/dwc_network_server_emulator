@@ -47,7 +47,7 @@ for nickfile in glob.glob("data/*-nick"):
             uniquenick = s[1]
 
             # Uncomment to check if the user exists before inserting, but it slows down things greatly.
-            #if db.check_profile_exists(profileid) != None:
+            #if db.check_profile_exists(profileid) is not None:
             #    pass
 
             firstname = s[2]

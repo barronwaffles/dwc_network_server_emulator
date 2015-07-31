@@ -1,6 +1,7 @@
 """DWC Network Server Emulator
 
     Copyright (C) 2014 polaris-
+    Copyright (C) 2015 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -219,14 +220,14 @@ class GameSpyBackendServer(object):
             valid_node = True
 
         elif isinstance(node, ast.Str):
-            if num_literal_only == False:
+            if num_literal_only is False:
                 valid_node = True
 
         elif isinstance(node, ast.BoolOp):
             for value in node.values:
                 valid_node = self.validate_ast(value, num_literal_only)
 
-                if valid_node == False:
+                if valid_node is False:
                     break
 
         elif isinstance(node, ast.BinOp):
@@ -325,7 +326,7 @@ class GameSpyBackendServer(object):
                 for node in m.body:
                     valid_filter = self.validate_ast(node, False)
 
-                if valid_filter == False:
+                if valid_filter is False:
                     # Return only anything matched up until this point.
                     logger.log(logging.WARNING, "Invalid filter(s): %s" % (filters))
                     #stop_search = True
@@ -419,7 +420,7 @@ class GameSpyBackendServer(object):
         logger.log(logging.DEBUG, "Deleted %d %s servers where session = %d" % (count, gameid, session))
 
     def find_server_by_address(self, ip, port, gameid = None):
-        if gameid == None:
+        if gameid is None:
             # Search all servers
             for gameid in self.server_list:
                 for server in self.server_list[gameid]:
@@ -454,19 +455,19 @@ class GameSpyBackendServer(object):
                              if server[s] == localip:
                                  best_match = server
 
-                    if localport == 0 and best_match == None:
+                    if localport == 0 and best_match is None:
                         # Kinda hackish. This sometimes happens.
                         # Assuming two clients aren't trying to connect from the same IP, this might be safe.
                         # The server wasn't verified to be the *correct* server, but it's on the same IP so it
                         # has a chance of being correct. At least make an attempt to establish the connection.
                         best_match = server
 
-            if best_match == None:
+            if best_match is None:
                 logger.log(logging.DEBUG, "Couldn't find a match for %s" % (publicip))
 
             return best_match
 
-        if gameid == None:
+        if gameid is None:
             # Search all servers
             for gameid in self.server_list:
                 return find_server(gameid)

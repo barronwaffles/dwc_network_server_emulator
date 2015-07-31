@@ -2,6 +2,7 @@
 
     Copyright (C) 2014 polaris-
     Copyright (C) 2014 msoucy
+    Copyright (C) 2015 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -73,7 +74,7 @@ class GameSpyServerBrowserServer(object):
         conn = endpoint.listen(SessionFactory(self.qr))
 
         try:
-            if reactor.running == False:
+            if reactor.running is False:
                 reactor.run(installSignalHandlers=0)
         except ReactorAlreadyRunning:
             pass
@@ -137,7 +138,7 @@ class Session(LineReceiver):
                     packet = self.buffer[:packet_len]
                     self.buffer = self.buffer[packet_len:]
 
-                if packet == None:
+                if packet is None:
                     # Don't have enough for the entire packet, break.
                     break
 
@@ -380,12 +381,12 @@ class Session(LineReceiver):
         # Find session id of server
         # Iterate through the list of servers sent to the client and match by IP and port.
         # Is there a better way to determine this information?
-        if forward_client == None or len(forward_client) != 2:
+        if forward_client is None or len(forward_client) != 2:
             return
 
         server, ip = self.find_server_in_cache(forward_client[0], forward_client[1], self.console)
 
-        if server == None:
+        if server is None:
             if self.console == 0:
                 server, ip = self.find_server_in_cache(forward_client[0], forward_client[1], 1) # Try Wii
             elif self.console == 1:
@@ -395,7 +396,7 @@ class Session(LineReceiver):
         self.log(logging.DEBUG, "Trying to send message to %s:%d..." % (forward_client[0], forward_client[1]))
         self.log(logging.DEBUG, utils.pretty_print_hex(bytearray(data)))
 
-        if server == None:
+        if server is None:
             return
 
         self.log(logging.DEBUG, "%s %s" % (ip, server['publicip']))
@@ -408,20 +409,20 @@ class Session(LineReceiver):
             cookie = int(utils.generate_random_hex_str(8), 16) # Quick and lazy way to get a random 32bit integer. Replace with something else later
 
             #if (len(data) == 24 and bytearray(data)[0:10] == bytearray([0x53, 0x42, 0x43, 0x4d, 0x03, 0x00, 0x00, 0x00, 0x01, 0x04])) or (len(data) == 40 and bytearray(data)[0:10] == bytearray([0x53, 0x42, 0x43, 0x4d, 0x0b, 0x00, 0x00, 0x00, 0x01, 0x04])):
-            if self.own_server == None and len(data) >= 16 and bytearray(data)[0:4] in (bytearray([0xbb, 0x49, 0xcc, 0x4d]), bytearray([0x53, 0x42, 0x43, 0x4d])):
+            if self.own_server is None and len(data) >= 16 and bytearray(data)[0:4] in (bytearray([0xbb, 0x49, 0xcc, 0x4d]), bytearray([0x53, 0x42, 0x43, 0x4d])):
                 # Is the endianness the same between the DS and Wii here? It seems so but I'm not positive.
                 self_port = utils.get_short(bytearray(data[10:12]), 0, False) # Note to self: Port is little endian here.
                 self_ip = '.'.join(["%d" % x for x in bytearray(data[12:16])])
 
                 self.own_server, _ = self.find_server_in_cache(self_ip, self_port, self.console)
 
-                if self.own_server == None:
+                if self.own_server is None:
                     if self.console == 0:
                         self.own_server, _ = self.find_server_in_cache(self_ip, self_port, 1) # Try Wii
                     elif self.console == 1:
                         self.own_server, _ = self.find_server_in_cache(self_ip, self_port, 0) # Try DS
 
-                if self.own_server == None:
+                if self.own_server is None:
                     self.log(logging.DEBUG, "Could not find own server: %s:%d" % (self_ip, self_port))
                 else:
                     self.log(logging.DEBUG, "Found own server: %s" % (self.own_server))
@@ -432,11 +433,11 @@ class Session(LineReceiver):
                 self.log(logging.DEBUG, "Adding %d to natneg server list: %s" % (natneg_session, server))
                 self.server_manager.add_natneg_server(natneg_session, server) # Store info in backend so we can get it later in natneg
 
-                if self.own_server != None:
+                if self.own_server is not None:
                     self.log(logging.DEBUG, "Adding %d to natneg server list: %s (self)" % (natneg_session, self.own_server))
                     self.server_manager.add_natneg_server(natneg_session, self.own_server) # Store info in backend so we can get it later in natneg
 
-                # if self.qr != None:
+                # if self.qr is not None:
                 #     own_server = self.qr.get_own_server()
                 #
                 #     self.log(logging.DEBUG, "Adding %d to natneg server list: %s" % (natneg_session, own_server))
@@ -447,7 +448,7 @@ class Session(LineReceiver):
             output += bytearray(utils.get_bytes_from_int(cookie))
             output += bytearray(data)
 
-            if self.qr != None:
+            if self.qr is not None:
                 self.log(logging.DEBUG, "Forwarded data to %s:%s through QR server..." % (forward_client[0], forward_client[1]))
                 self.qr.socket.sendto(output, forward_client)
             else:

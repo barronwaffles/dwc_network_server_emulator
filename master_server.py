@@ -4,6 +4,7 @@
     Copyright (C) 2014 ToadKing
     Copyright (C) 2014 AdmiralCurtiss
     Copyright (C) 2014 msoucy
+    Copyright (C) 2015 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -38,20 +39,23 @@ import threading
 
 
 if __name__ == "__main__":
-    # Let database initialize before starting any servers.
-    # This fixes any conflicts where two servers find an uninitialized database at the same time and both try to
-    # initialize it.
+    """Let database initialize before starting any servers.
+
+     This fixes any conflicts where two servers find an uninitialized database
+     at the same time and both try to initialize it.
+     """
+
     db = gs_database.GamespyDatabase()
     db.initialize_database()
     db.close()
-    
+
     servers = [
         GameSpyBackendServer,
         GameSpyQRServer,
         GameSpyProfileServer,
         GameSpyPlayerSearchServer,
         GameSpyGamestatsServer,
-        #GameSpyServerBrowserServer,
+        # GameSpyServerBrowserServer,
         GameSpyNatNegServer,
         NasServer,
         InternalStatsServer,

@@ -3,6 +3,7 @@
     Copyright (C) 2014 polaris-
     Copyright (C) 2014 ToadKing
     Copyright (C) 2014 AdmiralCurtiss
+    Copyright (C) 2015 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -47,7 +48,7 @@ def parse_gamespy_message(message):
             else:
                 value = msg
 
-            if found_command == False:
+            if found_command is False:
                 messages['__cmd__'] = key
                 messages['__cmd_val__'] = value
                 found_command = True
@@ -121,7 +122,7 @@ def create_gamespy_message(messages, id=None):
 
     # Check for an id if the id needs to be updated.
     # If it already exists in the list then update it, else add it
-    if id != None:
+    if id is not None:
         for message in messages:
             if message[0] == "id":
                 messages.pop(messages.index(message))
@@ -131,7 +132,7 @@ def create_gamespy_message(messages, id=None):
 
     query = create_gamespy_message_from_list(messages)
 
-    if id != None:
+    if id is not None:
         query += create_gamespy_message_from_list([("id", id)])
 
     query += "\\final\\"

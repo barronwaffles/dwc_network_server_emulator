@@ -2,6 +2,7 @@
 
     Copyright (C) 2014 polaris-
     Copyright (C) 2014 msoucy
+    Copyright (C) 2015 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -48,7 +49,7 @@ class GameSpyPlayerSearchServer(object):
         conn_search = endpoint_search.listen(PlayerSearchFactory())
 
         try:
-            if reactor.running == False:
+            if reactor.running is False:
                 reactor.run(installSignalHandlers=0)
         except ReactorAlreadyRunning:
             pass
@@ -114,7 +115,7 @@ class PlayerSearch(LineReceiver):
                 profile = self.db.get_profile_from_profileid(opid)
 
                 msg_d.append(('o', opid))
-                if profile != None:
+                if profile is not None:
                     msg_d.append(('uniquenick', profile['uniquenick']))
                 else:
                     msg_d.append(('uniquenick', ''))

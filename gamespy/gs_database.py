@@ -3,6 +3,7 @@
     Copyright (C) 2014 polaris-
     Copyright (C) 2014 ToadKing
     Copyright (C) 2014 AdmiralCurtiss
+    Copyright (C) 2015 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -101,7 +102,7 @@ class GamespyDatabase(object):
         self.close()
 
     def close(self):
-        if self.conn != None:
+        if self.conn is not None:
             self.conn.close()
             self.conn = None
 
@@ -153,7 +154,7 @@ class GamespyDatabase(object):
             r = self.get_dict(row)
 
         profileid = 1 # Cannot be 0 or else it freezes the game.
-        if r != None and r['m'] != None:
+        if r is not None and r['m'] is not None:
             profileid = int(r['m']) + 1
 
         return profileid
@@ -174,7 +175,7 @@ class GamespyDatabase(object):
             row = tx.queryone("SELECT enabled FROM users WHERE userid = ? AND gsbrcd = ?", (userid, gsbrcd))
             enabled = int(row[0])
         return enabled > 0
-    
+
     def check_profile_exists(self, profileid):
         with Transaction(self.conn) as tx:
             row = tx.queryone("SELECT COUNT(*) FROM users WHERE profileid = ?", (profileid,))
@@ -200,7 +201,7 @@ class GamespyDatabase(object):
             r = self.get_dict(row)
 
         profileid = None  # Default, user doesn't exist
-        if r != None:
+        if r is not None:
             #md5 = hashlib.md5()
             #md5.update(password)
 
@@ -313,7 +314,7 @@ class GamespyDatabase(object):
             r = self.get_dict(row)
 
         profileid = -1  # Default, invalid session key
-        if r != None:
+        if r is not None:
             profileid = r['profileid']
 
         return profileid
@@ -355,7 +356,7 @@ class GamespyDatabase(object):
             tx.nonquery("DELETE FROM sessions WHERE profileid = ?", (profileid,))
 
     def create_session(self, profileid, loginticket):
-        if profileid != None and self.check_profile_exists(profileid) == False:
+        if profileid is not None and self.check_profile_exists(profileid) is False:
             return None
 
         # Remove any old sessions associated with this user id
@@ -371,7 +372,7 @@ class GamespyDatabase(object):
     def get_session_list(self, profileid=None):
         sessions = []
         with Transaction(self.conn) as tx:
-            if profileid != None:
+            if profileid is not None:
                 r = tx.queryall("SELECT * FROM sessions WHERE profileid = ?", (profileid,))
             else:
                 r = tx.queryall("SELECT * FROM sessions")
@@ -387,7 +388,7 @@ class GamespyDatabase(object):
             row = tx.queryone("SELECT data FROM nas_logins WHERE authtoken = ?", (authtoken,))
             r = self.get_dict(row)
 
-        if r == None:
+        if r is None:
             return None
         else:
             return json.loads(r["data"])
@@ -397,7 +398,7 @@ class GamespyDatabase(object):
             row = tx.queryone("SELECT data FROM nas_logins WHERE userid = ?", (userid,))
             r = self.get_dict(row)
 
-        if r == None:
+        if r is None:
             return None
         else:
             return json.loads(r["data"])
@@ -419,7 +420,7 @@ class GamespyDatabase(object):
         with Transaction(self.conn) as tx:
             row = tx.queryone("SELECT max(userid) AS maxuser FROM users")
             r = self.get_dict(row)
-        if r == None or r['maxuser'] == None:
+        if r is None or r['maxuser'] is None:
             return '0000000000002'#Because all zeroes means Dolphin. Don't wanna get confused during debugging later.
         else:
             userid = str(int(r['maxuser']) + 1)
@@ -455,13 +456,12 @@ class GamespyDatabase(object):
         data = json.dumps(data)
 
         with Transaction(self.conn) as tx:
-            if r == None: # no row, add it
+            if r is None: # no row, add it
                 tx.nonquery("INSERT INTO nas_logins VALUES (?, ?, ?)", (userid, authtoken, data))
             else:
                 tx.nonquery("UPDATE nas_logins SET authtoken = ?, data = ? WHERE userid = ?", (authtoken, data, userid))
 
         return authtoken
-        
 
     # Buddy functions
     def add_buddy(self, userProfileId, buddyProfileId):

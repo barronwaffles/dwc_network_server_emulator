@@ -4,6 +4,7 @@
     Copyright (C) 2014 ToadKing
     Copyright (C) 2014 AdmiralCurtiss
     Copyright (C) 2014 msoucy
+    Copyright (C) 2015 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -53,7 +54,7 @@ class GameSpyGamestatsServer(object):
         conn_search = endpoint_search.listen(GamestatsFactory())
 
         try:
-            if reactor.running == False:
+            if reactor.running is False:
                 reactor.run(installSignalHandlers=0)
         except ReactorAlreadyRunning:
             pass
@@ -187,7 +188,7 @@ class Gamestats(LineReceiver):
 
         userid, profileid, gsbrcd, uniquenick = gs_utils.login_profile_via_parsed_authtoken(authtoken_parsed, self.db)
 
-        if profileid != None:
+        if profileid is not None:
             # Successfully logged in or created account, continue creating session.
             sesskey = self.db.create_session(profileid, '')
             self.sessions[profileid] = self
@@ -282,7 +283,7 @@ class Gamestats(LineReceiver):
         pid = int(data_parsed['pid'])
         profile = self.db.pd_get(pid, data_parsed['dindex'], data_parsed['ptype'])
 
-        if profile == None:
+        if profile is None:
             self.log(logging.WARNING, "Could not find profile for %d %s %s" % (pid, data_parsed['dindex'], data_parsed['ptype']))
 
         keys = data_parsed['keys'].split('\x01')
@@ -291,13 +292,13 @@ class Gamestats(LineReceiver):
         data = ""
 
         # Someone figure out if this is actually a good way to handle this when no profile is found
-        if profile != None and 'data' in profile:
+        if profile is not None and 'data' in profile:
             profile_data = profile['data']
             if profile_data.endswith("\\"):
                 profile_data = profile_data[:-1]
             profile_data = gs_query.parse_gamespy_message("\\prof\\" + profile_data + "\\final\\")
 
-            if profile_data != None:
+            if profile_data is not None:
                 profile_data = profile_data[0][0]
             else:
                 self.log(logging.WARNING, "Could not get data section from profile for %d" % pid)
@@ -306,7 +307,7 @@ class Gamestats(LineReceiver):
                 for key in (key for key in keys if key not in ("__cmd__", "__cmd_val__", "")):
                     data += "\\" + key + "\\"
 
-                    if profile_data != None and key in profile_data:
+                    if profile_data is not None and key in profile_data:
                         data += profile_data[key]
             else:
                 self.log(logging.WARNING, "No keys requested, defaulting to all keys: %s" % (profile['data']))

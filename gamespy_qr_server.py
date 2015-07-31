@@ -3,6 +3,7 @@
     Copyright (C) 2014 polaris-
     Copyright (C) 2014 ToadKing
     Copyright (C) 2014 AdmiralCurtiss
+    Copyright (C) 2015 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -76,10 +77,10 @@ class GameSpyQRServer(object):
         GameSpyServerDatabase.register("delete_server")
 
     def log(self, level, address, session_id, message):
-        if address == None:
+        if address is None:
             logger.log(level, "%s", message)
         else:
-            if session_id != None:
+            if session_id is not None:
                 logger.log(level, "[%s:%d %08x] %s", address[0], address[1], session_id, message)
             else:
                 logger.log(level, "[%s:%d] %s", address[0], address[1], message)
@@ -272,7 +273,7 @@ class GameSpyQRServer(object):
                 self.write_queue.put((packet, address))
                 self.log(logging.DEBUG, address, session_id, "Sent client registered to %s:%s..." % (address[0], address[1]))
 
-                if self.sessions[session_id].heartbeat_data != None:
+                if self.sessions[session_id].heartbeat_data is not None:
                     self.update_server_list(session_id, self.sessions[session_id].heartbeat_data)
 
             else:
@@ -296,7 +297,7 @@ class GameSpyQRServer(object):
                 #self.log(logging.DEBUG, address, session_id, "%s = %s" % (d[i], d[i+1]))
                 k[d[i]] = d[i+1]
 
-            if self.sessions[session_id].ingamesn != None:
+            if self.sessions[session_id].ingamesn is not None:
                 if "gamename" in k and "dwc_pid" in k:
                     try:
                         profile = self.db.get_profile_from_profileid(k['dwc_pid'])
@@ -305,7 +306,7 @@ class GameSpyQRServer(object):
                     except Exception,e:
                         pass # If the game doesn't have, don't worry about it.
 
-                if self.sessions[session_id].ingamesn != None and "ingamesn" not in k:
+                if self.sessions[session_id].ingamesn is not None and "ingamesn" not in k:
                     k['ingamesn'] = self.sessions[session_id].ingamesn
 
             if "gamename" in k:
@@ -332,7 +333,7 @@ class GameSpyQRServer(object):
                         self.sessions[session_id].console = 1
                         found_console = True
 
-                if found_console == False:
+                if found_console is False:
                     # Couldn't detect game, try to get it from the database
                     # Try a 3 times before giving up
                     for i in range(0, 3):

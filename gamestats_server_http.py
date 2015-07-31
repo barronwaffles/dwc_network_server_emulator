@@ -1,4 +1,4 @@
-﻿"""DWC Network Server Emulator
+"""DWC Network Server Emulator
 
     Copyright (C) 2014 polaris-
 

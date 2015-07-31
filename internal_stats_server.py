@@ -2,6 +2,7 @@
 
     Copyright (C) 2014 polaris-
     Copyright (C) 2014 msoucy
+    Copyright (C) 2015 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -59,7 +60,7 @@ class StatsPage(resource.Resource):
             restricted = [ "publicip", "__session__", "localip0", "localip1" ]
 
             # Filter out certain fields before displaying raw data
-            if server_list != None:
+            if server_list is not None:
                 for game in server_list:
                     for server in server_list[game]:
                         for r in restricted:
@@ -75,7 +76,7 @@ class StatsPage(resource.Resource):
             output += "<td>Game ID</td><td># Players</td>"
             output += "</tr>"
 
-            if server_list != None:
+            if server_list is not None:
                 for game in server_list:
                     if not server_list[game]:
                         continue
@@ -110,7 +111,7 @@ class InternalStatsServer(object):
         reactor.listenTCP(9001, site)
 
         try:
-            if reactor.running == False:
+            if reactor.running is False:
                 reactor.run(installSignalHandlers=0)
         except ReactorAlreadyRunning:
             pass

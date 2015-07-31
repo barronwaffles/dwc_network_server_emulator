@@ -4,6 +4,7 @@
     Copyright (C) 2014 ToadKing
     Copyright (C) 2014 AdmiralCurtiss
     Copyright (C) 2014 msoucy
+    Copyright (C) 2015 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -86,7 +87,7 @@ def rc4_encrypt(_key, _data):
 def prepare_rc4_base64(_key, _data):
     data = rc4_encrypt(_key, _data)
 
-    if data == None:
+    if data is None:
         data = bytearray()
 
     data.append(0)
@@ -130,7 +131,7 @@ def login_profile_via_parsed_authtoken(authtoken_parsed, db):
         console = 1
 
     valid_user = db.check_user_exists(userid, gsbrcd)
-    if valid_user == False:
+    if valid_user is False:
         profileid = db.create_user(userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth, gameid, macadr)
     else:
         profileid = db.perform_login(userid, password, gsbrcd)

@@ -2,6 +2,7 @@
 
     Copyright (C) 2014 polaris-
     Copyright (C) 2014 ToadKing
+    Copyright (C) 2015 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -136,13 +137,13 @@ class GameSpyNatNegServer(object):
             clients = len(self.session_list[session_id])
 
             for client in self.session_list[session_id]:
-                if self.session_list[session_id][client]['connected'] == False: # and self.session_list[session_id][client]['localaddr'][1] != 0:
+                if self.session_list[session_id][client]['connected'] is False: # and self.session_list[session_id][client]['localaddr'][1] != 0:
                     if client == client_id:
                         continue
 
-                    #if self.session_list[session_id][client]['serveraddr'] == None:
+                    #if self.session_list[session_id][client]['serveraddr'] is None:
                     serveraddr = self.get_server_info(gameid, session_id, client)
-                    if serveraddr == None:
+                    if serveraddr is None:
                         serveraddr = self.get_server_info_alt(gameid, session_id, client)
 
                     self.session_list[session_id][client]['serveraddr'] = serveraddr
@@ -152,7 +153,7 @@ class GameSpyNatNegServer(object):
                     if self.session_list[session_id][client]['localaddr'][1] != 0:
                         publicport = self.session_list[session_id][client]['localaddr'][1]
 
-                    if self.session_list[session_id][client]['serveraddr'] != None:
+                    if self.session_list[session_id][client]['serveraddr'] is not None:
                         publicport = int(self.session_list[session_id][client]['serveraddr']['publicport'])
 
                     # Send to requesting client
@@ -169,9 +170,9 @@ class GameSpyNatNegServer(object):
                     logger.log(logging.DEBUG, utils.pretty_print_hex(output))
 
                     # Send to other client
-                    #if self.session_list[session_id][client_id]['serveraddr'] == None:
+                    #if self.session_list[session_id][client_id]['serveraddr'] is None:
                     serveraddr = self.get_server_info(gameid, session_id, client_id)
-                    if serveraddr == None:
+                    if serveraddr is None:
                         serveraddr = self.get_server_info_alt(gameid, session_id, client_id)
 
                     self.session_list[session_id][client_id]['serveraddr'] = serveraddr
@@ -181,7 +182,7 @@ class GameSpyNatNegServer(object):
                     if self.session_list[session_id][client_id]['localaddr'][1] != 0:
                         publicport = self.session_list[session_id][client_id]['localaddr'][1]
 
-                    if self.session_list[session_id][client_id]['serveraddr'] != None:
+                    if self.session_list[session_id][client_id]['serveraddr'] is not None:
                         publicport = int(self.session_list[session_id][client_id]['serveraddr']['publicport'])
 
                     output = bytearray(recv_data[0:12])
@@ -276,7 +277,7 @@ class GameSpyNatNegServer(object):
         server_info = None
         servers = self.server_manager.get_natneg_server(session_id)._getvalue()
 
-        if servers == None:
+        if servers is None:
             return None
 
         console = False
@@ -287,7 +288,7 @@ class GameSpyNatNegServer(object):
 
         server_info = next((s for s in servers if s['publicip'] == ip), None)
 
-        if server_info == None:
+        if server_info is None:
             ip = str(utils.get_ip(bytearray([int(x) for x in ipstr.split('.')]), 0, console))
 
             server_info = next((s for s in servers if s['publicip'] == ip), None)
@@ -303,7 +304,7 @@ class GameSpyNatNegServer(object):
 
         serveraddr = self.server_manager.find_server_by_local_address(ip, self.session_list[session_id][client_id]['localaddr'], self.session_list[session_id][client_id]['gameid'])._getvalue()
 
-        if serveraddr == None:
+        if serveraddr is None:
             ip = str(utils.get_ip(bytearray([int(x) for x in ipstr.split('.')]), 0, console))
 
             serveraddr = self.server_manager.find_server_by_local_address(ip, self.session_list[session_id][client_id]['localaddr'],

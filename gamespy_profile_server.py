@@ -4,6 +4,7 @@
     Copyright (C) 2014 ToadKing
     Copyright (C) 2014 AdmiralCurtiss
     Copyright (C) 2014 msoucy
+    Copyright (C) 2015 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -52,7 +53,7 @@ class GameSpyProfileServer(object):
         conn = endpoint.listen(PlayerFactory())
 
         try:
-            if reactor.running == False:
+            if reactor.running is False:
                 reactor.run(installSignalHandlers=0)
         except ReactorAlreadyRunning:
             pass
@@ -106,7 +107,7 @@ class PlayerSession(LineReceiver):
     def get_ip_as_int(self, address):
         ipaddress = 0
 
-        if address != None:
+        if address is not None:
             for n in address.split('.'):
                 ipaddress = (ipaddress << 8) | int(n)
 
@@ -198,8 +199,8 @@ class PlayerSession(LineReceiver):
 
     def perform_login(self, data_parsed):
         authtoken_parsed = gs_utils.parse_authtoken(data_parsed['authtoken'], self.db)
-        
-        if authtoken_parsed == None:
+
+        if authtoken_parsed is None:
             self.log(logging.WARNING, "Invalid Authtoken.")
             msg = gs_query.create_gamespy_message([
                 ('__cmd__', "error"),
@@ -224,7 +225,7 @@ class PlayerSession(LineReceiver):
 
         userid, profileid, gsbrcd, uniquenick = gs_utils.login_profile_via_parsed_authtoken(authtoken_parsed, self.db)
 
-        if profileid != None:
+        if profileid is not None:
             # Successfully logged in or created account, continue creating session.
             loginticket = gs_utils.base64_encode(utils.generate_random_str(16))
             self.sesskey = self.db.create_session(profileid, loginticket)
@@ -298,7 +299,7 @@ class PlayerSession(LineReceiver):
             self.send_status_to_friends()
 
             # profile = self.db.get_profile_from_profileid(profileid)
-            # if profile != None:
+            # if profile is not None:
             #     self.statstring = profile['stat']
             #     self.locstring = profile['loc']
         else:
@@ -484,12 +485,12 @@ class PlayerSession(LineReceiver):
                 buddy_exists = True
                 break
 
-        if buddy_exists == False:
+        if buddy_exists is False:
             self.db.add_buddy(self.profileid, newprofileid)
 
             if newprofileid in self.sessions:
                 logger.log(logging.DEBUG, "User is online, sending direct request from profile id %d to profile id %d..." % (self.profileid, newprofileid))
-                
+
                 # TODO: Add a way to check if a profile id is already a buddy using SQL
                 other_player_authorized = False
                 target_buddy_list = self.db.get_buddy_list(newprofileid)
@@ -498,32 +499,32 @@ class PlayerSession(LineReceiver):
                     if buddy['buddyProfileId'] == self.profileid and buddy['blocked'] == 0:
                         other_player_authorized = True
                         break
-                
+
                 if other_player_authorized == True:
                     logger.log(logging.DEBUG, "Automatic authorization: %d (target) already has %d (source) as a friend." % (newprofileid, self.profileid))
-                    
+
                     # Force them both to add each other
                     self.send_buddy_request(self.sessions[newprofileid], self.profileid)
                     self.send_buddy_request(self.sessions[self.profileid], newprofileid)
-                    
+
                     self.send_bm4(newprofileid)
-                    
+
                     self.db.auth_buddy(newprofileid, self.profileid)
                     self.db.auth_buddy(self.profileid, newprofileid)
-                    
+
                     self.send_status_to_friends(newprofileid)
                     self.get_status_from_friends(newprofileid)
-                    
+
                 else:
                     self.send_buddy_request(self.sessions[newprofileid], self.profileid)
         else:
             # Trying to add someone who is already a friend. Just send status updates
             self.send_status_to_friends(newprofileid)
             self.get_status_from_friends(newprofileid)
-                
+
         self.buddies = self.db.get_buddy_list(self.profileid)
 
-    def send_bm4(self, playerid):        
+    def send_bm4(self, playerid):
         date = int(time.time())
         msg = gs_query.create_gamespy_message([
             ('__cmd__', "bm"),
@@ -532,7 +533,7 @@ class PlayerSession(LineReceiver):
             ('date', date),
             ('msg', ""),
         ])
-        
+
         self.transport.write(bytes(msg))
 
     def perform_delbuddy(self, data_parsed):
@@ -547,9 +548,9 @@ class PlayerSession(LineReceiver):
         self.db.auth_buddy(target_profile, self.profileid)
         self.get_buddy_authorized()
         self.buddies = self.db.get_buddy_list(self.profileid)
-                    
+     
         self.send_bm4(target_profile)
-        
+
         self.send_status_to_friends(target_profile)
         self.get_status_from_friends(target_profile)
 
@@ -571,9 +572,9 @@ class PlayerSession(LineReceiver):
         ])
 
         buddy_list = self.buddies
-        if buddy_profileid != None:
+        if buddy_profileid is not None:
             buddy_list = [{"buddyProfileId":buddy_profileid}]
-            
+
         for buddy in buddy_list:
             if buddy['buddyProfileId'] in self.sessions:
                 #self.log(logging.DEBUG, "Sending status to buddy id %s (%s:%d): %s" % (str(buddy['buddyProfileId']), self.sessions[buddy['buddyProfileId']].address.host, self.sessions[buddy['buddyProfileId']].address.port, msg))
@@ -585,9 +586,9 @@ class PlayerSession(LineReceiver):
         self.buddies = self.db.get_buddy_list(self.profileid)
 
         buddy_list = self.buddies
-        if buddy_profileid != None:
+        if buddy_profileid is not None:
             buddy_list = [{"buddyProfileId":buddy_profileid}]
-        
+
         for buddy in self.buddies:
             if buddy['status'] != 1:
                 continue
@@ -632,7 +633,7 @@ class PlayerSession(LineReceiver):
         msg = "\r\n\r\n"
         msg += "|signed|" + sig
 
-        if senttime == None:
+        if senttime is None:
             senttime = int(time.time())
 
         msg = gs_query.create_gamespy_message([
