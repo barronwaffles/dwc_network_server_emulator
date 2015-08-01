@@ -38,7 +38,7 @@ class RegPage(resource.Resource):
 
     def get_header(self, title = None):
         if not title:
-            title = 'Register a Console'
+            title = 'Register a Console .:. BeanJrFi'
         s = (
         '<html>'
         '<head>'
@@ -46,7 +46,7 @@ class RegPage(resource.Resource):
         '</head>'
         '<body>'
             '<p>'
-                '<a href="/register">Register a Console</a>'
+                '<b>Register a console for BeanJrFi</b>'
             '</p>'
         )
         return s
@@ -86,7 +86,7 @@ class RegPage(resource.Resource):
         dbconn = sqlite3.connect('gpcm.db')
         responsedata = (""
             "<form action='updatemaclist' method='POST'>"
-            "macadr (must be in the format of aabbccddeeff):<input type='text' name='macadr'>\r\n"
+            "macadr (must be in the format of aabbccddeeff - all lower-case for letters otherwise the server will keep showing error 23921) - You must wait for your mac address to be added:<input type='text' name='macadr'>\r\n"
             "<input type='hidden' name='action' value='add'>\r\n"
             "<input type='submit' value='Register console'></form>\r\n"
             "<table border='1'>"
@@ -99,7 +99,7 @@ class RegPage(resource.Resource):
         title = None
         response = ''
         if request.path == "/register":
-            title = 'Register a Console to ALTWFC'
+            title = 'Register a Console to BeanJrFi'
             response = self.render_maclist(request)
         
         return self.get_header(title) + response + self.get_footer()
