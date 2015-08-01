@@ -19,6 +19,7 @@
 from twisted.web import server, resource
 from twisted.internet import reactor
 from twisted.internet.error import ReactorAlreadyRunning
+import re
 import base64
 import codecs 
 import sqlite3
@@ -38,7 +39,7 @@ class RegPage(resource.Resource):
 
     def get_header(self, title = None):
         if not title:
-            title = 'Register a Console .:. BeanJrFi'
+            title = 'Register a Console'
         s = (
         '<html>'
         '<head>'
@@ -46,7 +47,7 @@ class RegPage(resource.Resource):
         '</head>'
         '<body>'
             '<p>'
-                '<b>Register a console for BeanJrFi</b>'
+                '<b>Register a console</b>'
             '</p>'
         )
         return s
@@ -63,12 +64,14 @@ class RegPage(resource.Resource):
         dbconn = sqlite3.connect('gpcm.db')
         macadr = request.args['macadr'][0].strip()
         actiontype = request.args['action'][0]
-        if not macadr.isalnum():
+        macadr = macadr.lower()
+        if not re.match("[0-9a-f]{2}([-:])[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$", macadr):
             request.setResponseCode(500)
-            return "Bad data"
+            return "The MAC you entered was invalid. Please click the back button and try again!"
+        macadr = macadr.replace(":","").replace("-","")
         if actiontype == 'add':
             dbconn.cursor().execute('insert into pending values(?)',(macadr,))
-            responsedata = "Added %s to pending list. Your application may take anywhere from 24 to 48 hours." % (macadr)
+            responsedata = "Added %s to pending list. Please close this window now. It's also not a bad idea to check back on the status of your activation by attempting to connect your console to the server." % (macadr)
         dbconn.commit()
         dbconn.close()
         request.setHeader("Content-Type", "text/html; charset=utf-8")
@@ -86,7 +89,7 @@ class RegPage(resource.Resource):
         dbconn = sqlite3.connect('gpcm.db')
         responsedata = (""
             "<form action='updatemaclist' method='POST'>"
-            "macadr (must be in the format of aabbccddeeff - all lower-case for letters otherwise the server will keep showing error 23921) - You must wait for your mac address to be added:<input type='text' name='macadr'>\r\n"
+            "macadr (must be in the format of aa:bb:cc:dd:ee:ff or aa-bb-cc-dd-ee-ff):<input type='text' name='macadr'>\r\n"
             "<input type='hidden' name='action' value='add'>\r\n"
             "<input type='submit' value='Register console'></form>\r\n"
             "<table border='1'>"
@@ -99,7 +102,7 @@ class RegPage(resource.Resource):
         title = None
         response = ''
         if request.path == "/register":
-            title = 'Register a Console to BeanJrFi'
+            title = 'Register a Console'
             response = self.render_maclist(request)
         
         return self.get_header(title) + response + self.get_footer()
