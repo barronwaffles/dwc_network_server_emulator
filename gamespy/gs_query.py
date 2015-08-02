@@ -21,14 +21,17 @@
 
 import copy
 
+
 def parse_gamespy_message(message):
+    """Parse a GameSpy message."""
     stack = []
     messages = {}
     msg = message
 
     while len(msg) > 0 and msg[0] == '\\' and "\\final\\" in msg:
         # Find the command
-        # Don't search for more commands if there isn't a \final\, save the left over for the next packet
+        # Don't search for more commands if there isn't a \final\, save the
+        # left over for the next packet
         found_command = False
         while len(msg) > 0 and msg[0] == '\\':
             keyEnd = msg[1:].index('\\') + 1
@@ -48,7 +51,7 @@ def parse_gamespy_message(message):
             else:
                 value = msg
 
-            if found_command is False:
+            if not found_command:
                 messages['__cmd__'] = key
                 messages['__cmd_val__'] = value
                 found_command = True
@@ -62,37 +65,39 @@ def parse_gamespy_message(message):
     return stack, msg
 
 
-# Generate a list based on the input dictionary.
-# The main command must also be stored in __cmd__ for it to put the parameter at the beginning.
 def create_gamespy_message_from_dict(messages_orig):
-    # Deep copy the dictionary because we don't want the original to be modified
-    messages = copy.deepcopy(messages_orig)
+    """Generate a list based on the input dictionary.
 
-    cmd = ""
-    cmd_val = ""
+    The main command must also be stored in __cmd__ for it to put the
+    parameter at the beginning.
+    """
+    # Deep copy the dictionary because we don't want the original to be
+    # modified
+    messages = copy.deepcopy(messages_orig)
 
     if "__cmd__" in messages:
         cmd = messages['__cmd__']
         messages.pop('__cmd__', None)
+    else:
+        cmd = ""
 
     if "__cmd_val__" in messages:
         cmd_val = messages['__cmd_val__']
         messages.pop('__cmd_val__', None)
+    else:
+        cmd_val = ""
 
     if cmd in messages:
         messages.pop(cmd, None)
 
-    l = []
-    l.append(("__cmd__", cmd))
-    l.append(("__cmd_val__", cmd_val))
-
-    for message in messages:
-        l.append((message, messages[message]))
+    l = [("__cmd__", cmd), ("__cmd_val__", cmd_val)]
+    l.extend([(message, messages[message]) for message in messages])
 
     return l
 
 
 def create_gamespy_message_from_list(messages):
+    """Generate a string based on the input list."""
     d = {}
     cmd = ""
     cmd_val = ""
@@ -104,17 +109,18 @@ def create_gamespy_message_from_list(messages):
         elif message[0] == "__cmd_val__":
             cmd_val = str(message[1]).strip('\\')
         else:
-            query += "\\%s\\%s" % (str(message[0]).strip('\\'), str(message[1]).strip('\\'))
+            query += "\\%s\\%s" % (str(message[0]).strip('\\'),
+                                   str(message[1]).strip('\\'))
 
-    if cmd != "":
+    if cmd:
         # Prepend the main command if one was found.
         query = "\\%s\\%s%s" % (cmd, cmd_val, query)
 
     return query
 
 
-# Create a message based on a dictionary (or list) of parameters.
 def create_gamespy_message(messages, id=None):
+    """Create a message based on a dictionary (or list) of parameters."""
     query = ""
 
     if isinstance(messages, dict):
