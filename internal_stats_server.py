@@ -108,8 +108,8 @@ class InternalStatsServer(object):
     """Internal Statistics server.
 
     Running on port 9001 by default: http://127.0.0.1:9001/
-    Can be displayed in json format: http://127.0.0.1:9001/json"""
-
+    Can be displayed in json format: http://127.0.0.1:9001/json
+    """
     def __init__(self):
         self.last_update = 0
         self.next_update = 0
