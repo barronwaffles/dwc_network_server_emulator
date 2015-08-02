@@ -141,7 +141,7 @@ class InternalStatsServer(object):
             self.server_list = self.server_manager.get_server_list() \
                                                   ._getvalue()
 
-            logger.log(logging.DEBUG, self.server_list)
+            logger.log(logging.DEBUG, "%s", self.server_list)
 
         return self.server_list
 

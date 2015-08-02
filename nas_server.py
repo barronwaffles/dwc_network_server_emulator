@@ -130,7 +130,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             if self.path == "/ac":
                 logger.log(logging.DEBUG, "Request to %s from %s",
                            self.path, client_address)
-                logger.log(logging.DEBUG, post)
+                logger.log(logging.DEBUG, "%s", post)
                 ret = {
                     "datetime": time.strftime("%Y%m%d%H%M%S"),
                     "retry": "0"
@@ -161,7 +161,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         logger.log(logging.DEBUG,
                                    "acctcreate response to %s",
                                    client_address)
-                        logger.log(logging.DEBUG, ret)
+                        logger.log(logging.DEBUG, "%s", ret)
 
                     ret = self.dict_to_str(ret)
 
@@ -211,7 +211,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
                         logger.log(logging.DEBUG, "login response to %s",
                                    client_address)
-                        logger.log(logging.DEBUG, ret)
+                        logger.log(logging.DEBUG, "%s", ret)
 
                     ret = self.dict_to_str(ret)
 
@@ -247,7 +247,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
                     logger.log(logging.DEBUG, "svcloc response to %s",
                                client_address)
-                    logger.log(logging.DEBUG, ret)
+                    logger.log(logging.DEBUG, "%s", ret)
 
                     ret = self.dict_to_str(ret)
                 else:
@@ -258,7 +258,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             elif self.path == "/pr":
                 logger.log(logging.DEBUG, "Request to %s from %s",
                            self.path, client_address)
-                logger.log(logging.DEBUG, post)
+                logger.log(logging.DEBUG, "%s", post)
                 words = len(post["words"].split('\t'))
                 wordsret = "0" * words
                 ret = {
@@ -275,14 +275,14 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 self.send_header("NODE", "wifiappe1")
 
                 logger.log(logging.DEBUG, "pr response to %s", client_address)
-                logger.log(logging.DEBUG, ret)
+                logger.log(logging.DEBUG, "%s", ret)
 
                 ret = self.dict_to_str(ret)
 
             elif self.path == "/download":
                 logger.log(logging.DEBUG, "Request to %s from %s",
                            self.path, client_address)
-                logger.log(logging.DEBUG, post)
+                logger.log(logging.DEBUG, "%s", post)
 
                 action = post["action"]
 
@@ -404,7 +404,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                            client_address)
 
                 # if dlc_contenttype is False:
-                #     logger.log(logging.DEBUG, ret)
+                #     logger.log(logging.DEBUG, "%s", ret)
             else:
                 self.send_response(404)
                 logger.log(logging.WARNING,

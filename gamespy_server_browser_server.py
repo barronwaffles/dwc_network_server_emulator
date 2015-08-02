@@ -252,8 +252,10 @@ class Session(LineReceiver):
                         self.transport.write(bytes(output_enc))
 
                         self.log(logging.DEBUG,
+                                 "%s",
                                  "Responding with own IP and game port...")
                         self.log(logging.DEBUG,
+                                 "%s",
                                  utils.pretty_print_hex(output))
                     else:
                         self.find_server(query_game, filter, fields,
@@ -272,6 +274,7 @@ class Session(LineReceiver):
                              self.address.host, self.address.port,
                              dest_addr, dest_port, packet_len)
                     self.log(logging.DEBUG,
+                             "%s",
                              utils.pretty_print_hex(bytearray(packet)))
 
                     if packet_len == len(packet):
@@ -279,6 +282,7 @@ class Session(LineReceiver):
                         self.forward_data_to_client(packet[9:], dest)
                     else:
                         self.log(logging.ERROR,
+                                 "%s",
                                  "ERROR: Could not find entire packet.")
 
                 elif packet[2] == '\x03':  # Keep alive reply
@@ -292,6 +296,7 @@ class Session(LineReceiver):
                              ord(packet[2]),
                              self.address.host, self.address.port)
                     self.log(logging.DEBUG,
+                             "%s",
                              utils.pretty_print_hex(bytearray(packet)))
         except:
             self.log(logging.ERROR,
@@ -325,7 +330,7 @@ class Session(LineReceiver):
             self.log(logging.WARNING,
                      "key_count[%d] != len(fields)[%d]",
                      key_count, len(fields))
-            self.log(logging.WARNING, fields)
+            self.log(logging.WARNING, "%s", fields)
 
         # Write the fields
         for field in fields:
@@ -403,7 +408,7 @@ class Session(LineReceiver):
             self.log(logging.DEBUG,
                      "Sent server list message to %s:%s...",
                      self.address.host, self.address.port)
-            self.log(logging.DEBUG, utils.pretty_print_hex(data))
+            self.log(logging.DEBUG, "%s", utils.pretty_print_hex(data))
 
             # Encrypt data
             enc = gs_utils.EncTypeX()
@@ -425,8 +430,8 @@ class Session(LineReceiver):
             query_game, filter, fields, max_servers
         )._getvalue()
 
-        self.log(logging.DEBUG, "Found server(s):")
-        self.log(logging.DEBUG, self.server_list)
+        self.log(logging.DEBUG, "%s", "Found server(s):")
+        self.log(logging.DEBUG, "%s", self.server_list)
 
         if not self.server_list:
             self.server_list = [{}]
@@ -502,12 +507,12 @@ class Session(LineReceiver):
         self.log(logging.DEBUG,
                  "Trying to send message to %s:%d...",
                  forward_client[0], forward_client[1])
-        self.log(logging.DEBUG, utils.pretty_print_hex(bytearray(data)))
+        self.log(logging.DEBUG, "%s", utils.pretty_print_hex(bytearray(data)))
 
         if server is None:
             return
 
-        self.log(logging.DEBUG, "%s %s" % (ip, server['publicip']))
+        self.log(logging.DEBUG, "%s %s", ip, server['publicip'])
         if server['publicip'] == ip and \
            server['publicport'] == str(forward_client[1]):
             if forward_client[1] == 0 and 'localport' in server:
