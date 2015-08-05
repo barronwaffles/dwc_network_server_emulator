@@ -11,3 +11,12 @@ Whether it's to add new features or clean up existing code, we could always use 
 Open source projects referenced during the creation of this project: [OpenSpy Core](https://github.com/sfcspanky/Openspy-Core/) | [Luigi Auriemma's Gslist and enctypex_decoder](http://aluigi.altervista.org/papers.htm)
 
 Instructions for setting up your own server can be found [here](https://github.com/polaris-/dwc_network_server_emulator/wiki/Setting-up-a-server-from-a-fresh-installation-of-Linux).
+
+##Requirements:
+
+    Python 2.7
+    Twisted
+    zope.interface (Twisted dependency)
+    pywin32 (Twisted dependency)
+    Apache (or your favorite httpd)
+    PHP5
