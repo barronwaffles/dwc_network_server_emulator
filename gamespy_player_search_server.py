@@ -30,6 +30,7 @@ from twisted.internet.error import ReactorAlreadyRunning
 import gamespy.gs_database as gs_database
 import gamespy.gs_query as gs_query
 import other.utils as utils
+import dwc_config
 
 # Logger settings
 logger_output_to_console = True
@@ -39,7 +40,7 @@ logger_filename = "gamespy_player_search_server.log"
 logger = utils.create_logger(logger_name, logger_filename, -1,
                              logger_output_to_console, logger_output_to_file)
 
-address = ("0.0.0.0", 29901)
+address = dwc_config.get_ip_port('GameSpyPlayerSearchServer')
 
 
 class GameSpyPlayerSearchServer(object):

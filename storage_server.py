@@ -29,6 +29,7 @@ import xml.dom.minidom as minidom
 
 import other.utils as utils
 import gamespy.gs_database as gs_database
+import dwc_config
 
 logger_output_to_console = True
 logger_output_to_file = True
@@ -37,7 +38,7 @@ logger_filename = "storage_server.log"
 logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
 
 # Paths to ProxyPass: /SakeStorageServer, /SakeFileServer
-address = ("127.0.0.1", 8000)
+address = dwc_config.get_ip_port('StorageServer')
 
 def escape_xml(s):
     s = s.replace( "&", "&amp;" )

@@ -38,6 +38,7 @@ from multiprocessing.managers import BaseManager
 import gamespy.gs_utility as gs_utils
 import gamespy.gs_database as gs_database
 import other.utils as utils
+import dwc_config
 from gamespy_server_browser_server import GameSpyServerBrowserServer
 
 # Logger settings
@@ -98,7 +99,7 @@ class GameSpyQRServer(object):
 
     def start(self):
         try:
-            manager_address = ("127.0.0.1", 27500)
+            manager_address = dwc_config.get_ip_port('GameSpyManager')
             manager_password = ""
 
             self.server_manager = GameSpyServerDatabase(
@@ -110,7 +111,7 @@ class GameSpyQRServer(object):
             # Start QR server
             # Accessible to outside connections (use this if you don't know
             # what you're doing)
-            address = ('0.0.0.0', 27900)
+            address = dwc_config.get_ip_port('GameSpyQRServer')
 
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.socket.bind(address)

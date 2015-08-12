@@ -26,7 +26,9 @@ import time
 import datetime
 import json
 import logging
+
 import other.utils as utils
+import dwc_config
 
 logger_output_to_console = True
 logger_output_to_file = True
@@ -118,14 +120,14 @@ class InternalStatsServer(object):
         self.seconds_per_update = 60
 
     def start(self):
-        manager_address = ("127.0.0.1", 27500)
+        manager_address = dwc_config.get_ip_port('GameSpyManager')
         manager_password = ""
         self.server_manager = GameSpyServerDatabase(address=manager_address,
                                                     authkey=manager_password)
         self.server_manager.connect()
 
         site = server.Site(StatsPage(self))
-        reactor.listenTCP(9001, site)
+        reactor.listenTCP(dwc_config.get_port('InternalStatsServer'), site)
 
         try:
             if not reactor.running:

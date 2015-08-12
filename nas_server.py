@@ -33,6 +33,7 @@ import traceback
 
 import gamespy.gs_database as gs_database
 import other.utils as utils
+import dwc_config
 
 logger_output_to_console = True
 logger_output_to_file = True
@@ -68,7 +69,7 @@ gamecodes_return_random_file = [
     'IPGS'
 ]
 
-address = ("127.0.0.1", 9000)
+address = dwc_config.get_ip_port('NasServer')
 
 
 class NasServer(object):
@@ -363,7 +364,8 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                                     ret,
                                     post["token"]
                                 )
-                            elif post["gamecd"] in gamecodes_return_random_file:
+                            elif post["gamecd"] in \
+                                    gamecodes_return_random_file:
                                 # Pokemon Gen 4 Mystery Gifts, same here
                                 ret = self.filter_list(
                                     safeloadfi("_list.txt"),

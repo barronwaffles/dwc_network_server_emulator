@@ -29,8 +29,10 @@ import collections
 import json
 import os.path
 import logging
+
 import other.utils as utils
 import gamespy.gs_utility as gs_utils
+import dwc_config
 
 logger_output_to_console = True
 logger_output_to_file = True
@@ -478,7 +480,7 @@ class AdminPage(resource.Resource):
         else:
             return self.get_header() + self.get_footer()
 
-port = 9009
+_, port = dwc_config.get_ip_port('AdminPage')
 
 
 class AdminPageServer(object):

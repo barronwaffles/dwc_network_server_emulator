@@ -54,6 +54,7 @@ import ast
 from multiprocessing.managers import BaseManager
 from multiprocessing import freeze_support
 import other.utils as utils
+import dwc_config
 
 
 class TokenType:
@@ -119,7 +120,7 @@ class GameSpyBackendServer(object):
         )
 
     def start(self):
-        address = ("127.0.0.1", 27500)
+        address = dwc_config.get_ip_port('GameSpyManager')
         password = ""
 
         logger.log(logging.INFO,

@@ -34,6 +34,7 @@ from twisted.internet.error import ReactorAlreadyRunning
 
 import gamespy.gs_utility as gs_utils
 import other.utils as utils
+import dwc_config
 
 from multiprocessing.managers import BaseManager
 
@@ -68,7 +69,7 @@ GameSpyServerDatabase.register("add_natneg_server")
 GameSpyServerDatabase.register("get_natneg_server")
 GameSpyServerDatabase.register("delete_natneg_server")
 
-address = ("0.0.0.0", 28910)
+address = dwc_config.get_ip_port('GameSpyServerBrowserServer')
 
 
 class GameSpyServerBrowserServer(object):
@@ -117,7 +118,7 @@ class Session(LineReceiver):
         self.own_server = None
         self.buffer = []
 
-        manager_address = ("127.0.0.1", 27500)
+        manager_address = dwc_config.get_ip_port('GameSpyManager')
         manager_password = ""
         self.server_manager = GameSpyServerDatabase(address=manager_address,
                                                     authkey=manager_password)

@@ -34,6 +34,7 @@ import other.utils as utils
 import traceback
 
 from multiprocessing.managers import BaseManager
+import dwc_config
 
 # Logger settings
 logger_output_to_console = True
@@ -64,7 +65,7 @@ class GameSpyNatNegServer(object):
         self.secret_key_list = gs_utils.generate_secret_keys("gslist.cfg")
 
         self.server_manager = GameSpyServerDatabase(
-            address=("127.0.0.1", 27500),
+            address=dwc_config.get_ip_port('GameSpyManager'),
             authkey=""
         )
         self.server_manager.connect()
@@ -74,7 +75,7 @@ class GameSpyNatNegServer(object):
             # Start natneg server
             # Accessible to outside connections (use this if you don't know
             #  what you're doing)
-            address = ('0.0.0.0', 27901)
+            address = dwc_config.get_ip_port('GameSpyNatNegServer')
 
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.socket.bind(address)

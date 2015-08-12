@@ -30,6 +30,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="admin_page_server.py" />
+    <Compile Include="dwc_config.py" />
     <Compile Include="gamespy_backend_server.py" />
     <Compile Include="gamespy_gamestats_server.py" />
     <Compile Include="gamespy_natneg_server.py" />
