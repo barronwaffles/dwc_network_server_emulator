@@ -245,6 +245,10 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             # Pokemon requests this for some things
                             ret["servicetoken"] = authtoken
                             ret["svchost"] = "n/a"
+                        else:
+                            # Empty svc - Fix Error Code 24101 (Boom Street)
+                            ret["svchost"] = "n/a"
+                            ret["servicetoken"] = authtoken
 
                     logger.log(logging.DEBUG, "svcloc response to %s",
                                client_address)
@@ -422,7 +426,9 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                        traceback.format_exc())
 
     def str_to_dict(self, s):
-        ret = urlparse.parse_qs(s)
+        # Enable keep_blank_values, skipped otherwise.
+        # TODO: Move this in utils module?
+        ret = urlparse.parse_qs(s, True)
 
         for k, v in ret.iteritems():
             try:
