@@ -126,6 +126,12 @@ def parse_authtoken(authtoken, db):
 
 
 def login_profile_via_parsed_authtoken(authtoken_parsed, db):
+    """Return login profile via parsed authtoken.
+
+    authtoken_parsed MUST HAVE userid field and can't be None!
+    """
+    if authtoken_parsed is None or 'userid' not in authtoken_parsed:
+        return None, None, None, None
     console = 0
     userid = authtoken_parsed['userid']
 
