@@ -118,7 +118,8 @@ class GamespyDatabase(object):
             tx.nonquery("CREATE TABLE IF NOT EXISTS gameinfo (profileid INT, dindex TEXT, ptype TEXT, data TEXT)")
             tx.nonquery("CREATE TABLE IF NOT EXISTS nas_logins (userid TEXT, authtoken TEXT, data TEXT)")
             tx.nonquery("CREATE TABLE IF NOT EXISTS banned (gameid TEXT, ipaddr TEXT)")
-
+            tx.nonquery("CREATE TABLE IF NOT EXISTS pending (macadr TEXT)")
+            tx.nonquery("CREATE TABLE IF NOT EXISTS registered (macadr TEXT)")
             # Create some indexes for performance.
             tx.nonquery("CREATE UNIQUE INDEX IF NOT EXISTS gamestatprofile_triple on gamestat_profile(profileid,dindex,ptype)")
             tx.nonquery("CREATE UNIQUE INDEX IF NOT EXISTS users_profileid_idx ON users (profileid)")
@@ -402,6 +403,14 @@ class GamespyDatabase(object):
     def is_banned(self,postdata):
         with Transaction(self.conn) as tx:
             row = tx.queryone("SELECT COUNT(*) FROM banned WHERE gameid = ? AND ipaddr = ?",(postdata['gamecd'][:-1],postdata['ipaddr']))
+            return int(row[0]) > 0
+    def pending(self,postdata):
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT COUNT(*) FROM pending WHERE macadr = ?",(postdata['macadr'],))
+            return int(row[0]) > 0
+    def registered(self,postdata):
+        with Transaction(self.conn) as tx:
+            row = tx.queryone("SELECT COUNT(*) FROM registered WHERE macadr = ?",(postdata['macadr'],))
             return int(row[0]) > 0
 
     def get_next_available_userid(self):
