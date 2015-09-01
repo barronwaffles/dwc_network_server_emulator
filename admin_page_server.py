@@ -82,7 +82,10 @@ class AdminPage(resource.Resource):
         '<body>'
             '<p>'
                 '<a href="/banhammer">All Users</a> | '
-                '<a href="/banlist">Active Bans</a> '
+                '<a href="/banlist">Active IP Bans</a> | '
+                '<a href="/maclist">Active Console MAC Bans</a> | '
+                '<a href="/cfclist">Active Console CFC Bans</a> | '
+                '<a href="/csnumlist">Active Console SN Bans</a> '
             '</p>'
         )
         return s
@@ -113,28 +116,105 @@ class AdminPage(resource.Resource):
             request.setHeader('WWW-Authenticate', 'Basic realm="ALTWFC"')
             request.write(error_message)
         return is_auth
+    def update_maclist(self, request):
+        address = request.getClientIP()
+        dbconn = sqlite3.connect('gpcm.db')
+        macadr = request.args['macadr'][0].strip()
+        actiontype = request.args['action'][0]
+        if not macadr.isalnum():
+            request.setResponseCode(500)
+            logger.log(logging.INFO,address+" Bad data "+macadr+" ")
+            return "Bad data"
+        if actiontype == 'add':
+            dbconn.cursor().execute('insert into console_macadr_banned values(?)',(macadr,))
+            responsedata = "Added macadr=%s" % (macadr)
+        else:
+            dbconn.cursor().execute('delete from console_macadr_banned where macadr=?',(macadr,))
+            responsedata = "Removed macadr=%s" % (macadr)
+        dbconn.commit()
+        dbconn.close()
+        logger.log(logging.INFO,address+" "+responsedata)
+        request.setHeader("Content-Type", "text/html; charset=utf-8")
+        request.setHeader("Location", "/maclist")
+        referer = request.getHeader('referer')
+        request.setResponseCode(303)
+        return responsedata
+        if not referer:
+            referer = "/banhammer"
+        request.setHeader("Location", referer)
+
+        request.setResponseCode(303)
+        return responsedata
+    def update_cfclist(self, request):
+        address = request.getClientIP()
+        dbconn = sqlite3.connect('gpcm.db')
+        cfc = request.args['cfc'][0].strip()
+        actiontype = request.args['action'][0]
+        if not cfc.isalnum():
+            request.setResponseCode(500)
+            logger.log(logging.INFO,address+" Bad data "+cfc+" ")
+            return "Bad data"
+        if actiontype == 'add':
+            dbconn.cursor().execute('insert into console_cfc_banned values(?)',(cfc,))
+            responsedata = "Added cfc=%s" % (cfc)
+        else:
+            dbconn.cursor().execute('delete from console_cfc_banned where cfc=?',(cfc,))
+            responsedata = "Removed cfc=%s" % (cfc)
+        dbconn.commit()
+        dbconn.close()
+        logger.log(logging.INFO,address+" "+responsedata)
+        request.setHeader("Content-Type", "text/html; charset=utf-8")
+        request.setHeader("Location", "/cfclist")
+        referer = request.getHeader('referer')
+        request.setResponseCode(303)
+        return responsedata
+        if not referer:
+            referer = "/banhammer"
+        request.setHeader("Location", referer)
+
+        request.setResponseCode(303)
+        return responsedata
+    def update_csnumlist(self, request):
+        address = request.getClientIP()
+        dbconn = sqlite3.connect('gpcm.db')
+        csnum = request.args['csnum'][0].strip()
+        actiontype = request.args['action'][0]
+        if not csnum.isalnum():
+            request.setResponseCode(500)
+            logger.log(logging.INFO,address+" Bad data "+csnum+" ")
+            return "Bad data"
+        if actiontype == 'add':
+            dbconn.cursor().execute('insert into console_csnum_banned values(?)',(csnum,))
+            responsedata = "Added csnum=%s" % (csnum)
+        else:
+            dbconn.cursor().execute('delete from console_csnum_banned where csnum=?',(csnum,))
+            responsedata = "Removed csnum=%s" % (csnum)
+        dbconn.commit()
+        dbconn.close()
+        logger.log(logging.INFO,address+" "+responsedata)
+        request.setHeader("Content-Type", "text/html; charset=utf-8")
+        request.setHeader("Location", "/csnumlist")
+        referer = request.getHeader('referer')
+        request.setResponseCode(303)
+        return responsedata
+        if not referer:
+            referer = "/banhammer"
+        request.setHeader("Location", referer)
+        request.setResponseCode(303)
+        return responsedata
 
     def update_banlist(self, request):
         address = request.getClientIP()
         dbconn = sqlite3.connect('gpcm.db')
-        gameid = request.args['gameid'][0].upper().strip()
         ipaddr = request.args['ipaddr'][0].strip()
         actiontype = request.args['action'][0]
-        if not gameid.isalnum(): 
-            request.setResponseCode(500)
-            logger.log(logging.INFO,address+" Bad data "+gameid+" "+ipaddr)
-            return "Bad data"
-            
-        # this strips the region identifier from game IDs, not sure if this actually always accurate but limited testing suggests it is
-        if len(gameid) > 3:
-            gameid = gameid[:-1]
             
         if actiontype == 'ban':
-            dbconn.cursor().execute('insert into banned values(?,?)',(gameid,ipaddr))
-            responsedata = "Added gameid=%s, ipaddr=%s" %  (gameid,ipaddr)
+            dbconn.cursor().execute('insert into ip_banned values(?)',(ipaddr,))
+            responsedata = "Added ipaddr=%s" %  (ipaddr)
         else:
-            dbconn.cursor().execute('delete from banned where gameid=? and ipaddr=?',(gameid,ipaddr))
-            responsedata = "Removed gameid=%s, ipaddr=%s" %  (gameid,ipaddr)
+            dbconn.cursor().execute('delete from ip_banned where ipaddr=?',(ipaddr,))
+            responsedata = "ipaddr=%s" %  (ipaddr)
         dbconn.commit()
         dbconn.close()
         logger.log(logging.INFO,address+" "+responsedata)
@@ -148,6 +228,78 @@ class AdminPage(resource.Resource):
         request.setResponseCode(303)
         return responsedata
 
+    def render_maclist(self, request):
+        address = request.getClientIP()
+        dbconn = sqlite3.connect('gpcm.db')
+        logger.log(logging.INFO,address+" Viewed banned consoles MAC list")
+        responsedata = (""
+            '<a href="http://%20:%20@'+request.getHeader('host')+'">[CLICK HERE TO LOG OUT]</a>'
+            "<form action='updatemaclist' method='POST'>"
+            "macadr:<input type='text' name='macadr'>\r\n"
+            "<input type='hidden' name='action' value='add'>\r\n"
+            "<input type='submit' value='Ban console'></form>\r\n"
+            "<table border='1'>"
+            "<tr><td>macadr</td></tr>\r\n")
+        for row in dbconn.cursor().execute("select * from console_macadr_banned"):
+            macadr = str(row[0])
+            responsedata += ("<tr><td>"+macadr+"</td>"
+                "<td><form action='updatemaclist' method='POST'>"
+                "<input type='hidden' name='macadr' value='"+macadr+"'>"
+                "<input type='hidden' name='action' value='remove'>\r\n"
+                "<input type='submit' value='Remove console ban'></form></td></tr>\r\n")
+        responsedata += "</table>" 
+        dbconn.close()
+        request.setHeader("Content-Type", "text/html; charset=utf-8")
+        return responsedata
+
+    def render_cfclist(self, request):
+        address = request.getClientIP()
+        dbconn = sqlite3.connect('gpcm.db')
+        logger.log(logging.INFO,address+" Viewed banned consoles CFC list")
+        responsedata = (""
+            '<a href="http://%20:%20@'+request.getHeader('host')+'">[CLICK HERE TO LOG OUT]</a>'
+            "<form action='updatecfclist' method='POST'>"
+            "cfc:<input type='text' name='cfc'>\r\n"
+            "<input type='hidden' name='action' value='add'>\r\n"
+            "<input type='submit' value='Ban console'></form>\r\n"
+            "<table border='1'>"
+            "<tr><td>cfc</td></tr>\r\n")
+        for row in dbconn.cursor().execute("select * from console_cfc_banned"):
+            cfc = str(row[0])
+            responsedata += ("<tr><td>"+cfc+"</td>"
+                "<td><form action='updatecfclist' method='POST'>"
+                "<input type='hidden' name='cfc' value='"+cfc+"'>"
+                "<input type='hidden' name='action' value='remove'>\r\n"
+                "<input type='submit' value='Remove console ban'></form></td></tr>\r\n")
+        responsedata += "</table>" 
+        dbconn.close()
+        request.setHeader("Content-Type", "text/html; charset=utf-8")
+        return responsedata
+
+    def render_csnumlist(self, request):
+        address = request.getClientIP()
+        dbconn = sqlite3.connect('gpcm.db')
+        logger.log(logging.INFO,address+" Viewed banned consoles SN list")
+        responsedata = (""
+            '<a href="http://%20:%20@'+request.getHeader('host')+'">[CLICK HERE TO LOG OUT]</a>'
+            "<form action='updatecsnumlist' method='POST'>"
+            "csnum:<input type='text' name='csnum'>\r\n"
+            "<input type='hidden' name='action' value='add'>\r\n"
+            "<input type='submit' value='Ban console'></form>\r\n"
+            "<table border='1'>"
+            "<tr><td>csnum</td></tr>\r\n")
+        for row in dbconn.cursor().execute("select * from console_csnum_banned"):
+            csnum = str(row[0])
+            responsedata += ("<tr><td>"+csnum+"</td>"
+                "<td><form action='updatecsnumlist' method='POST'>"
+                "<input type='hidden' name='csnum' value='"+csnum+"'>"
+                "<input type='hidden' name='action' value='remove'>\r\n"
+                "<input type='submit' value='Remove console ban'></form></td></tr>\r\n")
+        responsedata += "</table>" 
+        dbconn.close()
+        request.setHeader("Content-Type", "text/html; charset=utf-8")
+        return responsedata
+
     def render_banlist(self, request):
         address = request.getClientIP()
         dbconn = sqlite3.connect('gpcm.db')
@@ -155,13 +307,11 @@ class AdminPage(resource.Resource):
         responsedata = (""
             '<a href="http://%20:%20@'+request.getHeader('host')+'">[CLICK HERE TO LOG OUT]</a>'
             "<table border='1'>"
-            "<tr><td>gameid</td><td>ipAddr</td></tr>\r\n")
-        for row in dbconn.cursor().execute("select * from banned"):
-            gameid = str(row[0])
-            ipaddr = str(row[1])
-            responsedata += ("<tr><td>"+gameid+"</td><td>"+ipaddr+"</td>"
+            "<tr><td>ipAddr</td></tr>\r\n")
+        for row in dbconn.cursor().execute("select * from ip_banned"):
+            ipaddr = str(row[0])
+            responsedata += ("<tr><td>"+ipaddr+"</td>"
                 "<td><form action='updatebanlist' method='POST'>"
-                "<input type='hidden' name='gameid' value='"+gameid+"'>"
                 "<input type='hidden' name='ipaddr' value='"+ipaddr+"'>"
                 "<input type='hidden' name='action' value='unban'>\r\n"
                 "<input type='submit' value='----- UNBAN -----'></form></td></tr>\r\n")
@@ -191,15 +341,15 @@ class AdminPage(resource.Resource):
             '') 
         dbconn = sqlite3.connect('gpcm.db')
         banned_list = []
-        for row in dbconn.cursor().execute("SELECT * FROM BANNED"):
-            banned_list.append(str(row[0])+":"+str(row[1]))
+        for row in dbconn.cursor().execute("SELECT * FROM IP_BANNED"):
+            banned_list.append(str(row[0]))
         responsedata = (""
             '<a href="http://%20:%20@'+request.getHeader('host')+'">[CLICK HERE TO LOG OUT]</a>'
             "<br><br>"
             "<table border='1'>" 
             "<tr><td>ingamesn or devname</td><td>gameid</td>"
             "<td>Enabled</td><td>newest dwc_pid</td>"
-            "<td>gsbrcd</td><td>userid</td><td>ipAddr</td></tr>\r\n")
+            "<td>gsbrcd</td><td>userid</td><td>ipAddr</td><td>macadr</td><td>cfc</td><td>csnum</td><td>Ban/Unban IP</td></tr>\r\n")
         for row in dbconn.cursor().execute(sqlstatement):
             dwc_pid = str(row[0])
             enabled = str(row[1])
@@ -209,6 +359,9 @@ class AdminPage(resource.Resource):
             userid = str(row[5])
             gsbrcd = str(nasdata['gsbrcd'])
             ipaddr = str(nasdata['ipaddr'])
+            macadr = str(nasdata['macadr'])
+            cfc = str(nasdata['cfc'])
+            csnum = str(nasdata['csnum'])
             ingamesn = ''
             if 'ingamesn' in nasdata:
                 ingamesn = str(nasdata['ingamesn'])
@@ -230,7 +383,10 @@ class AdminPage(resource.Resource):
             responsedata += "<td>"+gsbrcd+"</td>"
             responsedata += "<td>"+userid+"</td>"
             responsedata += "<td>"+ipaddr+"</td>"
-            if gameid[:-1]+":"+ipaddr in banned_list:
+            responsedata += "<td>"+macadr+"</td>"
+            responsedata += "<td>"+cfc+"</td>"
+            responsedata +="<td>"+csnum+"</td>"
+            if ipaddr in banned_list:
                 responsedata += ("<td><form action='updatebanlist' method='POST'>"
                 "<input type='hidden' name='gameid' value='"+gameid+"'>"
                 "<input type='hidden' name='ipaddr' value='"+ipaddr+"'>"
@@ -292,6 +448,15 @@ class AdminPage(resource.Resource):
         elif request.path == "/banhammer":
             title = 'AltWfc Users'
             response = self.render_blacklist(request)
+        elif request.path == "/maclist":
+            title = "AltWfc Console MAC Bans"
+            response = self.render_maclist(request)
+        elif request.path == "/csnumlist":
+            title = "AltWfc Console SN Bans"
+            response = self.render_csnumlist(request)
+        elif request.path == "/cfclist":
+            title = "AltWfc Console Friend Code Bans"
+            response = self.render_cfclist(request)
         
         return self.get_header(title) + response + self.get_footer()
 
@@ -304,6 +469,12 @@ class AdminPage(resource.Resource):
         
         if request.path == "/updatebanlist":
             return self.update_banlist(request)
+        if request.path == "/updatemaclist":
+            return self.update_maclist(request)
+        if request.path == "/updatecfclist":
+            return self.update_cfclist(request)
+        if request.path == "/updatecsnumlist":
+            return self.update_csnumlist(request)
         else:
             return self.get_header() + self.get_footer()
 
