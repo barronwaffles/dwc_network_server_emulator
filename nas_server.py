@@ -35,12 +35,7 @@ import gamespy.gs_database as gs_database
 import other.utils as utils
 import dwc_config
 
-logger_output_to_console = True
-logger_output_to_file = True
-logger_name = "NasServer"
-logger_filename = "nas_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1,
-                             logger_output_to_console, logger_output_to_file)
+logger = dwc_config.get_logger('NasServer')
 
 # If a game from this list requests a file listing, the server will return
 # that only one exists and return a random one.
@@ -178,23 +173,28 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             "retry": "1",
                             "reason": "User banned."
                         }
-                    #Un-comment these lines to enable console registration feature
-                    #elif not self.server.db.pending(post):
-                        #logger.log(logging.DEBUG, "Login denied - Unknown console"+str(post))
-                        #ret = {
-                            #"datetime": time.strftime("%Y%m%d%H%M%S"),
-                            #"returncd": "3921",
-                            #"locator": "gamespy.com",
-                            #"retry": "1",
-                        #}
-                    #elif not self.server.db.registered(post):
-                        #logger.log(logging.DEBUG, "Login denied - console pending"+str(post))
-                        #ret = {
-                            #"datetime": time.strftime("%Y%m%d%H%M%S"),
-                            #"returncd": "3888",
-                            #"locator": "gamespy.com",
-                            #"retry": "1",
-                        #}
+                    # Un-comment these lines to enable console registration
+                    # feature
+                    # elif not self.server.db.pending(post):
+                    #     logger.log(logging.DEBUG,
+                    #                "Login denied - Unknown console %s",
+                    #                post)
+                    #     ret = {
+                    #         "datetime": time.strftime("%Y%m%d%H%M%S"),
+                    #         "returncd": "3921",
+                    #         "locator": "gamespy.com",
+                    #         "retry": "1",
+                    #     }
+                    # elif not self.server.db.registered(post):
+                    #     logger.log(logging.DEBUG,
+                    #                "Login denied - console pending %s",
+                    #                post)
+                    #     ret = {
+                    #         "datetime": time.strftime("%Y%m%d%H%M%S"),
+                    #         "returncd": "3888",
+                    #         "locator": "gamespy.com",
+                    #         "retry": "1",
+                    #     }
                     else:
                         challenge = utils.generate_random_str(8)
                         post["challenge"] = challenge

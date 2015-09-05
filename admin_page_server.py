@@ -34,12 +34,8 @@ import other.utils as utils
 import gamespy.gs_utility as gs_utils
 import dwc_config
 
-logger_output_to_console = True
-logger_output_to_file = True
-logger_name = "AdminPage"
-logger_filename = "admin_page.log"
-logger = utils.create_logger(logger_name, logger_filename, -1,
-                             logger_output_to_console, logger_output_to_file)
+logger = dwc_config.get_logger('AdminPage')
+_, port = dwc_config.get_ip_port('AdminPage')
 
 
 # Example of adminpageconf.json
@@ -480,8 +476,6 @@ class AdminPage(resource.Resource):
         else:
             return self.get_header() + self.get_footer()
 
-_, port = dwc_config.get_ip_port('AdminPage')
-
 
 class AdminPageServer(object):
     def start(self):
@@ -495,6 +489,7 @@ class AdminPageServer(object):
                 reactor.run(installSignalHandlers=0)
         except ReactorAlreadyRunning:
             pass
+
 
 if __name__ == "__main__":
     AdminPageServer().start()

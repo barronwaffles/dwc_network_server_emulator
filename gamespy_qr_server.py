@@ -41,13 +41,7 @@ import other.utils as utils
 import dwc_config
 from gamespy_server_browser_server import GameSpyServerBrowserServer
 
-# Logger settings
-logger_output_to_console = True
-logger_output_to_file = True
-logger_name = "GameSpyQRServer"
-logger_filename = "gamespy_qr_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1,
-                             logger_output_to_console, logger_output_to_file)
+logger = dwc_config.get_logger('GameSpyQRServer')
 
 
 class GameSpyServerDatabase(BaseManager):

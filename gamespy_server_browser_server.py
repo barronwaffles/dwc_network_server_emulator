@@ -38,6 +38,8 @@ import dwc_config
 
 from multiprocessing.managers import BaseManager
 
+logger = dwc_config.get_logger('GameSpyServerBrowserServer')
+
 
 class ServerListFlags:
     UNSOLICITED_UDP_FLAG = 1
@@ -48,14 +50,6 @@ class ServerListFlags:
     NONSTANDARD_PRIVATE_PORT_FLAG = 32
     HAS_KEYS_FLAG = 64
     HAS_FULL_RULES_FLAG = 128
-
-# Logger settings
-logger_output_to_console = True
-logger_output_to_file = True
-logger_name = "GameSpyServerBrowserServer"
-logger_filename = "gamespy_server_browser_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1,
-                             logger_output_to_console, logger_output_to_file)
 
 
 class GameSpyServerDatabase(BaseManager):

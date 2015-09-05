@@ -32,6 +32,7 @@ from internal_stats_server import InternalStatsServer
 from admin_page_server import AdminPageServer
 from storage_server import StorageServer
 from gamestats_server_http import GameStatsServer
+from register_page import RegPageServer
 
 import gamespy.gs_database as gs_database
 
@@ -60,6 +61,7 @@ if __name__ == "__main__":
         NasServer,
         InternalStatsServer,
         AdminPageServer,
+        RegPageServer,
         StorageServer,
         GameStatsServer,
     ]

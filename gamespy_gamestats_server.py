@@ -37,14 +37,7 @@ import gamespy.gs_utility as gs_utils
 import other.utils as utils
 import dwc_config
 
-# Logger settings
-logger_output_to_console = True
-logger_output_to_file = True
-logger_name = "GameSpyGamestatsServer"
-logger_filename = "gamespy_gamestats_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1,
-                             logger_output_to_console, logger_output_to_file)
-
+logger = dwc_config.get_logger('GameSpyGamestatsServer')
 address = dwc_config.get_ip_port('GameSpyGamestatsServer')
 
 

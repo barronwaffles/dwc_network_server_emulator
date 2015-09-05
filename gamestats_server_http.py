@@ -34,13 +34,7 @@ import gamespy.gs_utility as gs_utils
 import other.utils as utils
 import dwc_config
 
-logger_output_to_console = True
-logger_output_to_file = True
-logger_name = "GameStatsServerHttp"
-logger_filename = "gamestats_server_http.log"
-logger = utils.create_logger(logger_name, logger_filename, -1,
-                             logger_output_to_console, logger_output_to_file)
-
+logger = dwc_config.get_logger('GameStatsServerHttp')
 address = dwc_config.get_ip_port('GameStatsServerHttp')
 
 

@@ -30,12 +30,7 @@ import logging
 import other.utils as utils
 import dwc_config
 
-logger_output_to_console = True
-logger_output_to_file = True
-logger_name = "InternalStatsServer"
-logger_filename = "internal_stats_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1,
-                             logger_output_to_console, logger_output_to_file)
+logger = dwc_config.get_logger('InternalStatsServer')
 
 
 class GameSpyServerDatabase(BaseManager):

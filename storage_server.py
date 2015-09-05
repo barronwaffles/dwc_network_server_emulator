@@ -31,14 +31,10 @@ import other.utils as utils
 import gamespy.gs_database as gs_database
 import dwc_config
 
-logger_output_to_console = True
-logger_output_to_file = True
-logger_name = "StorageServer"
-logger_filename = "storage_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
-
 # Paths to ProxyPass: /SakeStorageServer, /SakeFileServer
+logger = dwc_config.get_logger('StorageServer')
 address = dwc_config.get_ip_port('StorageServer')
+
 
 def escape_xml(s):
     s = s.replace( "&", "&amp;" )
@@ -48,11 +44,13 @@ def escape_xml(s):
     s = s.replace( ">", "&gt;" )
     return s
 
+
 class StorageServer(object):
     def start(self):
         httpd = StorageHTTPServer((address[0], address[1]), StorageHTTPServerHandler)
         logger.log(logging.INFO, "Now listening for connections on %s:%d...", address[0], address[1])
         httpd.serve_forever()
+
 
 class StorageHTTPServer(BaseHTTPServer.HTTPServer):
     def __init__(self, server_address, RequestHandlerClass):
@@ -210,10 +208,14 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
         except TypeError:
             return 'UNKNOWN'
 
+
 class IllegalColumnAccessException(Exception):
     pass
+
+
 class FilterSyntaxException(Exception):
     pass
+
     
 class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def confirm_columns(self, columndata, table):

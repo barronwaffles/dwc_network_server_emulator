@@ -56,6 +56,8 @@ from multiprocessing import freeze_support
 import other.utils as utils
 import dwc_config
 
+logger = dwc_config.get_logger('GameSpyManager')
+
 
 class TokenType:
     UNKNOWN = 0
@@ -63,14 +65,6 @@ class TokenType:
     STRING = 2
     NUMBER = 3
     TOKEN = 4
-
-# Logger settings
-logger_output_to_console = True
-logger_output_to_file = True
-logger_name = "GamespyBackendServer"
-logger_filename = "gamespy_backend_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1,
-                             logger_output_to_console, logger_output_to_file)
 
 
 class GameSpyServerDatabase(BaseManager):
