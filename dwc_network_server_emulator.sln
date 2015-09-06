@@ -1,6 +1,7 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.23107.0
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "dwc_network_server_emulator", "dwc_network_server_emulator.pyproj", "{1A9E8A26-6CEA-4E78-835E-B043356CE360}"
 EndProject
 Global

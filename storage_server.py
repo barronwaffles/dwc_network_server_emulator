@@ -1,20 +1,22 @@
-#    DWC Network Server Emulator
-#    Copyright (C) 2014 polaris-
-#    Copyright (C) 2014 AdmiralCurtiss
-#    Copyright (C) 2014 msoucy
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""DWC Network Server Emulator
+
+    Copyright (C) 2014 polaris-
+    Copyright (C) 2014 AdmiralCurtiss
+    Copyright (C) 2014 msoucy
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
 
 import os
 import random
@@ -27,15 +29,12 @@ import xml.dom.minidom as minidom
 
 import other.utils as utils
 import gamespy.gs_database as gs_database
-
-logger_output_to_console = True
-logger_output_to_file = True
-logger_name = "StorageServer"
-logger_filename = "storage_server.log"
-logger = utils.create_logger(logger_name, logger_filename, -1, logger_output_to_console, logger_output_to_file)
+import dwc_config
 
 # Paths to ProxyPass: /SakeStorageServer, /SakeFileServer
-address = ("127.0.0.1", 8000)
+logger = dwc_config.get_logger('StorageServer')
+address = dwc_config.get_ip_port('StorageServer')
+
 
 def escape_xml(s):
     s = s.replace( "&", "&amp;" )
@@ -45,11 +44,13 @@ def escape_xml(s):
     s = s.replace( ">", "&gt;" )
     return s
 
+
 class StorageServer(object):
     def start(self):
         httpd = StorageHTTPServer((address[0], address[1]), StorageHTTPServerHandler)
         logger.log(logging.INFO, "Now listening for connections on %s:%d...", address[0], address[1])
         httpd.serve_forever()
+
 
 class StorageHTTPServer(BaseHTTPServer.HTTPServer):
     def __init__(self, server_address, RequestHandlerClass):
@@ -207,10 +208,14 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
         except TypeError:
             return 'UNKNOWN'
 
+
 class IllegalColumnAccessException(Exception):
     pass
+
+
 class FilterSyntaxException(Exception):
     pass
+
     
 class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def confirm_columns(self, columndata, table):

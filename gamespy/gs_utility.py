@@ -1,21 +1,24 @@
-#    DWC Network Server Emulator
-#    Copyright (C) 2014 polaris-
-#    Copyright (C) 2014 ToadKing
-#    Copyright (C) 2014 AdmiralCurtiss
-#    Copyright (C) 2014 msoucy
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU Affero General Public License as
-#    published by the Free Software Foundation, either version 3 of the
-#    License, or (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Affero General Public License for more details.
-#
-#    You should have received a copy of the GNU Affero General Public License
-#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""DWC Network Server Emulator
+
+    Copyright (C) 2014 polaris-
+    Copyright (C) 2014 ToadKing
+    Copyright (C) 2014 AdmiralCurtiss
+    Copyright (C) 2014 msoucy
+    Copyright (C) 2015 Sepalani
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
 
 import base64
 import hashlib
@@ -23,11 +26,18 @@ import time
 
 import other.utils as utils
 
+
 def generate_secret_keys(filename="gslist.cfg"):
+    """Generate list of secret keys based on a config file.
+
+    gslist.cfg is the default config file and may be incomplete.
+    TODO: Parse the config file in a cleaner way. (ex: using CSV module)
+    """
     secret_key_list = {}
     with open(filename) as key_file:
         for line in key_file.readlines():
-            #name = line[:54].strip() # Probably won't do anything with the name for now.
+            # name = line[:54].strip()
+            # Probably won't do anything with the name for now.
             id = line[54:54+19].strip()
             key = line[54+19:].strip()
 
@@ -35,23 +45,37 @@ def generate_secret_keys(filename="gslist.cfg"):
 
     return secret_key_list
 
-# GameSpy uses a slightly modified version of base64 which replaces +/= with []_
+
 def base64_encode(input):
-    output = base64.b64encode(input).replace('+', '[').replace('/', ']').replace('=', '_')
+    """Encode input in base64 using GameSpy variant.
+
+    GameSpy uses a slightly modified version of base64 which replaces
+    +/= with []_
+    """
+    output = base64.b64encode(input).replace('+', '[') \
+                                    .replace('/', ']') \
+                                    .replace('=', '_')
     return output
 
 
 def base64_decode(input):
-    output = base64.b64decode(input.replace('[', '+').replace(']', '/').replace('_', '='))
+    """Decode input in base64 using GameSpy variant."""
+    output = base64.b64decode(input.replace('[', '+')
+                                   .replace(']', '/')
+                                   .replace('_', '='))
     return output
 
-# Tetris DS overlay 10 @ 0216E9B8
+
 def rc4_encrypt(_key, _data):
+    """
+    Tetris DS overlay 10 @ 0216E9B8
+    """
     key = bytearray(_key)
     data = bytearray(_data)
 
     if len(key) == 0:
-        # This shouldn't happen but it apparently can on a rare occasion. key should always be set.
+        # This shouldn't happen but it apparently can on a rare occasion.
+        # Key should always be set.
         return
 
     # Key-scheduling algorithm
@@ -68,8 +92,9 @@ def rc4_encrypt(_key, _data):
     # Pseudo-random generation algorithm + encryption
     i = 0
     j = 0
-    for x in range(len(data)):
-        i = (i + 1 + data[x]) & 0xff # Modified RC4? What's this data[x] doing here?
+    for x, val in enumerate(data):
+        # Modified RC4?
+        i = (i + 1 + val) & 0xff
         j = (j + S[i]) & 0xff
 
         S[i], S[j] = S[j], S[i]
@@ -78,41 +103,53 @@ def rc4_encrypt(_key, _data):
 
     return data
 
-# Tetris DS overlay 10 @ 0216E9B8
-# Used by the master server to send some data between the client and server.
-# This seems to be what Luigi Auriemma calls "Gsmsalg".
+
 def prepare_rc4_base64(_key, _data):
+    """Tetris DS overlay 10 @ 0216E9B8
+
+    Used by the master server to send some data between the client and server.
+    This seems to be what Luigi Auriemma calls "Gsmsalg".
+    """
     data = rc4_encrypt(_key, _data)
 
-    if data == None:
+    if data is None:
         data = bytearray()
 
     data.append(0)
 
     return base64.b64encode(buffer(data))
 
-# get the login data from nas.nintendowifi.net/ac from an authtoken
+
 def parse_authtoken(authtoken, db):
+    """Get the login data from nas.nintendowifi.net/ac from an authtoken"""
     return db.get_nas_login(authtoken)
 
+
 def login_profile_via_parsed_authtoken(authtoken_parsed, db):
+    """Return login profile via parsed authtoken.
+
+    authtoken_parsed MUST HAVE userid field and can't be None!
+    """
+    if authtoken_parsed is None or 'userid' not in authtoken_parsed:
+        return None, None, None, None
     console = 0
     userid = authtoken_parsed['userid']
 
-    csnum =   authtoken_parsed.get('csnum',   '') # Wii: Serial number
-    cfc =     authtoken_parsed.get('cfc',     '') # Wii: Friend code
-    bssid =   authtoken_parsed.get('bssid',   '') # NDS: Wifi network's BSSID
-    devname = authtoken_parsed.get('devname', '') # NDS: Device name
-    birth =   authtoken_parsed.get('birth',   '') # NDS: User's birthday
+    csnum = authtoken_parsed.get('csnum', '')      # Wii: Serial number
+    cfc = authtoken_parsed.get('cfc', '')          # Wii: Friend code
+    bssid = authtoken_parsed.get('bssid', '')      # NDS: Wifi network's BSSID
+    devname = authtoken_parsed.get('devname', '')  # NDS: Device name
+    birth = authtoken_parsed.get('birth', '')      # NDS: User's birthday
 
-    # The Wii does not use passwd, so take another uniquely generated string as the password.
+    # The Wii does not use passwd, so take another uniquely generated string
+    # as the password.
     # if "passwd" in authtoken_parsed:
     #     password = authtoken_parsed['passwd']
     # else:
     #     password = authtoken_parsed['gsbrcd']
     #     console = 1
 
-    if not "passwd" in authtoken_parsed:
+    if "passwd" not in authtoken_parsed:
         console = 1
 
     password = authtoken_parsed['gsbrcd']
@@ -120,7 +157,7 @@ def login_profile_via_parsed_authtoken(authtoken_parsed, db):
     gameid = gsbrcd[:4]
     macadr = authtoken_parsed['macadr']
     uniquenick = utils.base32_encode(int(userid)) + gsbrcd
-    email = uniquenick + "@nds" # The Wii also seems to use @nds.
+    email = uniquenick + "@nds"  # The Wii also seems to use @nds.
 
     if "csnum" in authtoken_parsed:
         console = 1
@@ -128,14 +165,18 @@ def login_profile_via_parsed_authtoken(authtoken_parsed, db):
         console = 1
 
     valid_user = db.check_user_exists(userid, gsbrcd)
-    if valid_user == False:
-        profileid = db.create_user(userid, password, email, uniquenick, gsbrcd, console, csnum, cfc, bssid, devname, birth, gameid, macadr)
+    if valid_user is False:
+        profileid = db.create_user(userid, password, email, uniquenick,
+                                   gsbrcd, console, csnum, cfc, bssid,
+                                   devname, birth, gameid, macadr)
     else:
         profileid = db.perform_login(userid, password, gsbrcd)
 
     return userid, profileid, gsbrcd, uniquenick
 
+
 def generate_response(challenge, ac_challenge, secretkey, authtoken):
+    """Generate a challenge response."""
     md5 = hashlib.md5()
     md5.update(ac_challenge)
 
@@ -152,9 +193,14 @@ def generate_response(challenge, ac_challenge, secretkey, authtoken):
     return md5_2.hexdigest()
 
 
-# The proof is practically the same thing as the response, except it has the challenge and the secret key swapped.
-# Maybe combine the two functions later?
 def generate_proof(challenge, ac_challenge, secretkey, authtoken):
+    """Generate a challenge proof.
+
+    The proof is practically the same thing as the response, except it has
+    the challenge and the secret key swapped.
+
+    Maybe combine the two functions later?
+    """
     md5 = hashlib.md5()
     md5.update(ac_challenge)
 
@@ -170,8 +216,11 @@ def generate_proof(challenge, ac_challenge, secretkey, authtoken):
 
     return md5_2.hexdigest()
 
-# Code: Tetris DS @ 02057A14
+
 def get_friendcode_from_profileid(profileid, gameid):
+    """
+    Code: Tetris DS @ 02057A14
+    """
     friendcode = 0
 
     # Combine the profileid and gameid into one buffer
@@ -186,14 +235,20 @@ def get_friendcode_from_profileid(profileid, gameid):
 
     return friendcode
 
+
 def get_profileid_from_friendcode(friendcode):
+    """Return profile ID from Friend Code."""
     # Get the lower 32 bits as the profile id
     profileid = friendcode & 0xffffffff
     return profileid
 
-# Code from Luigi Auriemma's enctypex_decoder.c
-# It's kind of sloppy in parts, but it works. Unless there's some issues then it'll probably not change any longer.
+
 class EncTypeX:
+    """Code from Luigi Auriemma's enctypex_decoder.c
+
+    It's kind of sloppy in parts, but it works. Unless there's some issues
+    then it'll probably not change any longer.
+    """
     def __init__(self):
         return
 
@@ -211,7 +266,8 @@ class EncTypeX:
         if not key or not validate or not data:
             return None
 
-        # Convert data from strings to byte arrays before use or else it'll raise an error
+        # Convert data from strings to byte arrays before use or else
+        # it'll raise an error
         key = bytearray(key)
         validate = bytearray(validate)
 
@@ -233,14 +289,15 @@ class EncTypeX:
         data[2] = 0x00
         data[header_len - 1] = (tmp_len - header_len) ^ 0xea
 
-        header = data[:tmp_len]  # The header of the data gets chopped off in init(), so save it
+        # The header of the data gets chopped off in init(), so save it
+        header = data[:tmp_len]
         encxkey = bytearray([0] * 261)
         data = self.init(encxkey, key, validate, data)
         self.func6e(encxkey, data, len(data))
 
-        # Reappend header that we saved earlier before returning to make the complete buffer
+        # Reappend header that we saved earlier before returning to make
+        # the complete buffer
         return header + data
-
 
     def init(self, encxkey, key, validate, data):
         data_len = len(data)
@@ -256,9 +313,15 @@ class EncTypeX:
         if data_len < (header_len + data_start):
             return None
 
-        data = self.enctypex_funcx(encxkey, bytearray(key), bytearray(validate), data[header_len:], data_start)
-        return data[data_start:]
+        data = self.enctypex_funcx(
+            encxkey,
+            bytearray(key),
+            bytearray(validate),
+            data[header_len:],
+            data_start
+        )
 
+        return data[data_start:]
 
     def enctypex_funcx(self, encxkey, key, validate, data, datalen):
         keylen = len(key)
@@ -278,7 +341,7 @@ class EncTypeX:
 
         n1 = 0
         n2 = 0
-        for i in range(255,-1,-1):
+        for i in range(255, -1, -1):
             t1, n1, n2 = self.func5(encxkey, i, id, idlen, n1, n2)
             t2 = encxkey[i]
             encxkey[i] = encxkey[t1]
