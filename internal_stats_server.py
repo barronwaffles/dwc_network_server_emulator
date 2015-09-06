@@ -95,7 +95,7 @@ class StatsPage(resource.Resource):
             if server_list is not None:
                 output += "".join(self.row % (game, len(server_list[game]))
                                   for game in server_list
-                                  if not server_list[game])
+                                  if server_list[game])
             output += self.footer % (self.stats.get_last_update_time())
 
         return output
