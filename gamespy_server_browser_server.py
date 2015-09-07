@@ -122,7 +122,7 @@ class Session(LineReceiver):
         """TODO: Use logger format"""
         logger.log(level, "[%s:%d] " + msg,
                    self.address.host, self.address.port,
-                   *arg, **kwarg)
+                   *args, **kwarg)
 
     def rawDataReceived(self, data):
         try:
