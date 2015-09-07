@@ -180,7 +180,7 @@ class GameSpyNatNegServer(object):
                            serveraddr, session_id)
 
                 publicport = client_session['addr'][1]
-                if not client_session['localaddr'][1]:
+                if client_session['localaddr'][1]:
                     publicport = client_session['localaddr'][1]
 
                 if client_session['serveraddr'] is not None:
