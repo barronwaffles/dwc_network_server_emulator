@@ -233,3 +233,4 @@ tools/data/*
 test*.py
 .private/*
 logs/*
+adminpageconf.json
