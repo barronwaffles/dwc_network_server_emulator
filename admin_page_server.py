@@ -264,7 +264,7 @@ class AdminPage(resource.Resource):
         ON users.userid = nas_logins.userid
         INNER JOIN (
             SELECT max(profileid) newestpid, userid, gameid, devname
-            FROM users '
+            FROM users
             GROUP BY userid, gameid
         ) ij
         ON ij.userid = users.userid
