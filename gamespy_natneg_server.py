@@ -52,7 +52,107 @@ GameSpyServerDatabase.register("get_natneg_server")
 GameSpyServerDatabase.register("delete_natneg_server")
 
 
+def do_natneg(nn, recv_data, addr):
+    """Command: Unknown."""
+    pass
+
+
+def do_natneg_init(nn, recv_data, addr):
+    """Command: 0x00 - NN_INIT."""
+    pass
+
+
+def do_natneg_initack(nn, recv_data, addr):
+    """Command: 0x01 - NN_INITACK."""
+    pass
+
+
+def do_natneg_erttest(nn, recv_data, addr):
+    """Command: 0x02 - NN_ERTTEST."""
+    pass
+
+
+def do_natneg_ertack(nn, recv_data, addr):
+    """Command: 0x03 - NN_ERTACK."""
+    pass
+
+
+def do_natneg_stateupdate(nn, recv_data, addr):
+    """Command: 0x04 - NN_STATEUPDATE."""
+    pass
+
+
+def do_natneg_connect(nn, recv_data, addr):
+    """Command: 0x05 - NN_CONNECT."""
+    pass
+
+
+def do_natneg_connect_ack(nn, recv_data, addr):
+    """Command: 0x06 - NN_CONNECT_ACK."""
+    pass
+
+
+def do_natneg_connect_ping(nn, recv_data, addr):
+    """Command: 0x07 - NN_CONNECT_PING."""
+    pass
+
+
+def do_natneg_backup_test(nn, recv_data, addr):
+    """Command: 0x08 - NN_BACKUP_TEST."""
+    pass
+
+
+def do_natneg_backup_ack(nn, recv_data, addr):
+    """Command: 0x09 - NN_BACKUP_ACK."""
+    pass
+
+
+def do_natneg_address_check(nn, recv_data, addr):
+    """Command: 0x0A - NN_ADDRESS_CHECK."""
+    pass
+
+
+def do_natneg_address_reply(nn, recv_data, addr):
+    """Command: 0x0B - NN_ADDRESS_REPLY."""
+    pass
+
+
+def do_natneg_natify_request(nn, recv_data, addr):
+    """Command: 0x0C - NN_NATIFY_REQUEST."""
+    pass
+
+
+def do_natneg_report(nn, recv_data, addr):
+    """Command: 0x0D - NN_REPORT."""
+    pass
+
+
+def do_natneg_report_ack(nn, recv_data, addr):
+    """Command: 0x0E - NN_REPORT_ACK."""
+    pass
+
+
 class GameSpyNatNegServer(object):
+    """GameSpy NAT Negotiation server."""
+
+    nn_commands = {
+        '\x00': do_natneg_init,
+        '\x01': do_natneg_initack,
+        '\x02': do_natneg_erttest,
+        '\x03': do_natneg_ertack,
+        '\x04': do_natneg_stateupdate,
+        '\x05': do_natneg_connect,
+        '\x06': do_natneg_connect_ack,
+        '\x07': do_natneg_connect_ping,
+        '\x08': do_natneg_backup_test,
+        '\x09': do_natneg_backup_ack,
+        '\x0A': do_natneg_address_check,
+        '\x0B': do_natneg_address_reply,
+        '\x0C': do_natneg_natify_request,
+        '\x0D': do_natneg_report,
+        '\x0E': do_natneg_report_ack,
+    }
+
     def __init__(self):
         self.session_list = {}
         self.natneg_preinit_session = {}
