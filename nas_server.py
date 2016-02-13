@@ -26,7 +26,6 @@ import time
 import urlparse
 import BaseHTTPServer
 import SocketServer
-import threading
 import os
 import random
 import traceback
@@ -69,12 +68,9 @@ address = dwc_config.get_ip_port('NasServer')
 
 class NasServer(object):
     def start(self):
-        httpd = NasHTTPServer((address[0], address[1]), NasHTTPServerHandler)
-        t = threading.Thread(target=httpd.serve_forever)
-        t.daemon = True
-        t.start()
+        httpd = NasHTTPServer(address, NasHTTPServerHandler)
         logger.log(logging.INFO, "Now listening for connections on %s:%d...",
-                   address[0], address[1])
+                   *address)
         httpd.serve_forever()
 
 
