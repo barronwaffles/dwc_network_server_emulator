@@ -275,19 +275,21 @@ def pretty_print_hex(orig_data, cols=16, sep=' '):
     """
     data = bytearray(orig_data)
     end = len(data)
-    line = "%08x | %-*s | %s\n"
+    line = "\n%08x | %-*s | %s"
     size = cols * 3 - 1
 
     i = 0
     output = ""
     while i < end:
-        j = i + cols if i + cols <= end \
-                     else end - i
+        if i + cols < end:
+            j = i + cols
+        else:
+            j = end
         output += line % (
             i,
             size,
             sep.join("%02x" % c for c in data[i:j]),
-            "".join(chr(c) if chr(c) in string.printable else
+            "".join(chr(c) if 0x20 <= c < 0x7F else
                     '.'
                     for c in data[i:j])
         )
