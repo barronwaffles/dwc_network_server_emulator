@@ -221,13 +221,12 @@ class Session(LineReceiver):
                              " game version: %08x / query game: %s /"
                              " game name: %s / challenge: %s / filter: %s /"
                              " fields: %s / options: %08x / max servers: %d /"
-                             " source ip: %08x" % (
-                                 list_version, encoding_version,
-                                 game_version, query_game,
-                                 game_name, challenge, filter,
-                                 fields, options, max_servers,
-                                 source_ip
-                             ))
+                             " source ip: %08x",
+                             list_version, encoding_version,
+                             game_version, query_game,
+                             game_name, challenge, filter,
+                             fields, options, max_servers,
+                             source_ip)
 
                     # Requesting ip and port of client, not server
                     if not filter and not fields or send_ip:
@@ -283,7 +282,7 @@ class Session(LineReceiver):
                 elif packet[2] == '\x03':  # Keep alive reply
                     self.log(logging.DEBUG,
                              "Received keep alive from %s:%s...",
-                             (self.address.host, self.address.port))
+                             self.address.host, self.address.port)
 
                 else:
                     self.log(logging.DEBUG,
