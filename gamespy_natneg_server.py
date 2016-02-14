@@ -728,6 +728,8 @@ class GameSpyNatNegServer(object):
     }
 
     def __init__(self):
+        self.socket = None
+        self.address = dwc_config.get_ip_port('GameSpyNatNegServer')
         self.session_list = {}
         self.natneg_preinit_session = {}
         self.secret_key_list = gs_utils.generate_secret_keys("gslist.cfg")
@@ -738,30 +740,54 @@ class GameSpyNatNegServer(object):
         )
         self.server_manager.connect()
 
+    def create_socket(self):
+        """Create socket.
+
+        Might be used to recover the socket.
+        """
+        if self.socket is not None:
+            try:
+                self.socket.close()
+            except:
+                logger.log(logging.ERROR, "Unable to close socket!")
+                logger.log(logging.ERROR, "%s", traceback.format_exc())
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket.bind(self.address)
+        logger.log(logging.INFO, "Server is now listening on %s:%d...",
+                   *self.address)
+
+    def recover_socket(self):
+        """Recover socket."""
+        self.create_socket()
+        logger.log(logging.WARNING, "Socket recovered successfully!")
+
     def start(self):
         """Start NATNEG server.
 
         Keep 0.0.0.0 as IP address if you don't know what you are doing.
         """
         try:
-            address = dwc_config.get_ip_port('GameSpyNatNegServer')
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.socket.bind(address)
-
+            self.create_socket()
             self.write_queue = Queue.Queue()
-            logger.log(logging.INFO,
-                       "Server is now listening on %s:%s...",
-                       *address)
             threading.Thread(target=self.write_queue_worker).start()
 
             while True:
-                recv_data, addr = self.socket.recvfrom(self.nn_size)
-
+                try:
+                    # Windows can throw [Errno 10054]
+                    # -> An existing connection was forcibly closed by the
+                    #    remote host.
+                    recv_data, addr = self.socket.recvfrom(self.nn_size)
+                except:
+                    logger.log(logging.ERROR, "Socket unable to recvfrom!")
+                    logger.log(logging.ERROR, "%s", traceback.format_exc())
+                    # If this method throws, the server will stop working
+                    self.recover_socket()
+                    continue
                 self.handle_packet(recv_data, addr)
         except:
-            logger.log(logging.ERROR,
-                       "Unknown exception:\n%s",
-                       traceback.format_exc())
+            logger.log(logging.ERROR, "The server has crashed!")
+            logger.log(logging.ERROR, "%s", traceback.format_exc())
 
     def write_queue_send(self, data, address):
         time.sleep(0.05)
@@ -789,8 +815,8 @@ class GameSpyNatNegServer(object):
             command = self.nn_commands.get(recv_data[7], handle_natneg)
             command(self, recv_data, addr)
         except:
-            logger.log(logging.ERROR, "Failed to handle command, got:\n%s",
-                       traceback.format_exc())
+            logger.log(logging.ERROR, "Failed to handle command!")
+            logger.log(logging.ERROR, "%s", traceback.format_exc())
 
     def get_server_info(self, gameid, session_id, client_id):
         """Get server by public IP."""
