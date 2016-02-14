@@ -803,10 +803,7 @@ class GameSpyNatNegServer(object):
         for console in [False, True]:
             if server is not None:
                 break
-            ip = str(utils.get_ip(
-                bytearray([int(x) for x in ip_str.split('.')]),
-                0, console
-            ))
+            ip = str(utils.get_ip_from_str(ip_str, console))
             server = next((s for s in servers if s['publicip'] == ip), None)
 
         return server
@@ -819,10 +816,7 @@ class GameSpyNatNegServer(object):
         for console in [False, True]:
             if server is not None:
                 break
-            ip = str(utils.get_ip(
-                bytearray([int(x) for x in ip_str.split('.')]),
-                0, console
-            ))
+            ip = str(utils.get_ip_from_str(ip_str, console))
             server = self.server_manager.find_server_by_local_address(
                 ip,
                 self.session_list[session_id][client_id]['localaddr'],

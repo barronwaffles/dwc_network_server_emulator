@@ -2,7 +2,7 @@
 
     Copyright (C) 2014 polaris-
     Copyright (C) 2014 msoucy
-    Copyright (C) 2015 Sepalani
+    Copyright (C) 2016 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -163,6 +163,14 @@ def get_ip(data, idx, be=False):
     Endianness by default is little.
     """
     return ctypes.c_int32(get_int(data, idx, be)).value
+
+
+def get_ip_from_str(ip_str, be=False):
+    """Get IP from string.
+
+    Endianness by default is little.
+    """
+    return get_ip(bytearray([int(x) for x in ip_str.split('.')]), 0, be)
 
 
 def get_string(data, idx):
