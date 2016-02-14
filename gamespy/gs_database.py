@@ -216,12 +216,7 @@ class GamespyDatabase(object):
                 (userid, gsbrcd)
             )
             count = int(row[0])
-
-        valid_user = False  # Default, user doesn't exist
-        if count > 0:
-            valid_user = True  # Valid password
-
-        return valid_user
+        return count > 0
 
     def check_user_enabled(self, userid, gsbrcd):
         with Transaction(self.conn) as tx:
@@ -239,16 +234,11 @@ class GamespyDatabase(object):
                 (profileid,)
             )
             count = int(row[0])
-
-        valid_profile = False  # Default, user doesn't exist
-        if count > 0:
-            valid_profile = True  # Valid password
-
-        return valid_profile
+        return count > 0
 
     def get_profile_from_profileid(self, profileid):
         profile = {}
-        if profileid != 0:
+        if profileid:
             with Transaction(self.conn) as tx:
                 row = tx.queryone(
                     "SELECT * FROM users WHERE profileid = ?",
@@ -281,7 +271,7 @@ class GamespyDatabase(object):
     def create_user(self, userid, password, email, uniquenick, gsbrcd,
                     console, csnum, cfc, bssid, devname, birth, gameid,
                     macadr):
-        if self.check_user_exists(userid, gsbrcd) == 0:
+        if not self.check_user_exists(userid, gsbrcd):
             profileid = self.get_next_free_profileid()
 
             # Always 11??? Is this important? Not to be confused with dwc_pid.
@@ -321,7 +311,7 @@ class GamespyDatabase(object):
 
     def import_user(self, profileid, uniquenick, firstname, lastname, email,
                     gsbrcd, gameid, console):
-        if self.check_profile_exists(profileid) == 0:
+        if not self.check_profile_exists(profileid):
             pid = "11"
             lon = "0.000000"
             lat = "0.000000"
@@ -418,7 +408,7 @@ class GamespyDatabase(object):
         profileid = self.get_profileid_from_session_key(session_key)
 
         profile = {}
-        if profileid != 0:
+        if profileid:
             with Transaction(self.conn) as tx:
                 row = tx.queryone(
                     "SELECT profileid FROM sessions WHERE session = ?",
@@ -442,7 +432,7 @@ class GamespyDatabase(object):
                     (session_key,)
                 )
                 count = int(row[0])
-                if count == 0:
+                if not count:
                     return session_key
 
     def delete_session(self, profileid):
@@ -567,7 +557,7 @@ class GamespyDatabase(object):
                     (authtoken,)
                 )
                 count = int(row[0])
-                if count == 0:
+                if not count:
                     break
 
         with Transaction(self.conn) as tx:
@@ -636,7 +626,7 @@ class GamespyDatabase(object):
             )
 
     def get_buddy(self, userProfileId, buddyProfileId):
-        if userProfileId != 0 and buddyProfileId != 0:
+        if userProfileId and buddyProfileId:
             with Transaction(self.conn) as tx:
                 row = tx.queryone(
                     "SELECT * FROM buddies"
