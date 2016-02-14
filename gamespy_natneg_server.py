@@ -26,7 +26,6 @@
 
 import logging
 import socket
-import struct
 import threading
 import time
 import Queue
@@ -86,7 +85,7 @@ def handle_natneg_init(nn, recv_data, addr):
     """
     logger.log(logging.DEBUG, "Received initialization from %s:%d...", *addr)
 
-    session_id = struct.unpack("<I", recv_data[8:12])[0]
+    session_id = utils.get_int(recv_data, 8)
     output = bytearray(recv_data[0:14])
 
     # Checked with Tetris DS, Mario Kart DS, and Metroid Prime
@@ -362,7 +361,7 @@ def handle_natneg_connect_ack(nn, recv_data, addr):
     00 90             - Local port?
     """
     client_id = "%02x" % ord(recv_data[13])
-    session_id = struct.unpack("<I", recv_data[8:12])[0]
+    session_id = utils.get_int(recv_data, 8)
     logger.log(logging.DEBUG,
                "Received connected command from %s:%d...",
                *addr)
