@@ -133,11 +133,7 @@ def handle_natneg_init(nn, recv_data, addr):
 
         # if client_session['serveraddr'] \
         #     is None:
-        serveraddr = nn.get_server_info(gameid, session_id, client)
-        if serveraddr is None:
-            serveraddr = nn.get_server_info_alt(
-                gameid, session_id, client
-            )
+        serveraddr = nn.get_server_addr(gameid, session_id, client)
 
         client_session['serveraddr'] = serveraddr
         logger.log(logging.DEBUG,
@@ -178,9 +174,7 @@ def handle_natneg_init(nn, recv_data, addr):
 
         # Send to other client
         # if client_id_session['serveraddr'] is None:
-        serveraddr = nn.get_server_info(gameid, session_id, client_id)
-        if serveraddr is None:
-            serveraddr = nn.get_server_info_alt(gameid, session_id, client_id)
+        serveraddr = nn.get_server_addr(gameid, session_id, client_id)
 
         client_id_session['serveraddr'] = serveraddr
         logger.log(logging.DEBUG,
@@ -800,65 +794,48 @@ class GameSpyNatNegServer(object):
                        traceback.format_exc())
 
     def get_server_info(self, gameid, session_id, client_id):
-        server_info = None
+        """Get server by public IP."""
+        server = None
+        ip_str = self.session_list[session_id][client_id]['addr'][0]
         servers = self.server_manager.get_natneg_server(session_id) \
                                      ._getvalue()
 
-        if servers is None:
-            return None
-
-        console = False
-        ipstr = self.session_list[session_id][client_id]['addr'][0]
-
-        ip = str(utils.get_ip(bytearray(
-            [int(x) for x in ipstr.split('.')]
-        ), 0, console))
-        console = not console
-
-        server_info = next((s for s in servers if s['publicip'] == ip), None)
-
-        if server_info is None:
+        for console in [False, True]:
+            if server is not None:
+                break
             ip = str(utils.get_ip(
-                bytearray([int(x) for x in ipstr.split('.')]),
+                bytearray([int(x) for x in ip_str.split('.')]),
                 0, console
             ))
+            server = next((s for s in servers if s['publicip'] == ip), None)
 
-            server_info = next(
-                (s for s in servers if s['publicip'] == ip),
-                None
-            )
-
-        return server_info
+        return server
 
     def get_server_info_alt(self, gameid, session_id, client_id):
-        console = False
-        ipstr = self.session_list[session_id][client_id]['addr'][0]
+        """Get server by local address."""
+        server = None
+        ip_str = self.session_list[session_id][client_id]['addr'][0]
 
-        ip = str(utils.get_ip(
-            bytearray([int(x) for x in ipstr.split('.')]),
-            0, console
-        ))
-        console = not console
-
-        serveraddr = self.server_manager.find_server_by_local_address(
-            ip,
-            self.session_list[session_id][client_id]['localaddr'],
-            self.session_list[session_id][client_id]['gameid']
-        )._getvalue()
-
-        if serveraddr is None:
+        for console in [False, True]:
+            if server is not None:
+                break
             ip = str(utils.get_ip(
-                bytearray([int(x) for x in ipstr.split('.')]),
+                bytearray([int(x) for x in ip_str.split('.')]),
                 0, console
             ))
-
-            serveraddr = self.server_manager.find_server_by_local_address(
+            server = self.server_manager.find_server_by_local_address(
                 ip,
                 self.session_list[session_id][client_id]['localaddr'],
                 self.session_list[session_id][client_id]['gameid']
             )._getvalue()
 
-        return serveraddr
+        return server
+
+    def get_server_addr(self, gameid, session_id, client_id):
+        """Get server address."""
+        return \
+            self.get_server_info(gameid, session_id, client_id) or \
+            self.get_server_info_alt(gameid, session_id, client_id)
 
 
 if __name__ == "__main__":
