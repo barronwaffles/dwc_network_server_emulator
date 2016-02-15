@@ -116,93 +116,73 @@ def handle_natneg_init(nn, recv_data, addr, socket):
                         'serveraddr': None,
                         'gameid': None
                     })
-    # In fact, it's a pointer (cf. shallow copy)
-    client_id_session = nn.session_list[session_id][client_id]
 
+    # In fact, it's a pointer
+    client_id_session = nn.session_list[session_id][client_id]
     client_id_session['gameid'] = gameid
     client_id_session['addr'] = addr
     client_id_session['localaddr'] = localaddr
-    clients = len(nn.session_list[session_id])  # Unused?
 
     for client in nn.session_list[session_id]:
-        # Another shallow copy
+        # Another pointer
         client_session = nn.session_list[session_id][client]
         if client_session['connected'] or client == client_id:
             continue
 
-        # if client_session['serveraddr'] \
-        #     is None:
+        # --- Send to requesting client
+        # Get server info
         serveraddr = nn.get_server_addr(gameid, session_id, client)
-
         client_session['serveraddr'] = serveraddr
         logger.log(logging.DEBUG,
                    "Found server from local ip/port: %s from %d",
                    serveraddr, session_id)
 
-        publicport = client_session['addr'][1]
-        if client_session['localaddr'][1]:
-            publicport = client_session['localaddr'][1]
-
+        # Get public port
         if client_session['serveraddr'] is not None:
             publicport = int(client_session['serveraddr']['publicport'])
+        else:
+            publicport = \
+                client_session['localaddr'][1] or \
+                client_session['addr'][1]
 
-        # Send to requesting client
         output = bytearray(recv_data[0:12])
-        output += bytearray([
-            int(x) for x in client_session['addr'][0].split('.')
-        ])
+        output += utils.get_bytes_from_ip_str(client_session['addr'][0])
         output += utils.get_bytes_from_short(publicport, True)
 
         # Unknown, always seems to be \x42\x00
         output += bytearray([0x42, 0x00])
-        output[7] = 0x05
-        # nn.write_queue.put((
-        #     output,
-        #     (client_id_session['addr']),
-        #     socket
-        # ))
-        nn.write_queue.put((
-            output,
-            (client_id_session['addr'][0],
-             client_id_session['addr'][1]),
-            socket
-        ))
+        output[7] = 0x05  # NN_CONNECT
+        nn.write_queue.put((output, client_id_session['addr'], socket))
 
         logger.log(logging.DEBUG,
                    "Sent connection request to %s:%d...",
                    *client_id_session['addr'])
         logger.log(logging.DEBUG, "%s", utils.pretty_print_hex(output))
 
-        # Send to other client
-        # if client_id_session['serveraddr'] is None:
+        # --- Send to other client
+        # Get server info
         serveraddr = nn.get_server_addr(gameid, session_id, client_id)
-
         client_id_session['serveraddr'] = serveraddr
         logger.log(logging.DEBUG,
                    "Found server 2 from local ip/port: %s from %d",
                    serveraddr, session_id)
 
-        publicport = client_id_session['addr'][1]
-        if client_id_session['localaddr'][1]:
-            publicport = client_id_session['localaddr'][1]
-
+        # Get public port
         if client_id_session['serveraddr'] is not None:
-            publicport = int(
-                client_id_session['serveraddr']['publicport']
-            )
+            publicport = int(client_id_session['serveraddr']['publicport'])
+        else:
+            publicport = \
+                client_id_session['localaddr'][1] or \
+                client_id_session['addr'][1]
 
         output = bytearray(recv_data[0:12])
-        output += bytearray(
-            [int(x) for x in client_id_session['addr'][0].split('.')]
-        )
+        output += utils.get_bytes_from_ip_str(client_id_session['addr'][0])
         output += utils.get_bytes_from_short(publicport, True)
 
         # Unknown, always seems to be \x42\x00
         output += bytearray([0x42, 0x00])
-        output[7] = 0x05
-        # nn.write_queue.put((output, (client_session['addr']), socket))
-        nn.write_queue.put((output, (client_session['addr'][0],
-                                     client_session['addr'][1]), socket))
+        output[7] = 0x05  # NN_CONNECT
+        nn.write_queue.put((output, client_session['addr'], socket))
 
         logger.log(logging.DEBUG,
                    "Sent connection request to %s:%d...",
@@ -467,7 +447,7 @@ def handle_natneg_address_check(nn, recv_data, addr, socket):
     logger.log(logging.DEBUG, "%s", utils.pretty_print_hex(recv_data))
 
     output = bytearray(recv_data[0:15])
-    output += bytearray([int(x) for x in addr[0].split('.')])
+    output += utils.get_bytes_from_ip_str(addr[0])
     output += utils.get_bytes_from_short(addr[1], True)
     output += bytearray(recv_data[len(output):])
 

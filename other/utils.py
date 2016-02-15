@@ -220,6 +220,11 @@ def get_bytes_from_int(num, be=False):
     return get_bytes_from_num(num, 'I', be)
 
 
+def get_bytes_from_ip_str(ip_str):
+    """Get bytes from IP string."""
+    return bytearray([int(x) for x in ip_str.split('.')])
+
+
 def create_logger(loggername, filename, level, log_to_console, log_to_file):
     """Server logging."""
     log_folder = "logs"
