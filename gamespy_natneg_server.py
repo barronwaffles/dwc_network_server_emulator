@@ -381,12 +381,15 @@ def handle_natneg_backup_test(nn, recv_data, addr, socket):
     TODO
 
     Description:
-    TODO
+    Untested
     """
-    logger.log(logging.WARNING,
-               "Received unimplemented command NN_BACKUP_TEST (0x08)"
-               " from %s:%d...", *addr)
-    logger.log(logging.DEBUG, "%s", utils.pretty_print_hex(output))
+    logger.log(logging.DEBUG, "Received backup command from %s:%d...", *addr)
+    logger.log(logging.DEBUG, "%s", utils.pretty_print_hex(recv_data))
+
+    # Backup response
+    output = bytearray(recv_data)
+    output[7] = 0x09  # NN_BACKUP_ACK
+    nn.write_queue.put((output, addr, socket))
 
 
 def handle_natneg_backup_ack(nn, recv_data, addr, socket):
