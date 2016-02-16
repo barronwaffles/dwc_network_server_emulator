@@ -97,14 +97,7 @@ def handle_natneg_init(nn, recv_data, addr, socket):
     # Try to connect to the server
     gameid = utils.get_string(recv_data, 0x15)
     client_id = "%02x" % ord(recv_data[13])
-
-    localip_raw = recv_data[15:19]
-    localip_int_le = utils.get_ip(recv_data, 15)
-    localip_int_be = utils.get_ip(recv_data, 15, True)
-    localip = '.'.join(["%d" % ord(x) for x in localip_raw])
-    localport_raw = recv_data[19:21]
-    localport = utils.get_short(localport_raw, 0, True)
-    localaddr = (localip, localport, localip_int_le, localip_int_be)
+    localaddr = utils.get_local_addr(recv_data, 15)
 
     nn.session_list \
         .setdefault(session_id, {}) \
@@ -451,7 +444,7 @@ def handle_natneg_address_check(nn, recv_data, addr, socket):
     output += utils.get_bytes_from_short(addr[1], True)
     output += bytearray(recv_data[len(output):])
 
-    output[7] = 0x0b
+    output[7] = 0x0b  # NN_ADDRESS_REPLY
     nn.write_queue.put((output, addr, socket))
 
     logger.log(logging.DEBUG, "Sent address check response to %s:%d...", *addr)
@@ -481,7 +474,7 @@ def handle_natneg_address_reply(nn, recv_data, addr, socket):
     """
     logger.log(logging.WARNING,
                "Received server record type command NN_ADDRESS_REPLY (0x0B)"
-               " from %s:%s...", *addr)
+               " from %s:%d...", *addr)
     logger.log(logging.DEBUG, "%s", utils.pretty_print_hex(output))
 
 
@@ -755,8 +748,7 @@ class GameSpyNatNegUDPServer(SocketServer.UDPServer):
         self.write_queue = Queue.Queue()
         threading.Thread(target=self.write_queue_worker).start()
 
-    def write_queue_send(self, data, address, socket=None):
-        socket = socket or self.socket
+    def write_queue_send(self, data, address, socket):
         time.sleep(0.05)
         socket.sendto(data, address)
 
