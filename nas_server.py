@@ -63,32 +63,13 @@ gamecodes_return_random_file = [
     'IPGS'
 ]
 
-address = dwc_config.get_ip_port('NasServer')
-
-
-class NasServer(object):
-    def start(self):
-        httpd = NasHTTPServer(address, NasHTTPServerHandler)
-        logger.log(logging.INFO, "Now listening for connections on %s:%d...",
-                   *address)
-        httpd.serve_forever()
-
-
-class NasHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
-    def __init__(self, server_address, RequestHandlerClass):
-        # self.db = gs_database.GamespyDatabase()
-        BaseHTTPServer.HTTPServer.__init__(self, server_address,
-                                           RequestHandlerClass)
-
 
 class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def version_string(self):
         return "Nintendo Wii (http)"
 
     def do_GET(self):
-        self.server = lambda: None
-        self.server.db = gs_database.GamespyDatabase()
-
+        """Handle GET request."""
         try:
             # conntest server
             self.send_response(200)
@@ -98,8 +79,8 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write("ok")
         except:
-            logger.log(logging.ERROR, "Unknown exception: %s",
-                       traceback.format_exc())
+            logger.log(logging.ERROR, "Exception occurred on GET request!")
+            logger.log(logging.ERROR, "%s", traceback.format_exc())
 
     def do_POST(self):
         self.server = lambda: None
@@ -527,6 +508,20 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     def get_file_count(self, data):
         return sum(1 for line in data.splitlines() if line)
+
+
+class NasHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
+    """Threading HTTP server."""
+    pass
+
+
+class NasServer(object):
+    def start(self):
+        address = dwc_config.get_ip_port('NasServer')
+        httpd = NasHTTPServer(address, NasHTTPServerHandler)
+        logger.log(logging.INFO, "Now listening for connections on %s:%d...",
+                   *address)
+        httpd.serve_forever()
 
 
 if __name__ == "__main__":
