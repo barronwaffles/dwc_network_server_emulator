@@ -88,7 +88,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         try:
             length = int(self.headers['content-length'])
-            post = self.str_to_dict(self.rfile.read(length))
+            post = utils.qs_to_dict(self.rfile.read(length))
             if self.client_address[0] == '127.0.0.1':
                 client_address = (
                     self.headers.get('x-forwarded-for',
@@ -136,7 +136,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                                    client_address)
                         logger.log(logging.DEBUG, "%s", ret)
 
-                    ret = self.dict_to_str(ret)
+                    ret = utils.dict_to_qs(ret)
 
                 elif action == "login":
                     if self.server.db.is_banned(post):
@@ -191,7 +191,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                                    client_address)
                         logger.log(logging.DEBUG, "%s", ret)
 
-                    ret = self.dict_to_str(ret)
+                    ret = utils.dict_to_qs(ret)
 
                 elif action == "SVCLOC" or action == "svcloc":
                     # Get service based on service id number
@@ -231,7 +231,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                                client_address)
                     logger.log(logging.DEBUG, "%s", ret)
 
-                    ret = self.dict_to_str(ret)
+                    ret = utils.dict_to_qs(ret)
                 else:
                     logger.log(logging.WARNING,
                                "Unknown action request %s from %s!",
@@ -259,7 +259,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 logger.log(logging.DEBUG, "pr response to %s", client_address)
                 logger.log(logging.DEBUG, "%s", ret)
 
-                ret = self.dict_to_str(ret)
+                ret = utils.dict_to_qs(ret)
 
             elif self.path == "/download":
                 logger.log(logging.DEBUG, "Request to %s from %s",
@@ -401,44 +401,6 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         except:
             logger.log(logging.ERROR, "Unknown exception: %s",
                        traceback.format_exc())
-
-    def str_to_dict(self, s):
-        # Enable keep_blank_values, skipped otherwise.
-        # TODO: Move this in utils module?
-        ret = urlparse.parse_qs(s, True)
-
-        for k, v in ret.iteritems():
-            try:
-                # I'm not sure about the replacement for '-', but it'll at
-                # least let it be decoded.
-                # For the most part it's not important since it's mostly
-                # used for the devname/ingamesn fields.
-                ret[k] = base64.b64decode(urlparse.unquote(v[0])
-                                          .replace("*", "=")
-                                          .replace("?", "/")
-                                          .replace(">", "+")
-                                          .replace("-", "/"))
-            except TypeError:
-                print "Could not decode following string: ret[%s] = %s" \
-                      % (k, v[0])
-                print "url: %s" % s
-                # If you don't assign it like this it'll be a list, which
-                # breaks other code.
-                ret[k] = v[0]
-
-        return ret
-
-    def dict_to_str(self, dict):
-        """Convert dict to str.
-
-        nas(wii).nintendowifi.net has a URL query-like format but does not
-        use encoding for special characters.
-        """
-        for k, v in dict.iteritems():
-            dict[k] = base64.b64encode(v).replace("=", "*")
-
-        return "&".join("{!s}={!s}".format(k, v) for k, v in dict.items()) + \
-               "\r\n"
 
     def filter_list_g5_mystery_gift(self, data, rhgamecd):
         """Custom selection for generation 5 mystery gifts, so that the random
