@@ -161,3 +161,48 @@ def download_count(dlc_path, post):
         return "%d" % count
     else:
         return "0"
+
+
+def download_list(dlc_path, post):
+    """Handle download list request.
+
+    Look for a list file first. If the list file exists, send the
+    entire thing back to the client.
+    """
+    if os.path.exists(dlc_path) and \
+       os.path.isfile(os.path.join(dlc_path, "_list.txt")):
+        attr1 = post.get("attr1", None)
+        attr2 = post.get("attr2", None)
+        attr3 = post.get("attr3", None)
+
+        if post["gamecd"].startswith("IRA") and attr1.startswith("MYSTERY"):
+            # Pokemon BW Mystery Gifts, until we have a
+            # better solution for that
+            ret = filter_list(
+                safeloadfi(dlc_path, "_list.txt"),
+                attr1, attr2, attr3
+            )
+            ret = filter_list_g5_mystery_gift(ret, post["rhgamecd"])
+            return filter_list_by_date(ret, post["token"])
+        elif post["gamecd"] in gamecodes_return_random_file:
+            # Pokemon Gen 4 Mystery Gifts, same here
+            ret = filter_list(
+                safeloadfi(dlc_path, "_list.txt"),
+                attr1, attr2, attr3
+            )
+            return filter_list_by_date(ret, post["token"])
+        else:
+            # Default case for most games
+            num = post.get("num", None)
+            if num is not None:
+                num = int(num)
+
+            offset = post.get("offset", None)
+            if offset is not None:
+                offset = int(offset)
+
+            return filter_list(
+                safeloadfi(dlc_path, "_list.txt"),
+                attr1, attr2, attr3,
+                num, offset
+            )

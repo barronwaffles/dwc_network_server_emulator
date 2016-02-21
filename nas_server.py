@@ -255,58 +255,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     ret = dlc.download_count(dlc_path, post)
 
                 if action == "list":
-                    num = post.get("num", None)
-                    offset = post.get("offset", None)
-
-                    if num is not None:
-                        num = int(num)
-
-                    if offset is not None:
-                        offset = int(offset)
-
-                    attr1 = post.get("attr1", None)
-                    attr2 = post.get("attr2", None)
-                    attr3 = post.get("attr3", None)
-
-                    if os.path.exists(dlcpath):
-                        # Look for a list file first.
-                        # If the list file exists, send the entire thing back
-                        # to the client.
-                        if os.path.isfile(os.path.join(dlcpath, "_list.txt")):
-                            if post["gamecd"].startswith("IRA") and \
-                               attr1.startswith("MYSTERY"):
-                                # Pokemon BW Mystery Gifts, until we have a
-                                # better solution for that
-                                ret = dlc.filter_list(
-                                    dlc.safeloadfi(dlcpath, "_list.txt"),
-                                    attr1, attr2, attr3
-                                )
-                                ret = dlc.filter_list_g5_mystery_gift(
-                                    ret,
-                                    post["rhgamecd"]
-                                )
-                                ret = dlc.filter_list_by_date(
-                                    ret,
-                                    post["token"]
-                                )
-                            elif post["gamecd"] in \
-                                    dlc.gamecodes_return_random_file:
-                                # Pokemon Gen 4 Mystery Gifts, same here
-                                ret = dlc.filter_list(
-                                    dlc.safeloadfi(dlcpath, "_list.txt"),
-                                    attr1, attr2, attr3
-                                )
-                                ret = dlc.filter_list_by_date(
-                                    ret,
-                                    post["token"]
-                                )
-                            else:
-                                # default case for most games
-                                ret = dlc.filter_list(
-                                    dlc.safeloadfi(dlcpath, "_list.txt"),
-                                    attr1, attr2, attr3,
-                                    num, offset
-                                )
+                    ret = dlc.download_list(dlc_path, post)
 
                 if action == "contents":
                     # Get only the base filename just in case there is a path
