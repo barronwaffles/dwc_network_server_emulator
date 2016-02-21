@@ -69,11 +69,17 @@ def filter_list(data, attr1=None, attr2=None, attr3=None,
         # Nothing to filter, just return the input data
         return data
 
-    nc = lambda a, b: (a is None or a == b)
-    attrs = lambda data: (len(data) == 6 and nc(attr1, data[2]) and
-                          nc(attr2, data[3]) and nc(attr3, data[4]))
-    output = filter(lambda line: attrs(line.split("\t")),
-                    data.splitlines())
+    def attrs(data):
+        """Filter attrs."""
+        def nc(a, b):
+            """Filter nc."""
+            return a is None or a == b
+        return \
+            len(data) == 6 and \
+            nc(attr1, data[2]) and \
+            nc(attr2, data[3]) and \
+            nc(attr3, data[4])
+    output = filter(lambda line: attrs(line.split("\t")), data.splitlines())
 
     if offset is not None:
         output = output[offset:]
