@@ -258,11 +258,8 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     ret = dlc.download_list(dlc_path, post)
 
                 if action == "contents":
-                    # Get only the base filename just in case there is a path
-                    # involved somewhere in the filename string.
+                    ret = dlc.download_contents(dlc_path, post)
                     dlc_contenttype = True
-                    contents = os.path.basename(post["contents"])
-                    ret = dlc.safeloadfi(dlcpath, contents)
 
                 self.send_response(200)
 

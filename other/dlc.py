@@ -206,3 +206,13 @@ def download_list(dlc_path, post):
                 attr1, attr2, attr3,
                 num, offset
             )
+
+
+def download_contents(dlc_path, post):
+    """Handle download contents request.
+
+    Get only the base filename just in case there is a path involved
+    somewhere in the filename string.
+    """
+    contents = os.path.basename(post["contents"])
+    return safeloadfi(dlc_path, contents)
