@@ -252,25 +252,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     return
 
                 if action == "count":
-                    if post["gamecd"] in dlc.gamecodes_return_random_file:
-                        ret = "1"
-                    else:
-                        count = 0
-
-                        if os.path.exists(dlcpath):
-                            count = len(os.listdir(dlcpath))
-
-                            if os.path.isfile(dlcpath + "/_list.txt"):
-                                attr1 = post.get("attr1", None)
-                                attr2 = post.get("attr2", None)
-                                attr3 = post.get("attr3", None)
-
-                                dlcfi = dlc.safeloadfi(dlcpath, "_list.txt")
-                                lst = dlc.filter_list(dlcfi,
-                                                      attr1, attr2, attr3)
-                                count = dlc.get_file_count(lst)
-
-                        ret = "%d" % count
+                    ret = dlc.download_count(dlc_path, post)
 
                 if action == "list":
                     num = post.get("num", None)

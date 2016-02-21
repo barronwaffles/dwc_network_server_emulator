@@ -141,3 +141,23 @@ def safeloadfi(dlc_path, name, mode='rb'):
     """
     with open(os.path.join(dlc_path, name), mode) as f:
         return f.read()
+
+
+def download_count(dlc_path, post):
+    """Handle download count request."""
+    if post["gamecd"] in gamecodes_return_random_file:
+        return "1"
+    elif os.path.exists(dlc_path):
+        if os.path.isfile(os.path.join(dlc_path, "_list.txt")):
+            attr1 = post.get("attr1", None)
+            attr2 = post.get("attr2", None)
+            attr3 = post.get("attr3", None)
+
+            dlc_file = safeloadfi(dlc_path, "_list.txt")
+            ls = filter_list(dlc_file, attr1, attr2, attr3)
+            count = get_file_count(ls)
+        else:
+            count = len(os.listdir(dlc_path))
+        return "%d" % count
+    else:
+        return "0"
