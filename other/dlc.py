@@ -139,8 +139,11 @@ def safeloadfi(dlc_path, name, mode='rb'):
     Safely load contents of a file, given a filename,
     and closing the file afterward.
     """
-    with open(os.path.join(dlc_path, name), mode) as f:
-        return f.read()
+    try:
+        with open(os.path.join(dlc_path, name), mode) as f:
+            return f.read()
+    except:
+        return None
 
 
 def download_count(dlc_path, post):

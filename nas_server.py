@@ -35,7 +35,78 @@ import dwc_config
 logger = dwc_config.get_logger('NasServer')
 
 
+def handle_download_action(handler, dlc_path, post):
+    """Handle unknown download action request."""
+    logger.log(logging.WARNING, "Unknown download action: %s", handler.path)
+    handler.send_response(200)
+    return None
+
+
+def handle_download_count(handler, dlc_path, post):
+    """Handle download count request."""
+    ret = dlc.download_count(dlc_path, post)
+    handler.send_response(200)
+    handler.send_header("Content-type", "text/plain")
+    handler.send_header("X-DLS-Host", "http://127.0.0.1/")
+    return ret
+
+
+def handle_download_list(handler, dlc_path, post):
+    """Handle download list request."""
+    ret = dlc.download_list(dlc_path, post)
+    handler.send_response(200)
+    handler.send_header("Content-type", "text/plain")
+    handler.send_header("X-DLS-Host", "http://127.0.0.1/")
+    return ret
+
+
+def handle_download_contents(handler, dlc_path, post):
+    """Handle download contents request."""
+    ret = dlc.download_contents(dlc_path, post)
+
+    if ret is None:
+        handler.send_response(404)
+    else:
+        handler.send_response(200)
+        handler.send_header("Content-type", "application/x-dsdl")
+        handler.send_header("Content-Disposition",
+                            'attachment; filename="%s"' % post["contents"])
+        handler.send_header("X-DLS-Host", "http://127.0.0.1/")
+    return ret
+
+
+def handle_download(handler, addr, post):
+    """Handle download POST request."""
+    logger.log(logging.DEBUG, "Download request to %s from %s:%d",
+               handler.path, *addr)
+    logger.log(logging.DEBUG, "%s", post)
+
+    action = post["action"]
+    dlc_dir = os.path.abspath("dlc")
+    dlc_path = os.path.abspath(os.path.join("dlc", post["gamecd"]))
+
+    if os.path.commonprefix([dlc_dir, dlc_path]) != dlc_dir:
+        logging.log(logging.WARNING,
+                    'Attempted directory traversal attack "%s",'
+                    ' cancelling.', dlc_path)
+        handler.send_response(403)
+        return
+
+    command = handler.download_actions.get(action, handle_download_action)
+    ret = command(handler, dlc_path, post)
+
+    logger.log(logging.DEBUG, "Download response to %s:%d", *addr)
+    return ret
+
+
 class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+
+    download_actions = {
+        "count": handle_download_count,
+        "list": handle_download_list,
+        "contents": handle_download_contents,
+    }
+
     def version_string(self):
         return "Nintendo Wii (http)"
 
@@ -233,51 +304,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 ret = utils.dict_to_qs(ret)
 
             elif self.path == "/download":
-                logger.log(logging.DEBUG, "Request to %s from %s",
-                           self.path, client_address)
-                logger.log(logging.DEBUG, "%s", post)
-
-                action = post["action"]
-
-                ret = ""
-                dlcdir = os.path.abspath('dlc')
-                dlcpath = os.path.abspath("dlc/" + post["gamecd"])
-                dlc_contenttype = False
-
-                if os.path.commonprefix([dlcdir, dlcpath]) != dlcdir:
-                    logging.log(logging.WARNING,
-                                'Attempted directory traversal attack "%s",'
-                                ' cancelling.', dlcpath)
-                    self.send_response(403)
-                    return
-
-                if action == "count":
-                    ret = dlc.download_count(dlc_path, post)
-
-                if action == "list":
-                    ret = dlc.download_list(dlc_path, post)
-
-                if action == "contents":
-                    ret = dlc.download_contents(dlc_path, post)
-                    dlc_contenttype = True
-
-                self.send_response(200)
-
-                if dlc_contenttype is True:
-                    self.send_header("Content-type", "application/x-dsdl")
-                    self.send_header("Content-Disposition",
-                                     "attachment; filename=\"" +
-                                     post["contents"] + "\"")
-                else:
-                    self.send_header("Content-type", "text/plain")
-
-                self.send_header("X-DLS-Host", "http://127.0.0.1/")
-
-                logger.log(logging.DEBUG, "download response to %s",
-                           client_address)
-
-                # if dlc_contenttype is False:
-                #     logger.log(logging.DEBUG, "%s", ret)
+                ret = handle_download(self, client_address, post)
             else:
                 self.send_response(404)
                 logger.log(logging.WARNING,
@@ -285,9 +312,10 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                            self.path, client_address)
                 return
 
-            self.send_header("Content-Length", str(len(ret)))
-            self.end_headers()
-            self.wfile.write(ret)
+            if ret is not None:
+                self.send_header("Content-Length", str(len(ret)))
+                self.end_headers()
+                self.wfile.write(ret)
         except:
             logger.log(logging.ERROR, "Unknown exception: %s",
                        traceback.format_exc())
