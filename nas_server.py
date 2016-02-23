@@ -35,6 +35,149 @@ import dwc_config
 logger = dwc_config.get_logger('NasServer')
 
 
+def handle_post(handler, addr, post):
+    """Handle unknown path."""
+    logger.log(logging.WARNING, "Unknown path request %s from %s:%d!",
+               handler.path, *addr)
+    handler.send_response(404)
+    return None
+
+
+def handle_ac_action(handler, db, addr, post):
+    """Handle unknown ac action request."""
+    logger.log(logging.WARNING, "Unknown ac action: %s", handler.path)
+    return {}
+
+
+def handle_ac_acctcreate(handler, db, addr, post):
+    """Handle ac acctcreate request.
+
+    TODO: Test for duplicate accounts.
+    """
+    if db.is_banned(post):
+        ret = {
+            "retry": "1",
+            "returncd": "3913",
+            "locator": "gamespy.com",
+            "reason": "User banned."
+        }
+        logger.log(logging.DEBUG, "Acctcreate denied for banned user %s",
+                   str(post))
+    else:
+        ret = {
+            "retry": "0",
+            "returncd": "002",
+            "userid": db.get_next_available_userid()
+        }
+        logger.log(logging.DEBUG, "Acctcreate response to %s:%d", *addr)
+        logger.log(logging.DEBUG, "%s", ret)
+
+    return ret
+
+
+def handle_ac_login(handler, db, addr, post):
+    """Handle ac login request."""
+    if db.is_banned(post):
+        ret = {
+            "retry": "1",
+            "returncd": "3914",
+            "locator": "gamespy.com",
+            "reason": "User banned."
+        }
+        logger.log(logging.DEBUG, "Login denied for banned user %s", str(post))
+    # Un-comment these lines to enable console registration feature
+    # elif not db.pending(post):
+    #     logger.log(logging.DEBUG, "Login denied - Unknown console %s", post)
+    #     ret = {
+    #         "retry": "1",
+    #         "returncd": "3921",
+    #         "locator": "gamespy.com",
+    #     }
+    # elif not db.registered(post):
+    #     logger.log(logging.DEBUG, "Login denied - console pending %s", post)
+    #     ret = {
+    #         "retry": "1",
+    #         "returncd": "3888",
+    #         "locator": "gamespy.com",
+    #     }
+    else:
+        challenge = utils.generate_random_str(8)
+        post["challenge"] = challenge
+
+        authtoken = db.generate_authtoken(post["userid"], post)
+        ret = {
+            "retry": "0",
+            "returncd": "001",
+            "locator": "gamespy.com",
+            "challenge": challenge,
+            "token": authtoken,
+        }
+
+        logger.log(logging.DEBUG, "Login response to %s:%d", *addr)
+        logger.log(logging.DEBUG, "%s", ret)
+
+    return ret
+
+
+def handle_ac_svcloc(handler, db, addr, post):
+    """Handle ac svcloc request."""
+    # Get service based on service id number
+    ret = {
+        "retry": "0",
+        "returncd": "007",
+        "statusdata": "Y"
+    }
+    authtoken = db.generate_authtoken(post["userid"], post)
+
+    if 'svc' in post:
+        if post["svc"] in ("9000", "9001"):
+            # DLC host = 9000
+            # In case the client's DNS isn't redirecting to
+            # dls1.nintendowifi.net
+            ret["svchost"] = handler.headers['host']
+
+            # Brawl has 2 host headers which Apache chokes
+            # on, so only return the first one or else it
+            # won't work
+            ret["svchost"] = ret["svchost"].split(',')[0]
+
+            if post["svc"] == 9000:
+                ret["token"] = authtoken
+            else:
+                ret["servicetoken"] = authtoken
+        elif post["svc"] == "0000":
+            # Pokemon requests this for some things
+            ret["servicetoken"] = authtoken
+            ret["svchost"] = "n/a"
+        else:
+            # Empty svc - Fix Error Code 24101 (Boom Street)
+            ret["svchost"] = "n/a"
+            ret["servicetoken"] = authtoken
+
+    logger.log(logging.DEBUG, "Svcloc response to %s:%d", *addr)
+    logger.log(logging.DEBUG, "%s", ret)
+
+    return ret
+
+
+def handle_ac(handler, addr, post):
+    """Handle ac POST request."""
+    logger.log(logging.DEBUG, "Ac request to %s from %s:%d",
+               handler.path, *addr)
+    logger.log(logging.DEBUG, "%s", post)
+
+    action = str(post["action"]).lower()
+    command = handler.ac_actions.get(action, handle_ac_action)
+    ret = command(handler, gs_database.GamespyDatabase(), addr, post)
+
+    ret.update({"datetime": time.strftime("%Y%m%d%H%M%S")})
+    handler.send_response(200)
+    handler.send_header("Content-type", "text/plain")
+    handler.send_header("NODE", "wifiappe1")
+
+    return utils.dict_to_qs(ret)
+
+
 def handle_pr(handler, addr, post):
     """Handle pr POST request."""
     logger.log(logging.DEBUG, "Pr request to %s from %s:%d",
@@ -108,7 +251,7 @@ def handle_download(handler, addr, post):
                handler.path, *addr)
     logger.log(logging.DEBUG, "%s", post)
 
-    action = post["action"]
+    action = str(post["action"]).lower()
     dlc_dir = os.path.abspath("dlc")
     dlc_path = os.path.abspath(os.path.join("dlc", post["gamecd"]))
 
@@ -127,6 +270,19 @@ def handle_download(handler, addr, post):
 
 
 class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    """Nintendo NAS server handler."""
+
+    post_paths = {
+        "/ac": handle_ac,
+        "/pr": handle_pr,
+        "/download": handle_download
+    }
+
+    ac_actions = {
+        "acctcreate": handle_ac_acctcreate,
+        "login": handle_ac_login,
+        "svcloc": handle_ac_svcloc,
+    }
 
     download_actions = {
         "count": handle_download_count,
@@ -152,9 +308,6 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             logger.log(logging.ERROR, "%s", traceback.format_exc())
 
     def do_POST(self):
-        self.server = lambda: None
-        self.server.db = gs_database.GamespyDatabase()
-
         try:
             length = int(self.headers['content-length'])
             post = utils.qs_to_dict(self.rfile.read(length))
@@ -169,153 +322,8 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
             post['ipaddr'] = client_address[0]
 
-            if self.path == "/ac":
-                logger.log(logging.DEBUG, "Request to %s from %s",
-                           self.path, client_address)
-                logger.log(logging.DEBUG, "%s", post)
-                ret = {
-                    "datetime": time.strftime("%Y%m%d%H%M%S"),
-                    "retry": "0"
-                }
-                action = post["action"]
-                self.send_response(200)
-                self.send_header("Content-type", "text/plain")
-                self.send_header("NODE", "wifiappe1")
-
-                if action == "acctcreate":
-                    # TODO: test for duplicate accounts
-                    if self.server.db.is_banned(post):
-                        logger.log(logging.DEBUG,
-                                   "acctcreate denied for banned user %s",
-                                   str(post))
-                        ret = {
-                            "datetime": time.strftime("%Y%m%d%H%M%S"),
-                            "returncd": "3913",
-                            "locator": "gamespy.com",
-                            "retry": "1",
-                            "reason": "User banned."
-                        }
-                    else:
-                        ret["returncd"] = "002"
-                        ret['userid'] = \
-                            self.server.db.get_next_available_userid()
-
-                        logger.log(logging.DEBUG,
-                                   "acctcreate response to %s",
-                                   client_address)
-                        logger.log(logging.DEBUG, "%s", ret)
-
-                    ret = utils.dict_to_qs(ret)
-
-                elif action == "login":
-                    if self.server.db.is_banned(post):
-                        logger.log(logging.DEBUG,
-                                   "login denied for banned user %s",
-                                   str(post))
-                        ret = {
-                            "datetime": time.strftime("%Y%m%d%H%M%S"),
-                            "returncd": "3914",
-                            "locator": "gamespy.com",
-                            "retry": "1",
-                            "reason": "User banned."
-                        }
-                    # Un-comment these lines to enable console registration
-                    # feature
-                    # elif not self.server.db.pending(post):
-                    #     logger.log(logging.DEBUG,
-                    #                "Login denied - Unknown console %s",
-                    #                post)
-                    #     ret = {
-                    #         "datetime": time.strftime("%Y%m%d%H%M%S"),
-                    #         "returncd": "3921",
-                    #         "locator": "gamespy.com",
-                    #         "retry": "1",
-                    #     }
-                    # elif not self.server.db.registered(post):
-                    #     logger.log(logging.DEBUG,
-                    #                "Login denied - console pending %s",
-                    #                post)
-                    #     ret = {
-                    #         "datetime": time.strftime("%Y%m%d%H%M%S"),
-                    #         "returncd": "3888",
-                    #         "locator": "gamespy.com",
-                    #         "retry": "1",
-                    #     }
-                    else:
-                        challenge = utils.generate_random_str(8)
-                        post["challenge"] = challenge
-
-                        authtoken = self.server.db.generate_authtoken(
-                            post["userid"],
-                            post
-                        )
-                        ret.update({
-                            "returncd": "001",
-                            "locator": "gamespy.com",
-                            "challenge": challenge,
-                            "token": authtoken,
-                        })
-
-                        logger.log(logging.DEBUG, "login response to %s",
-                                   client_address)
-                        logger.log(logging.DEBUG, "%s", ret)
-
-                    ret = utils.dict_to_qs(ret)
-
-                elif action == "SVCLOC" or action == "svcloc":
-                    # Get service based on service id number
-                    ret["returncd"] = "007"
-                    ret["statusdata"] = "Y"
-                    authtoken = self.server.db.generate_authtoken(
-                        post["userid"],
-                        post
-                    )
-
-                    if 'svc' in post:
-                        if post["svc"] in ("9000", "9001"):
-                            # DLC host = 9000
-                            # In case the client's DNS isn't redirecting to
-                            # dls1.nintendowifi.net
-                            ret["svchost"] = self.headers['host']
-
-                            # Brawl has 2 host headers which Apache chokes
-                            # on, so only return the first one or else it
-                            # won't work
-                            ret["svchost"] = ret["svchost"].split(',')[0]
-
-                            if post["svc"] == 9000:
-                                ret["token"] = authtoken
-                            else:
-                                ret["servicetoken"] = authtoken
-                        elif post["svc"] == "0000":
-                            # Pokemon requests this for some things
-                            ret["servicetoken"] = authtoken
-                            ret["svchost"] = "n/a"
-                        else:
-                            # Empty svc - Fix Error Code 24101 (Boom Street)
-                            ret["svchost"] = "n/a"
-                            ret["servicetoken"] = authtoken
-
-                    logger.log(logging.DEBUG, "svcloc response to %s",
-                               client_address)
-                    logger.log(logging.DEBUG, "%s", ret)
-
-                    ret = utils.dict_to_qs(ret)
-                else:
-                    logger.log(logging.WARNING,
-                               "Unknown action request %s from %s!",
-                               self.path, client_address)
-
-            elif self.path == "/pr":
-                ret = handle_pr(self, client_address, post)
-            elif self.path == "/download":
-                ret = handle_download(self, client_address, post)
-            else:
-                self.send_response(404)
-                logger.log(logging.WARNING,
-                           "Unknown path request %s from %s!",
-                           self.path, client_address)
-                return
+            command = self.post_paths.get(self.path, handle_post)
+            ret = command(self, client_address, post)
 
             if ret is not None:
                 self.send_header("Content-Length", str(len(ret)))
