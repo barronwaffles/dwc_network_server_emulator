@@ -35,6 +35,33 @@ import dwc_config
 logger = dwc_config.get_logger('NasServer')
 
 
+def handle_pr(handler, addr, post):
+    """Handle pr POST request."""
+    logger.log(logging.DEBUG, "Pr request to %s from %s:%d",
+               handler.path, *addr)
+    logger.log(logging.DEBUG, "%s", post)
+
+    words = len(post["words"].split('\t'))
+    wordsret = "0" * words
+    ret = {
+        "prwords": wordsret,
+        "returncd": "000",
+        "datetime": time.strftime("%Y%m%d%H%M%S")
+    }
+
+    for l in "ACEJKP":
+        ret["prwords" + l] = wordsret
+
+    handler.send_response(200)
+    handler.send_header("Content-type", "text/plain")
+    handler.send_header("NODE", "wifiappe1")
+
+    logger.log(logging.DEBUG, "Pr response to %s:%d", *addr)
+    logger.log(logging.DEBUG, "%s", ret)
+
+    return utils.dict_to_qs(ret)
+
+
 def handle_download_action(handler, dlc_path, post):
     """Handle unknown download action request."""
     logger.log(logging.WARNING, "Unknown download action: %s", handler.path)
@@ -280,29 +307,7 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                                self.path, client_address)
 
             elif self.path == "/pr":
-                logger.log(logging.DEBUG, "Request to %s from %s",
-                           self.path, client_address)
-                logger.log(logging.DEBUG, "%s", post)
-                words = len(post["words"].split('\t'))
-                wordsret = "0" * words
-                ret = {
-                    "prwords": wordsret,
-                    "returncd": "000",
-                    "datetime": time.strftime("%Y%m%d%H%M%S")
-                }
-
-                for l in "ACEJKP":
-                    ret["prwords" + l] = wordsret
-
-                self.send_response(200)
-                self.send_header("Content-type", "text/plain")
-                self.send_header("NODE", "wifiappe1")
-
-                logger.log(logging.DEBUG, "pr response to %s", client_address)
-                logger.log(logging.DEBUG, "%s", ret)
-
-                ret = utils.dict_to_qs(ret)
-
+                ret = handle_pr(self, client_address, post)
             elif self.path == "/download":
                 ret = handle_download(self, client_address, post)
             else:
