@@ -311,15 +311,10 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         try:
             length = int(self.headers['content-length'])
             post = utils.qs_to_dict(self.rfile.read(length))
-            if self.client_address[0] == '127.0.0.1':
-                client_address = (
-                    self.headers.get('x-forwarded-for',
-                                     self.client_address[0]),
-                    self.client_address[1]
-                )
-            else:
-                client_address = self.client_address
-
+            client_address = (
+                self.headers.get('x-forwarded-for', self.client_address[0]),
+                self.client_address[1]
+            )
             post['ipaddr'] = client_address[0]
 
             command = self.post_paths.get(self.path, handle_post)
@@ -330,8 +325,8 @@ class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(ret)
         except:
-            logger.log(logging.ERROR, "Unknown exception: %s",
-                       traceback.format_exc())
+            logger.log(logging.ERROR, "Exception occurred on POST request!")
+            logger.log(logging.ERROR, "%s", traceback.format_exc())
 
 
 class NasHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
