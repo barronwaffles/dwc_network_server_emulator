@@ -2,7 +2,7 @@
 
     Copyright (C) 2014 polaris-
     Copyright (C) 2014 msoucy
-    Copyright (C) 2015 Sepalani
+    Copyright (C) 2016 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -167,6 +167,28 @@ def get_ip(data, idx, be=False):
     return ctypes.c_int32(get_int(data, idx, be)).value
 
 
+def get_ip_str(data, idx):
+    """Get IP string from bytes."""
+    return '.'.join("%d" % x for x in bytearray(data[idx:idx+4]))
+
+
+def get_ip_from_str(ip_str, be=False):
+    """Get IP from string.
+
+    Endianness by default is little.
+    """
+    return get_ip(bytearray([int(x) for x in ip_str.split('.')]), 0, be)
+
+
+def get_local_addr(data, idx):
+    """Get local address."""
+    localip = get_ip_str(data, idx)
+    localip_int_le = get_ip(data, idx)
+    localip_int_be = get_ip(data, idx, True)
+    localport = get_short(data, idx + 4, True)
+    return (localip, localport, localip_int_le, localip_int_be)
+
+
 def get_string(data, idx):
     """Get string from bytes."""
     data = data[idx:]
@@ -212,6 +234,11 @@ def get_bytes_from_int(num, be=False):
     Endianness by default is little.
     """
     return get_bytes_from_num(num, 'I', be)
+
+
+def get_bytes_from_ip_str(ip_str):
+    """Get bytes from IP string."""
+    return bytearray([int(x) for x in ip_str.split('.')])
 
 
 def create_logger(loggername, filename, level, log_to_console, log_to_file):
