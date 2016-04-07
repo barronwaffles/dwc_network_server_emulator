@@ -18,11 +18,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import base64
 import logging
 import logging.handlers
 import random
 import string
 import struct
+import urlparse
 import ctypes
 import os
 
@@ -327,3 +329,43 @@ def pretty_print_hex(orig_data, cols=16, sep=' '):
 #        output += "\n"
 #
 #    return output
+
+
+def qs_to_dict(s):
+    """Convert query string to dict."""
+    ret = urlparse.parse_qs(s, True)
+
+    for k, v in ret.items():
+        try:
+            # I'm not sure about the replacement for '-', but it'll at
+            # least let it be decoded.
+            # For the most part it's not important since it's mostly
+            # used for the devname/ingamesn fields.
+            ret[k] = base64.b64decode(urlparse.unquote(v[0])
+                                              .replace("*", "=")
+                                              .replace("?", "/")
+                                              .replace(">", "+")
+                                              .replace("-", "/"))
+        except TypeError:
+            """
+            print("Could not decode following string: ret[%s] = %s"
+                  % (k, v[0]))
+            print("url: %s" % s)
+            """
+            # If you don't assign it like this it'll be a list, which
+            # breaks other code.
+            ret[k] = v[0]
+
+    return ret
+
+
+def dict_to_qs(d):
+    """Convert dict to query string.
+
+    nas(wii).nintendowifi.net has a URL query-like format but does not
+    use encoding for special characters.
+    """
+    # Dictionary comprehension is used to not modify the original
+    ret = {k: base64.b64encode(v).replace("=", "*") for k, v in d.items()}
+
+    return "&".join("{!s}={!s}".format(k, v) for k, v in ret.items()) + "\r\n"
