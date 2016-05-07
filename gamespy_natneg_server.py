@@ -768,7 +768,10 @@ class GameSpyNatNegUDPServer(SocketServer.UDPServer):
         ip_str = self.session_list[session_id][client_id]['addr'][0]
         servers = self.server_manager.get_natneg_server(session_id) \
                                      ._getvalue()
-
+        
+        if servers is None:
+            return None
+            
         for console in [False, True]:
             if server is not None:
                 break
