@@ -23,7 +23,6 @@
 import logging
 import time
 import traceback
-import re
 
 from twisted.internet.protocol import Factory
 from twisted.internet.endpoints import serverFromString
@@ -368,6 +367,12 @@ class Gamestats(LineReceiver):
 
         modified = int(time.time())
 
+        # Check if there is a nul byte and data after it
+        data_blocks = data.split('\x00')
+        if len(data_blocks) > 1 and any(block for block in data_blocks[1:]):
+            self.log(logging.WARNING, "Data after nul byte: %s", data)
+
+        data = data_blocks[0]
         msg = gs_query.create_gamespy_message([
             ('__cmd__', "getpdr"),
             ('__cmd_val__', 1),
@@ -375,27 +380,11 @@ class Gamestats(LineReceiver):
             ('pid', pid),
             ('mod', modified),
             ('length', len(data)),
-            ('data', data),
+            ('data', ''),
+            (data,)
         ])
 
-        # data needs to be preceded by an extra slash
-        msg = msg.replace("\\data\\", "\\data\\\\")
-
-        datastring = ""
-        try:
-            datastring = re.findall('.*data\\\\(.*)', msg)[0] \
-                           .replace("\\final\\", "")
-        except:
-            pass
-
-        # This works because the data string is a key-value pair, splitting
-        # the string by \ should yield a list with an even number of elements.
-        # But, because of the extra \ prepended to the datastring, it'll be
-        # odd. So ultimately I expect the list to have an odd number of
-        # elements. If it's even, len(list)%2 will be zero... and that means
-        # the last field in the datastring is empty and doesn't have a
-        # closing \.
-        if datastring and not len(datastring.split('\\')) % 2:
+        if msg.count('\\') % 2:
             # An empty field must be terminated by \ before \final\
             msg = msg.replace("\\final\\", "\\\\final\\")
 
