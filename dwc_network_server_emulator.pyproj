@@ -49,6 +49,7 @@
     <Compile Include="gamespy\gs_utility.py" />
     <Compile Include="gamespy\__init__.py" />
     <Compile Include="other\dlc.py" />
+    <Compile Include="other\sql.py" />
     <Compile Include="other\utils.py" />
     <Compile Include="other\__init__.py" />
     <Compile Include="tools\import_wiimm_data.py" />
