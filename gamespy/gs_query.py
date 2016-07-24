@@ -123,26 +123,21 @@ def create_gamespy_message_from_list(messages):
 
 def create_gamespy_message(messages, id=None):
     """Create a message based on a dictionary (or list) of parameters."""
-    query = ""
-
     if isinstance(messages, dict):
         messages = create_gamespy_message_from_dict(messages)
 
     # Check for an id if the id needs to be updated.
-    # If it already exists in the list then update it, else add it
     if id is not None:
-        for message in messages:
+        for i, message in enumerate(messages):
+            # If it already exists in the list then update it
             if message[0] == "id":
-                messages.pop(messages.index(message))
-                messages.append(("id", str(id)))
-                id = None  # Updated id, so don't add it to the query later
-                break  # Found id, stop searching list
+                messages[i] = ("id", str(id))
+                break
+        else:
+            # Otherwise, add it in the list
+            messages.append(("id", str(id)))
 
     query = create_gamespy_message_from_list(messages)
-
-    if id is not None:
-        query += create_gamespy_message_from_list([("id", id)])
-
     query += "\\final\\"
 
     return query
