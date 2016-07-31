@@ -3,7 +3,7 @@
     Copyright (C) 2014 polaris-
     Copyright (C) 2014 ToadKing
     Copyright (C) 2014 AdmiralCurtiss
-    Copyright (C) 2015 Sepalani
+    Copyright (C) 2016 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -18,8 +18,6 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
-import copy
 
 
 def parse_gamespy_message(message):
@@ -65,40 +63,27 @@ def parse_gamespy_message(message):
     return stack, msg
 
 
-def create_gamespy_message_from_dict(messages_orig):
+def create_gamespy_message_from_dict(messages):
     """Generate a list based on the input dictionary.
 
     The main command must also be stored in __cmd__ for it to put the
     parameter at the beginning.
     """
-    # Deep copy the dictionary because we don't want the original to be
-    # modified
-    messages = copy.deepcopy(messages_orig)
-
-    if "__cmd__" in messages:
-        cmd = messages['__cmd__']
-        messages.pop('__cmd__', None)
-    else:
-        cmd = ""
-
-    if "__cmd_val__" in messages:
-        cmd_val = messages['__cmd_val__']
-        messages.pop('__cmd_val__', None)
-    else:
-        cmd_val = ""
-
-    if cmd in messages:
-        messages.pop(cmd, None)
+    cmd = messages.get("__cmd__", "")
+    cmd_val = messages.get("__cmd_val__", "")
 
     l = [("__cmd__", cmd), ("__cmd_val__", cmd_val)]
-    l.extend([(message, messages[message]) for message in messages])
+    l.extend([
+        (key, value)
+        for key, value in messages.items()
+        if key not in (cmd, "__cmd__", "__cmd_val__")
+    ])
 
     return l
 
 
 def create_gamespy_message_from_list(messages):
     """Generate a string based on the input list."""
-    d = {}
     cmd = ""
     cmd_val = ""
 
