@@ -1,0 +1,11 @@
+<VirtualHost *:80>
+        ServerAdmin webmaster@localhost
+        ServerName sake.gs.nintendowifi.net
+        ServerAlias sake.gs.nintendowifi.net *.sake.gs.nintendowifi.net
+        ServerAlias secure.sake.gs.nintendowifi.net
+        ServerAlias secure.sake.gs.nintendowifi.net *.secure.sake.gs.nintendowifi.net
+ 
+        ProxyPass / http://127.0.0.1:8000/
+ 
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
