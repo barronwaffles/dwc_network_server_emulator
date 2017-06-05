@@ -132,10 +132,10 @@ class GameStatsHTTPServer(BaseHTTPServer.HTTPServer):
 
         with open(filename) as config_file:
             for line in config_file.readlines():
-                if "#" in line:
-                    line = line[:line.index('#')]
+                line, sep, comment = line.partition("#")
 
-                s = line.split('\t')
+                # Skip whitespaces (i.e. ' ', '\t', '\n')
+                s = line.split(None)
 
                 if len(s) != 3:
                     continue
