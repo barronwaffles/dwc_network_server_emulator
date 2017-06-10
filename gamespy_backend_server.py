@@ -53,6 +53,7 @@ import ast
 
 from multiprocessing.managers import BaseManager
 from multiprocessing import freeze_support
+from other.sql import sql_commands, LIKE
 import other.utils as utils
 import dwc_config
 
@@ -142,6 +143,12 @@ class GameSpyBackendServer(object):
         numplayers < 11 and dwc_mtype = 0 and dwc_hoststate = 2 and
         dwc_suspend = 0 and (rk = 'vs_123' and (ev > 4263 or ev <= 5763)
         and p = 0)
+
+        Example with LIKE from Fortune Street:
+        dwc_mver = 90 and dwc_pid != 15 and maxplayers = 3 and
+        numplayers < 3 and dwc_mtype = 0 and dwc_suspend = 0 and
+        dwc_hoststate = 2 and ((zvar LIKE '102') AND (zmtp LIKE 'EU') AND
+        (zrule LIKE '1') AND (zpnum LIKE '2') AND (zaddc LIKE '0') AND rel='1')
         """
         i = 0
         start = i
@@ -249,14 +256,19 @@ class GameSpyBackendServer(object):
                     token = "=="
 
             elif token_type == TokenType.FIELD:
-                # Each server has its own variables so handle it later.
-                variables.append(len(output))
+                if token.upper() in sql_commands:
+                    # Convert "A SQL_COMMAND B" into "A  |SQL_COMMAND| B"
+                    output.extend(["|", token.upper(), "|"])
+                    continue
+                else:
+                    # Each server has its own variables so handle it later.
+                    variables.append(len(output))
 
             output.append(token)
 
         return output, variables
 
-    def validate_ast(self, node, num_literal_only):
+    def validate_ast(self, node, num_literal_only, is_sql=False):
         # This function tries to verify that the expression is a valid
         # expression before it gets evaluated.
         # Anything besides the whitelisted things below are strictly
@@ -278,7 +290,7 @@ class GameSpyBackendServer(object):
             valid_node = True
 
         elif isinstance(node, ast.Str):
-            if not num_literal_only:
+            if is_sql or not num_literal_only:
                 valid_node = True
 
         elif isinstance(node, ast.BoolOp):
@@ -289,10 +301,16 @@ class GameSpyBackendServer(object):
                     break
 
         elif isinstance(node, ast.BinOp):
-            valid_node = self.validate_ast(node.left, True)
+            # Allow SQL_COMMAND infix operator with more types
+            is_sql |= \
+                hasattr(node, "left") and \
+                hasattr(node.left, "right") and \
+                isinstance(node.left.right, ast.Name) and \
+                node.left.right.id in sql_commands
+            valid_node = self.validate_ast(node.left, True, is_sql)
 
             if valid_node:
-                valid_node = self.validate_ast(node.right, True)
+                valid_node = self.validate_ast(node.right, True, is_sql)
 
         elif isinstance(node, ast.UnaryOp):
             valid_node = self.validate_ast(node.operand, num_literal_only)
@@ -321,6 +339,9 @@ class GameSpyBackendServer(object):
 
         elif isinstance(node, ast.Call):
             valid_node = False
+
+        elif isinstance(node, ast.Name):
+            valid_node = node.id in sql_commands
 
         return valid_node
 
