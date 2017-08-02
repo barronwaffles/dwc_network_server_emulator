@@ -127,12 +127,17 @@ class GameSpyQRServer(object):
             self.db = gs_database.GamespyDatabase()
             threading.Thread(target=self.write_queue_worker).start()
 
-            while 1:
+            while True:
                 ready = select.select([self.socket], [], [], 15)
 
                 if ready[0]:
-                    recv_data, address = self.socket.recvfrom(2048)
-                    self.handle_packet(self.socket, recv_data, address)
+                    try:
+                        recv_data, address = self.socket.recvfrom(2048)
+                        self.handle_packet(self.socket, recv_data, address)
+                    except:
+                        logger.log(logging.ERROR,
+                                   "Failed to handle client: %s",
+                                   traceback.format_exc())
 
                 self.keepalive_check()
         except:
