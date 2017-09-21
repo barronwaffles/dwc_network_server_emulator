@@ -787,9 +787,9 @@ class PlayerSession(LineReceiver):
         for message in messages:
             if message['sourceid'] not in self.blocked:
                 try:
-                    self.transport.write(bytearray(message['msg']))
+                    self.transport.write(bytes(message['msg']))
                 except:
-                    self.transport.write(bytearray(message['msg'], "utf-8"))
+                    self.transport.write(bytes(message['msg'], "utf-8"))
 
 
 if __name__ == "__main__":
