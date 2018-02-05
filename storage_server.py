@@ -31,6 +31,8 @@ import other.utils as utils
 import gamespy.gs_database as gs_database
 import dwc_config
 
+from io import BytesIO
+
 # Paths to ProxyPass: /SakeStorageServer, /SakeFileServer
 logger = dwc_config.get_logger('StorageServer')
 address = dwc_config.get_ip_port('StorageServer')
@@ -94,7 +96,7 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             ['recordid', 'ownerid', 'info'      ],
             [PK,         'INT',     'TEXT'      ],
             ['int',      'int',     'binaryData'])
-			
+
         self.create_or_alter_table_if_not_exists(
             'g1687_StoredGhostData',
             ['recordid', 'fileid', 'profile', 'region', 'gameid', 'course' ],
@@ -147,15 +149,14 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             ['recordid', 'song_name',   'creator_name', 'average_rating', 'serialid', 'filestore', 'is_lyric', 'num_ratings', 'song_code',   'artist_name'],
             [PK,         'TEXT',        'TEXT',         'REAL',           'INT',      'INT',       'INT',      'INT',         'TEXT',        'TEXT'       ],
             ['int',      'asciiString', 'asciiString',  'float',          'int',      'int',       'boolean',  'int',         'asciiString', 'asciiString'])
-			
-			
+
         # Playground
         self.create_or_alter_table_if_not_exists(
             'g2999_tblRegionInfo',
             ['recordid', 'region', 'allowed_regions', 'min_ratings' ],
             [PK,         'INT',    'INT',             'INT'         ],
             ['int',      'byte',   'int',             'int'         ])
-            
+
         # load column info into memory, unfortunately there's no simple way
         # to check for column-existence so get that data in advance
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -298,7 +299,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # (Or make any kind of sense in case of ZSI...)
         
         if self.path == "/SakeStorageServer/StorageServer.asmx":
-            length = int(self.headers['content-length'])
+            length = int(self.headers.get('content-length', -1))
             action = self.headers['SOAPAction']
             post = self.rfile.read(length)
             logger.log(logging.DEBUG, "SakeStorageServer SOAPAction %s", action)
@@ -533,11 +534,22 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             logger.log(logging.DEBUG, "SakeFileServer Upload Request in game %s, user %s", gameid, playerid)
             
             ctype, pdict = cgi.parse_header(self.headers['Content-Type'])
-            filedata = cgi.parse_multipart(self.rfile, pdict) 
+            multipart_data = self.rfile.read(int(self.headers.get('Content-Length', -1)))
+            filedata = cgi.parse_multipart(BytesIO(multipart_data), pdict)
+            data = filedata.get('data')
+            if data is not None:
+                data = data[0]
+            else:
+                for key in filedata:
+                    if not filedata[key]:
+                        continue
+                    data = filedata[key][0]
+                    break
+            filesize = -1 if data is None else len(data)
             
             # make sure users don't upload huge files, dunno what an actual sensible maximum is
             # but 64 KB seems reasonable for what I've seen in WarioWare
-            if len(filedata['data'][0]) <= 65536:
+            if data is not None and filesize <= 65536:
                 # Apparently the real Sake doesn't care about the gameid/playerid, just the fileid
                 # but for better categorization I think I'm still gonna leave folder-per-game/player thing
 
@@ -554,12 +566,16 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 cursor.execute('UPDATE filepaths SET path = ? WHERE fileid = ?', (path, fileid))
                 
                 with open(path, 'wb') as fi:
-                    fi.write(filedata['data'][0])
-            else:
-                logger.log(logging.WARNING, "Tried to upload big file, rejected. (%s bytes)", len(filedata['data'][0]))
+                    fi.write(data)
+            elif data is not None:
+                logger.log(logging.WARNING, "Tried to upload big file, rejected. (%s bytes)", filesize)
                 fileid = 0
                 retcode = 1
-            
+            else:
+                logger.log(logging.ERROR, "Failed to read data")
+                fileid = 0
+                retcode = 1
+
             self.send_response(200)
 
             if retcode == 0:
@@ -568,7 +584,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.send_header('Sake-File-Result', str(retcode))
             self.end_headers()
             
-            logger.log(logging.DEBUG, "SakeFileServer Upload Reply Sake-File-Id %s", fileid)
+            logger.log(logging.DEBUG, "SakeFileServer Upload Reply Sake-File-Id %s (%d bytes)", fileid, filesize)
             self.wfile.write('')
 
         else:
