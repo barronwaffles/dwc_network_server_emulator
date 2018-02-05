@@ -299,7 +299,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # (Or make any kind of sense in case of ZSI...)
         
         if self.path == "/SakeStorageServer/StorageServer.asmx":
-            length = int(self.headers['content-length'])
+            length = int(self.headers.get('content-length', -1))
             action = self.headers['SOAPAction']
             post = self.rfile.read(length)
             logger.log(logging.DEBUG, "SakeStorageServer SOAPAction %s", action)
@@ -534,7 +534,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             logger.log(logging.DEBUG, "SakeFileServer Upload Request in game %s, user %s", gameid, playerid)
             
             ctype, pdict = cgi.parse_header(self.headers['Content-Type'])
-            multipart_data = self.rfile.read(int(self.headers['Content-Length']))
+            multipart_data = self.rfile.read(int(self.headers.get('Content-Length', -1)))
             filedata = cgi.parse_multipart(BytesIO(multipart_data), pdict)
             data = filedata.get('data')
             if data is not None:
