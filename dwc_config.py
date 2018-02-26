@@ -75,3 +75,10 @@ def get_logger(section, filename='altwfc.cfg'):
         config.getboolean(section, 'LoggerOutputConsole'),
         config.getboolean(section, 'LoggerOutputFile')
     )
+
+
+def get_svchost(section, filename='altwfc.cfg'):
+    """Return the svchost of the corresponding section."""
+    config = ConfigParser.RawConfigParser(allow_no_value=True)
+    config.read(get_config_filename(filename))
+    return config.get(section, 'SvcHost')

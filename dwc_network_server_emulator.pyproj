@@ -42,6 +42,7 @@
     <Compile Include="internal_stats_server.py" />
     <Compile Include="master_server.py" />
     <Compile Include="nas_server.py" />
+    <Compile Include="dls1_server.py" />
     <Compile Include="register_page.py" />
     <Compile Include="storage_server.py" />
     <Compile Include="gamespy\gs_database.py" />

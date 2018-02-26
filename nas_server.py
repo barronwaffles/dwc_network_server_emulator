@@ -22,14 +22,12 @@
 
 import logging
 import time
-import urlparse
 import BaseHTTPServer
 import SocketServer
-import os
 import traceback
 
 from gamespy import gs_database
-from other import dlc, utils
+from other import utils
 import dwc_config
 
 logger = dwc_config.get_logger('NasServer')
@@ -134,7 +132,9 @@ def handle_ac_svcloc(handler, db, addr, post):
             # DLC host = 9000
             # In case the client's DNS isn't redirecting to
             # dls1.nintendowifi.net
-            ret["svchost"] = handler.headers['host']
+            # NB: NAS config overrides this if set
+            svchost = dwc_config.get_svchost('NasServer')
+            ret["svchost"] = svchost if svchost else handler.headers['host']
 
             # Brawl has 2 host headers which Apache chokes
             # on, so only return the first one or else it
@@ -205,89 +205,18 @@ def handle_pr(handler, addr, post):
     return utils.dict_to_qs(ret)
 
 
-def handle_download_action(handler, dlc_path, post):
-    """Handle unknown download action request."""
-    logger.log(logging.WARNING, "Unknown download action: %s", handler.path)
-    handler.send_response(200)
-    return None
-
-
-def handle_download_count(handler, dlc_path, post):
-    """Handle download count request."""
-    ret = dlc.download_count(dlc_path, post)
-    handler.send_response(200)
-    handler.send_header("Content-type", "text/plain")
-    handler.send_header("X-DLS-Host", "http://127.0.0.1/")
-    return ret
-
-
-def handle_download_list(handler, dlc_path, post):
-    """Handle download list request."""
-    ret = dlc.download_list(dlc_path, post)
-    handler.send_response(200)
-    handler.send_header("Content-type", "text/plain")
-    handler.send_header("X-DLS-Host", "http://127.0.0.1/")
-    return ret
-
-
-def handle_download_contents(handler, dlc_path, post):
-    """Handle download contents request."""
-    ret = dlc.download_contents(dlc_path, post)
-
-    if ret is None:
-        handler.send_response(404)
-    else:
-        handler.send_response(200)
-        handler.send_header("Content-type", "application/x-dsdl")
-        handler.send_header("Content-Disposition",
-                            'attachment; filename="%s"' % post["contents"])
-        handler.send_header("X-DLS-Host", "http://127.0.0.1/")
-    return ret
-
-
-def handle_download(handler, addr, post):
-    """Handle download POST request."""
-    logger.log(logging.DEBUG, "Download request to %s from %s:%d",
-               handler.path, *addr)
-    logger.log(logging.DEBUG, "%s", post)
-
-    action = str(post["action"]).lower()
-    dlc_dir = os.path.abspath("dlc")
-    dlc_path = os.path.abspath(os.path.join("dlc", post["gamecd"]))
-
-    if os.path.commonprefix([dlc_dir, dlc_path]) != dlc_dir:
-        logging.log(logging.WARNING,
-                    'Attempted directory traversal attack "%s",'
-                    ' cancelling.', dlc_path)
-        handler.send_response(403)
-        return
-
-    command = handler.download_actions.get(action, handle_download_action)
-    ret = command(handler, dlc_path, post)
-
-    logger.log(logging.DEBUG, "Download response to %s:%d", *addr)
-    return ret
-
-
 class NasHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """Nintendo NAS server handler."""
 
     post_paths = {
         "/ac": handle_ac,
         "/pr": handle_pr,
-        "/download": handle_download
     }
 
     ac_actions = {
         "acctcreate": handle_ac_acctcreate,
         "login": handle_ac_login,
         "svcloc": handle_ac_svcloc,
-    }
-
-    download_actions = {
-        "count": handle_download_count,
-        "list": handle_download_list,
-        "contents": handle_download_contents,
     }
 
     def version_string(self):

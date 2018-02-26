@@ -28,6 +28,7 @@ from gamespy_qr_server import GameSpyQRServer
 from gamespy_server_browser_server import GameSpyServerBrowserServer
 from gamespy_gamestats_server import GameSpyGamestatsServer
 from nas_server import NasServer
+from dls1_server import Dls1Server
 from internal_stats_server import InternalStatsServer
 from admin_page_server import AdminPageServer
 from storage_server import StorageServer
@@ -59,6 +60,7 @@ if __name__ == "__main__":
         # GameSpyServerBrowserServer,
         GameSpyNatNegServer,
         NasServer,
+        Dls1Server,
         InternalStatsServer,
         AdminPageServer,
         RegPageServer,
