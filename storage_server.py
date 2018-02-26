@@ -58,13 +58,13 @@ class StorageServer(object):
 class StorageHTTPServer(BaseHTTPServer.HTTPServer):
     def __init__(self, server_address, RequestHandlerClass):
         BaseHTTPServer.HTTPServer.__init__(self, server_address, RequestHandlerClass)
-        
+
         self.gamespydb = gs_database.GamespyDatabase()
-        
+
         self.db = sqlite3.connect('storage.db')
         self.tables = {}
         self.valid_sql_terms = ['LIKE', '=', 'AND', 'OR']
-        
+
         logger.log(logging.INFO, "Checking for and creating database tables...")
 
         cursor = self.db.cursor()
@@ -172,6 +172,35 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             ['int',      'int',     'int']
         )
 
+        # Trackmania Wii
+        self.create_or_alter_table_if_not_exists(
+            'g2793_player',
+            ['recordid', 'ownerid', 'ladder', 'avatar', 'mii', 'name',        'wins', 'loses', 'count', 'row'],
+            [PK,         'INT',     'INT',    'INT',    'INT', 'TEXT',        'INT',  'INT',   'INT',   'INT'],
+            ['int',      'int',     'int',    'int',    'int', 'asciiString', 'int',  'int',   'int',   'int']
+        )
+
+        self.create_or_alter_table_if_not_exists(
+            'g2793_solo',
+            ['recordid', 'ownerid', 'trackID', 'time',  'ghostID', 'ghostTime', 'date', 'ghostSize', 'row'],
+            [PK,         'INT',     'INT',     'REAL',  'INT',     'REAL',      'INT',  'INT',       'INT'],
+            ['int',      'int',     'int',     'float', 'int',     'float',     'int',  'int',       'int']
+        )
+
+        self.create_or_alter_table_if_not_exists(
+            'g2793_custom',
+            ['recordid', 'ownerid', 'name',        'author',      'date', 'env', 'trackFile', 'trackSize', 'goldFile', 'goldSize', 'silverFile', 'silverSize', 'bronzeFile', 'bronzeSize', 'isValidated'],
+            [PK,         'INT',     'TEXT',        'TEXT',        'INT',  'INT', 'INT',       'INT',       'INT',      'INT',      'INT',        'INT',        'INT',        'INT',        'INT'],
+            ['int',      'int',     'asciiString', 'asciiString', 'int',  'int', 'int',       'int',       'int',      'int',      'int',        'int',        'int',        'int',        'int']
+        )
+
+        self.create_or_alter_table_if_not_exists(
+            'g2793_customDLC',
+            ['recordid', 'ownerid', 'name',        'author',      'date', 'env', 'trackFile', 'trackSize', 'goldFile', 'goldSize', 'silverFile', 'silverSize', 'bronzeFile', 'bronzeSize', 'isValidated', 'isDLC'],
+            [PK,         'INT',     'TEXT',        'TEXT',        'INT',  'INT', 'INT',       'INT',       'INT',      'INT',      'INT',        'INT',        'INT',        'INT',        'INT',         'INT'],
+            ['int',      'int',     'asciiString', 'asciiString', 'int',  'int', 'int',       'int',       'int',      'int',      'int',        'int',        'int',        'int',        'int',         'int']
+        )
+
         # load column info into memory, unfortunately there's no simple way
         # to check for column-existence so get that data in advance
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -180,9 +209,9 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             cursor.execute("PRAGMA table_info(%s)" % t[0]) # yeah I know but parameters don't work in pragmas, and inserting table names like that should be safe
             columns = cursor.fetchall()
             self.tables[t[0]] = [c[1] for c in columns]
-        
+
         self.db.commit()
-        
+
     def table_exists(self, name):
         cursor = self.db.cursor()
         cursor.execute("SELECT Count(1) FROM sqlite_master WHERE type='table' AND name=?", (name,))
@@ -215,7 +244,7 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             cursor.execute('ALTER TABLE ' + table + ' ADD COLUMN ' + column + ' ' + sqlType)
             cursor.execute('INSERT INTO typedata (tbl, col, type) VALUES (?, ?, ?)', (table, column, sakeType))
         return
-    
+
     def get_typedata(self, table, column):
         try:
             cursor = self.db.cursor()
@@ -232,18 +261,18 @@ class IllegalColumnAccessException(Exception):
 class FilterSyntaxException(Exception):
     pass
 
-    
+
 class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def confirm_columns(self, columndata, table):
         '''Check if the columns the user wants to access actually exist, which should prevent SQL Injection'''
         columns = []
-        
+
         for c in columndata:
             colname = c.firstChild.data.replace('.', '___') # fake the attributes that the actual sake databases have
             if colname not in self.server.tables[table]:
                 raise IllegalColumnAccessException("Unknown column access '%s' in table '%s'" % (colname, table))
             columns.append(colname)
-        
+
         return columns
 
     def tokenize_filter(self, filter):
@@ -312,18 +341,18 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # with several actual python SOAP services and none of them give me the
         # ability to return the exact format that I want.
         # (Or make any kind of sense in case of ZSI...)
-        
+
         if self.path == "/SakeStorageServer/StorageServer.asmx":
             length = int(self.headers.get('content-length', -1))
             action = self.headers['SOAPAction']
             post = self.rfile.read(length)
             logger.log(logging.DEBUG, "SakeStorageServer SOAPAction %s", action)
             logger.log(logging.DEBUG, post)
-            
+
             shortaction = action[action.rfind('/')+1:-1]
-            
+
             ret = '<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><soap:Body>'
-            
+
             if "<!DOCTYPE" in post.upper():
                 logger.log(logging.ERROR, "User tried to redefine a DOCTYPE")
                 return
@@ -333,16 +362,16 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             gameid = str(int(data.getElementsByTagName('ns1:gameid')[0].firstChild.data))
             tableid = data.getElementsByTagName('ns1:tableid')[0].firstChild.data
             loginticket = data.getElementsByTagName('ns1:loginTicket')[0].firstChild.data
-            
+
             table = 'g' + gameid + '_' + tableid
-            
+
             if not self.server.table_exists(table):
                 logger.log(logging.WARNING, "Unknown table access '%s' in %s by %s", table, shortaction, self.client_address)
                 return
-            
+
             ret += '<' + shortaction + 'Response xmlns="http://gamespy.net/sake">'
             ret += '<' + shortaction + 'Result>Success</' + shortaction + 'Result>'
-            
+
             if shortaction == 'SearchForRecords' or shortaction == 'GetMyRecords' or shortaction == 'GetSpecificRecords':
                 columndata = data.getElementsByTagName('ns1:fields')[0].getElementsByTagName('ns1:string')
                 try:
@@ -350,7 +379,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 except IllegalColumnAccessException as e:
                     logger.log(logging.WARNING, "IllegalColumnAccess: %s in %s by %s", e.message, shortaction, self.client_address)
                     return
-                    
+
                 # build SELECT statement, yes I know one shouldn't do this but I cross-checked the table name and all the columns above so it should be fine
                 statement = 'SELECT '
                 statement += ",".join(columns)
@@ -379,10 +408,10 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     else:
                         statement += ' AND '
                     statement += ' ( ownerid = ' + str(profileid) + ' ) '
-                
+
                 elif shortaction == 'GetSpecificRecords':
                     recordids = data.getElementsByTagName('ns1:recordids')[0].getElementsByTagName('ns1:int')
-                    
+
                     # limit to requested records
                     if not where_appended:
                         statement += ' WHERE '
@@ -392,7 +421,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     statement += ' ( '
                     statement += ' OR '.join('recordid = '+str(int(r.firstChild.data)) for r in recordids)
                     statement += ' ) '
-                        
+
                 # if there's a filter, evaluate it
                 filterdata = data.getElementsByTagName('ns1:filter')
                 if filterdata and filterdata[0] and filterdata[0].firstChild:
@@ -408,19 +437,19 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     limits.append(str(int(limit_max_data[0].firstChild.data)))
                 if limits:
                     statement += ' LIMIT ' + ','.join(limits)
-                
+
                 logger.log(logging.DEBUG, statement)
                 cursor = self.server.db.cursor()
                 cursor.execute(statement)
                 rows = cursor.fetchall()
-                
+
                 if rows:
                     ret += '<values>'
                     for r in rows:
                         ret += '<ArrayOfRecordValue>'
                         for i, c in enumerate(r):
                             type = self.server.get_typedata(table, columns[i])
-                            
+
                             ret += '<RecordValue>'
                             ret += '<' + type + '>'
                             if c is not None:
@@ -436,40 +465,40 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     ret += '</values>'
                 else:
                     ret += '<values/>'
-                
-                
+
+
             elif shortaction == 'GetRecordCount':
                 statement = 'SELECT COUNT(1) FROM ' + table
 
                 filterdata = data.getElementsByTagName('ns1:filter')
                 if filterdata and filterdata[0] and filterdata[0].firstChild:
                     statement, where_appended = self.append_filter(filterdata[0].firstChild.data, table, statement, False)
-                    
+
                 logger.log(logging.DEBUG, statement)
 
                 cursor = self.server.db.cursor()
                 cursor.execute(statement)
                 count = cursor.fetchone()[0]
-                
+
                 ret += '<count>' + str(count) + '</count>'
-            
+
             elif shortaction == 'UpdateRecord' or shortaction == 'CreateRecord':
                 if shortaction == 'UpdateRecord':
                     recordid = int(data.getElementsByTagName('ns1:recordid')[0].firstChild.data)
-                
+
                 profileid = self.server.gamespydb.get_profileid_from_loginticket(loginticket)
 
                 values = data.getElementsByTagName('ns1:values')[0]
                 recordfields = values.getElementsByTagName('ns1:RecordField')
                 columndata = [rf.getElementsByTagName('ns1:name')[0]
                               for rf in recordfields]
-                    
+
                 try:
                     columns = self.confirm_columns(columndata, table)
                 except IllegalColumnAccessException as e:
                     logger.log(logging.WARNING, "IllegalColumnAccess: %s in %s by %s", e.message, shortaction, self.client_address)
                     return
-                    
+
                 rowdata = []
                 for i, rf in enumerate(recordfields):
                     type = self.server.get_typedata(table, columns[i])
@@ -480,17 +509,17 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                         rowdata.append( float(value) )
                     else:
                         rowdata.append( value )
-                    
+
                 if shortaction == 'UpdateRecord':
                     statement = 'UPDATE ' + table + ' SET '
-                    
+
                     statement += ', '.join(c+' = ?' for c in columns)
                     statement += ' WHERE recordid = ? AND ownerid = ?'
                     rowdata.append( recordid )
                     rowdata.append( profileid )
                 elif shortaction == 'CreateRecord':
                     statement = 'INSERT INTO ' + table + ' ('
-                    
+
                     statement += ', '.join(columns)
                     statement += ', ownerid) VALUES ('
                     statement += '?, '*len(columns)
@@ -503,7 +532,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 cursor = self.server.db.cursor()
                 cursor.execute(statement, tuple(rowdata))
                 recordid = cursor.lastrowid
-                
+
                 if shortaction == 'CreateRecord':
                     ret += '<recordid>' + str(recordid) + '</recordid>'
 
@@ -518,36 +547,36 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                             filesize = 0
                         else:
                             cursor.execute('SELECT path FROM filepaths WHERE fileid = ?', (int(rowdata[i]),))
-                
+
                             try:
                                 filename = cursor.fetchone()[0]
                                 filesize = os.path.getsize(filename)
                             except:
                                 filesize = 0
                         cursor.execute('UPDATE ' + table + ' SET ' + attrcol + ' = ? WHERE recordid = ?', (filesize, recordid))
-                
+
                 self.server.db.commit()
-            
+
             ret += '</' + shortaction + 'Response>'
             ret += '</soap:Body></soap:Envelope>'
-            
+
             self.send_response(200)
             self.send_header('Content-Type', 'text/xml; charset=utf-8')
             self.end_headers()
-            
+
             logger.log(logging.DEBUG, "%s response to %s", action, self.client_address)
             #logger.log(logging.DEBUG, ret)
             self.wfile.write(ret)
-        
+
         elif self.path.startswith("/SakeFileServer/upload.aspx?"):
             retcode = 0
             params = urlparse.parse_qs(self.path[self.path.find('?')+1:])
 
             gameid = int(params['gameid'][0])
             playerid = int(params['pid'][0])
-            
+
             logger.log(logging.DEBUG, "SakeFileServer Upload Request in game %s, user %s", gameid, playerid)
-            
+
             ctype, pdict = cgi.parse_header(self.headers['Content-Type'])
             multipart_data = self.rfile.read(int(self.headers.get('Content-Length', -1)))
             filedata = cgi.parse_multipart(BytesIO(multipart_data), pdict)
@@ -561,7 +590,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                     data = filedata[key][0]
                     break
             filesize = -1 if data is None else len(data)
-            
+
             # make sure users don't upload huge files, dunno what an actual sensible maximum is
             # but 64 KB seems reasonable for what I've seen in WarioWare
             if data is not None and filesize <= 65536:
@@ -571,15 +600,15 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 userdir = 'usercontent/' + str(gameid) + '/' + str(playerid)
                 if not os.path.exists(userdir):
                     os.makedirs(userdir)
-                
+
                 # get next fileid from database
                 cursor = self.server.db.cursor()
                 cursor.execute('INSERT INTO filepaths (gameid, playerid) VALUES (?, ?)', (gameid, playerid))
                 fileid = cursor.lastrowid
-                
+
                 path = userdir + '/' + str(fileid)
                 cursor.execute('UPDATE filepaths SET path = ? WHERE fileid = ?', (path, fileid))
-                
+
                 with open(path, 'wb') as fi:
                     fi.write(data)
             elif data is not None:
@@ -598,7 +627,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
             self.send_header('Sake-File-Result', str(retcode))
             self.end_headers()
-            
+
             logger.log(logging.DEBUG, "SakeFileServer Upload Reply Sake-File-Id %s (%d bytes)", fileid, filesize)
             self.wfile.write('')
 
@@ -623,7 +652,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
                 cursor = self.server.db.cursor()
                 cursor.execute('SELECT path FROM filepaths WHERE fileid = ?', (fileid,))
-                
+
                 try:
                     filename = cursor.fetchone()[0]
 
@@ -645,7 +674,7 @@ class StorageHTTPServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.end_headers()
 
             logger.log(logging.DEBUG, "Returning download request with file of %s bytes", filelen)
-            
+
             self.wfile.write(ret)
 
         else:
