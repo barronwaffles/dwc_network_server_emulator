@@ -3,6 +3,7 @@
     Copyright (C) 2014 polaris-
     Copyright (C) 2014 AdmiralCurtiss
     Copyright (C) 2014 msoucy
+    Copyright (C) 2018 Sepalani
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as
@@ -156,6 +157,20 @@ class StorageHTTPServer(BaseHTTPServer.HTTPServer):
             ['recordid', 'region', 'allowed_regions', 'min_ratings' ],
             [PK,         'INT',    'INT',             'INT'         ],
             ['int',      'byte',   'int',             'int'         ])
+
+        # Super Smash Bros. Brawl
+        self.create_or_alter_table_if_not_exists(
+            'g1658_submit',
+            ['recordid', 'ownerid', 'data'],
+            [PK,         'INT',     'INT'],
+            ['int',      'int',     'int']
+        )
+        self.create_or_alter_table_if_not_exists(
+            'g1658_watching',
+            ['recordid', 'ownerid', 'data'],
+            [PK,         'INT',     'INT'],
+            ['int',      'int',     'int']
+        )
 
         # load column info into memory, unfortunately there's no simple way
         # to check for column-existence so get that data in advance
