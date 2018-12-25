@@ -52,6 +52,13 @@ gamecodes_return_random_file = [
     'IPGS'
 ]
 
+filter_bit_g5 = {
+    'A': 0x100000,
+    'B': 0x200000,
+    'D': 0x400000,
+    'E': 0x800000
+}
+
 
 def get_file_count(data):
     return sum(1 for line in data.splitlines() if line)
@@ -113,22 +120,18 @@ def filter_list_by_date(data, token):
 def filter_list_g5_mystery_gift(data, rhgamecd):
     """Custom selection for generation 5 mystery gifts, so that the random
     or data-based selection still works properly."""
-    if rhgamecd[2] == 'A':
-        filterBit = 0x100000
-    elif rhgamecd[2] == 'B':
-        filterBit = 0x200000
-    elif rhgamecd[2] == 'D':
-        filterBit = 0x400000
-    elif rhgamecd[2] == 'E':
-        filterBit = 0x800000
-    else:
+    if len(rhgamecd) < 2 or rhgamecd[2] not in filter_bit_g5:
         # unknown game, can't filter
         return data
+    filter_bit = filter_bit_g5[rhgamecd[2]]
 
     output = []
     for line in data.splitlines():
-        lineBits = int(line.split('\t')[3], 16)
-        if lineBits & filterBit == filterBit:
+        attrs = line.split('\t')
+        if len(attrs) < 3:
+            continue
+        line_bits = int(attrs[3], 16)
+        if line_bits & filter_bit == filter_bit:
             output.append(line)
     return '\r\n'.join(output) + '\r\n'
 
