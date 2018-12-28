@@ -29,6 +29,7 @@ from twisted.internet.endpoints import serverFromString
 from twisted.protocols.basic import LineReceiver
 from twisted.internet import reactor
 from twisted.internet.error import ReactorAlreadyRunning
+from twisted.internet import task
 
 import gamespy.gs_database as gs_database
 import gamespy.gs_query as gs_query
@@ -96,7 +97,7 @@ class PlayerSession(LineReceiver):
         self.statstring = ""
         self.locstring = ""
 
-        self.keepalive = int(time.time())
+        self.keepalive = task.LoopingCall(self.send_keepalive)
         self.sesskey = ""
 
         self.sdkrevision = "0"
@@ -170,6 +171,8 @@ class PlayerSession(LineReceiver):
             self.statstring = "Offline"
             self.locstring = ""
             self.send_status_to_friends()
+
+            self.keepalive.stop()
 
             if self.profileid in self.sessions:
                 del self.sessions[self.profileid]
@@ -358,6 +361,8 @@ class PlayerSession(LineReceiver):
             self.get_status_from_friends()
             self.send_status_to_friends()
 
+            self.keepalive.start(120.0, now=False)
+
             # profile = self.db.get_profile_from_profileid(profileid)
             # if profile is not None:
             #     self.statstring = profile['stat']
@@ -454,13 +459,7 @@ class PlayerSession(LineReceiver):
             self.db.update_profile(self.profileid, (f, data_parsed[f]))
 
     def perform_ka(self, data_parsed):
-        self.keepalive = int(time.time())
-
-        msg = gs_query.create_gamespy_message([
-            ('__cmd__', "ka"),
-            ('__cmd_val__', ""),
-        ])
-        self.transport.write(msg)
+        self.log(logging.INFO, "%s", "Received keepalive...")
 
     def perform_status(self, data_parsed):
         self.sesskey = data_parsed['sesskey']
@@ -780,6 +779,14 @@ class PlayerSession(LineReceiver):
         ])
 
         session.transport.write(bytes(msg))
+
+    def send_keepalive(self):
+        msg = gs_query.create_gamespy_message([
+            ('__cmd__', "ka"),
+            ('__cmd_val__', ""),
+        ])
+        self.log(logging.INFO, "%s", "Sending keepalive...")
+        self.transport.write(msg)
 
     def get_pending_messages(self):
         messages = self.db.get_pending_messages(self.profileid)
