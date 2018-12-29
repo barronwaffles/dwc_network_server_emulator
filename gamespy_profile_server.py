@@ -172,7 +172,8 @@ class PlayerSession(LineReceiver):
             self.locstring = ""
             self.send_status_to_friends()
 
-            self.keepalive.stop()
+            if self.keepalive.running:
+                self.keepalive.stop()
 
             if self.profileid in self.sessions:
                 del self.sessions[self.profileid]
