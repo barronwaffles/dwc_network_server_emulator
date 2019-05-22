@@ -1,0 +1,9 @@
+FRA_017_Plat_SecretKey.myg					936
+FRA_018_Plat_MemberCard.myg					936
+FRA_020_Plat_OaksLetter.myg					936
+FRA_021_DPPt_ShinyPichu.myg					936
+FRA_024_ALL_Jirachi_NightSky.myg					936
+FRA_059_ALL_ShinyRaikou.myg					936
+FRA_060_ALL_ShinyEntei.myg					936
+FRA_061_ALL_ShinySuicune.myg					936
+FRA_119_Plat_AzureFlute.myg					936

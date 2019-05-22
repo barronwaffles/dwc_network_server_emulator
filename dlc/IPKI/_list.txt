@@ -1,0 +1,8 @@
+ITA_024_ALL_Jirachi_NightSky.myg					936
+ITA_048_HGSS_YForest.myg					936
+ITA_051_HGSS_WinPath.myg					936
+ITA_053_HGSS_10AnnivMew.myg					936
+ITA_054_HGSS_EnigmaStone.myg					936
+ITA_059_ALL_ShinyRaikou.myg					936
+ITA_060_ALL_ShinyEntei.myg					936
+ITA_061_ALL_ShinySuicune.myg					936

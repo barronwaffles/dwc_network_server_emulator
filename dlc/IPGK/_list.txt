@@ -1,0 +1,5 @@
+KOR_022_HGSS_YForest.myg					936
+KOR_025_HGSS_WinPath.myg					936
+KOR_026_HGSS_EnigmaStone.myg					936
+KOR_063_ALL_GooneScizor.myg					936
+KOR_065_ALL_AshPikachu.myg					936

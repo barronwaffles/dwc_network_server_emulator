@@ -1,0 +1,5 @@
+SPN_021_DPPt_ShinyPichu.myg					936
+SPN_024_ALL_Jirachi_NightSky.myg					936
+SPN_059_ALL_ShinyRaikou.myg					936
+SPN_060_ALL_ShinyEntei.myg					936
+SPN_061_ALL_ShinySuicune.myg					936

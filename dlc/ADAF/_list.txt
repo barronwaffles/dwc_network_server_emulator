@@ -1,0 +1,5 @@
+FRA_021_DPPt_ShinyPichu.myg					936
+FRA_024_ALL_Jirachi_NightSky.myg					936
+FRA_059_ALL_ShinyRaikou.myg					936
+FRA_060_ALL_ShinyEntei.myg					936
+FRA_061_ALL_ShinySuicune.myg					936

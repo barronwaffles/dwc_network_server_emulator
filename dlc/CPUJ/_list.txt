@@ -1,0 +1,8 @@
+JPN_036_Plat_MemberCard.myg					936
+JPN_044_Plat_OaksLetter.myg					936
+JPN_046_DPPt_NZ_Jirachi.myg					936
+JPN_063_ALL_GooneScizor.myg					936
+JPN_065_ALL_AshPikachu.myg					936
+JPN_066_ALL_NZ_Manaphy.myg					936
+JPN_119_Plat_AzureFlute.myg					936
+JPN_156_Plat_SecretKey.myg					936

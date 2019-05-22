@@ -1,0 +1,8 @@
+JPN_048_HGSS_YForest.myg					936
+JPN_051_HGSS_WinPath.myg					936
+JPN_053_ALL_10AnnivMew.myg					936
+JPN_053_HGSS_10AnnivMew.myg					936
+JPN_054_HGSS_EnigmaStone.myg					936
+JPN_063_ALL_GooneScizor.myg					936
+JPN_065_ALL_AshPikachu.myg					936
+JPN_066_ALL_NZ_Manaphy.myg					936
