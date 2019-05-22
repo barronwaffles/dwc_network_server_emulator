@@ -35,7 +35,8 @@ from gamespy.gs_database import GamespyDatabase
 # the client Nintendo DS's date setting to the list of Mystery Gifts
 # that were actually distributed in real life at the given time.
 # This way, if someone knows exactly when an event happened in real life,
-# they know exactly which date to change to in order to receive a particular gift.
+# they know exactly which date to change to in order to receive
+# a particular gift.
 gen_4_pokemon_gamecodes = [
     'ADAE',
     'ADAP',
@@ -176,7 +177,6 @@ def todays_g4_event_filename(today, gamecd, dlc_path):
                 date_end = datetime.strptime(
                     event["date_end"], '%Y-%m-%d').date()
                 if date_start <= today <= date_end:
-                    # Determine how the game should be presented in the filename
                     shortcodes = event["valid_games"]
                     if shortcodes == "DPTGS":
                         valid_games = "ALL"
@@ -194,25 +194,15 @@ def todays_g4_event_filename(today, gamecd, dlc_path):
                             else:
                                 valid_games += gamecode
 
-                    event_filename = lang_map[gamecd[-1:]] + "_" + str(event["wc_id"]).zfill(
-                        3) + "_" + valid_games + "_" + event["shortname"] + ".myg"
+                    event_filename = \
+                        lang_map[gamecd[-1:]] + "_" + \
+                        str(event["wc_id"]).zfill(3) + "_" + \
+                        valid_games + "_" + \
+                        event["shortname"] + ".myg"
     return event_filename
 
 
 def filter_list_g4_mystery_gift(data, token, gamecd, dlc_path):
-    """Allow user to control which file to receive by setting the local date.
-
-    Selected file will be served according to that file's original real-life Mystery Gift release date,
-    on a per-gameid basis. For example, the Member Card will be served to gameid CPUJ between the local
-    dates of December 1st 2008 and January 15th 2009, and to the gameid CPUE between the local dates of
-    August 3rd 2009 and September 13th 2009.
-
-    All Mystery Gift release timings were sourced from Bulbapedia and Serebii. They are defined in
-    the file dlc/g4_events.json
-
-    I've done my best to include all events across all regions, however only Wi-Fi events have been included.
-    However, I have also included my own custom-made Azure Flute distributions for all regions as well; we all
-    know that the Azure Flute was never distributed, but I think we can all agree it absolutely should have been!"""
     try:
         userData = GamespyDatabase().get_nas_login(token)
         time_struct = time.strptime(userData['devtime'], '%y%m%d%H%M%S')
@@ -332,7 +322,11 @@ def download_list(dlc_path, post):
         # Pokemon Gen 4 Mystery Gifts
         # Uses dates defined in g4_events.json to distribute gifts
         ret = filter_list(list_data, attr1, attr2, attr3)
-        return filter_list_g4_mystery_gift(ret, post["token"], post["gamecd"], dlc_path)
+        return filter_list_g4_mystery_gift(
+            ret,
+            post["token"],
+            post["gamecd"],
+            dlc_path)
     else:
         # Default case for most games
         num = post.get("num", None)
