@@ -1,0 +1,284 @@
+{
+  "events": [
+    {
+      "shortname": "SecretKey",
+      "valid_games": "T",
+      "wc_id": 17,
+      "lang_subcodes": "EPFDIS",
+      "date_start": "2009-04-20",
+      "date_end": "2009-05-12"
+    },
+    {
+      "shortname": "SecretKey",
+      "valid_games": "T",
+      "wc_id": 17,
+      "lang_subcodes": "EPFDIS",
+      "date_start": "2009-06-08",
+      "date_end": "2009-07-19"
+    },
+    {
+      "shortname": "MemberCard",
+      "valid_games": "T",
+      "wc_id": 18,
+      "lang_subcodes": "EPFDIS",
+      "date_start": "2009-08-03",
+      "date_end": "2009-09-13"
+    },
+    {
+      "shortname": "OaksLetter",
+      "valid_games": "T",
+      "wc_id": 0,
+      "lang_subcodes": "EPFDIS",
+      "date_start": "2009-09-28",
+      "date_end": "2009-11-08"
+    },
+    {
+      "shortname": "AzureFlute",
+      "valid_games": "T",
+      "wc_id": 119,
+      "lang_subcodes": "EPFDIS",
+      "date_start": "2009-11-09",
+      "date_end": "2009-11-30"
+    },
+    {
+      "shortname": "ShinyPichu",
+      "valid_games": "DPT",
+      "wc_id": 21,
+      "lang_subcodes": "EPFDIS",
+      "date_start": "2010-03-05",
+      "date_end": "2010-03-25"
+    },
+    {
+      "shortname": "YForest",
+      "valid_games": "GS",
+      "wc_id": 48,
+      "lang_subcodes": "EPFDIS",
+      "date_start": "2010-04-01",
+      "date_end": "2010-05-05"
+    },
+    {
+      "shortname": "WinPath",
+      "valid_games": "GS",
+      "wc_id": 51,
+      "lang_subcodes": "EPFDIS",
+      "date_start": "2010-05-06",
+      "date_end": "2010-06-25"
+    },
+    {
+      "shortname": "Jirachi_NightSky",
+      "valid_games": "DPTGS",
+      "wc_id": 24,
+      "lang_subcodes": "EPFDIS",
+      "date_start": "2010-06-26",
+      "date_end": "2010-07-16"
+    },
+    {
+      "shortname": "EnigmaStone",
+      "valid_games": "GS",
+      "wc_id": 54,
+      "lang_subcodes": "EPFDIS",
+      "date_start": "2010-07-31",
+      "date_end": "2010-08-27"
+    },
+    {
+      "shortname": "10AnnivMew",
+      "valid_games": "GS",
+      "wc_id": 53,
+      "lang_subcodes": "EPFDIS",
+      "date_start": "2011-02-07",
+      "date_end": "2011-02-13"
+    },
+    {
+      "shortname": "ShinyRaikou",
+      "valid_games": "DPTGS",
+      "wc_id": 59,
+      "lang_subcodes": "EPFDIS",
+      "date_start": "2011-02-07",
+      "date_end": "2011-02-13"
+    },
+    {
+      "shortname": "ShinyEntei",
+      "valid_games": "DPTGS",
+      "wc_id": 60,
+      "lang_subcodes": "EPFDIS",
+      "date_start": "2011-02-14",
+      "date_end": "2011-02-20"
+    },
+    {
+      "shortname": "ShinySuicune",
+      "valid_games": "DPTGS",
+      "wc_id": 61,
+      "lang_subcodes": "EPFDIS",
+      "date_start": "2011-02-21",
+      "date_end": "2011-02-27"
+    },
+    {
+      "shortname": "SecretKey",
+      "valid_games": "T",
+      "wc_id": 156,
+      "lang_subcodes": "J",
+      "date_start": "2008-09-28",
+      "date_end": "2008-11-14"
+    },
+    {
+      "shortname": "MemberCard",
+      "valid_games": "T",
+      "wc_id": 36,
+      "lang_subcodes": "J",
+      "date_start": "2008-12-01",
+      "date_end": "2009-01-15"
+    },
+    {
+      "shortname": "SecretKey",
+      "valid_games": "T",
+      "wc_id": 156,
+      "lang_subcodes": "J",
+      "date_start": "2009-01-16",
+      "date_end": "2009-03-02"
+    },
+    {
+      "shortname": "OaksLetter",
+      "valid_games": "T",
+      "wc_id": 44,
+      "lang_subcodes": "J",
+      "date_start": "2009-04-18",
+      "date_end": "2009-05-11"
+    },
+    {
+      "shortname": "NZ_Jirachi",
+      "valid_games": "DPT",
+      "wc_id": 46,
+      "lang_subcodes": "J",
+      "date_start": "2009-06-19",
+      "date_end": "2009-07-17"
+    },
+    {
+      "shortname": "AzureFlute",
+      "valid_games": "T",
+      "wc_id": 119,
+      "lang_subcodes": "J",
+      "date_start": "2009-07-18",
+      "date_end": "2009-09-17"
+    },
+    {
+      "shortname": "YForest",
+      "valid_games": "GS",
+      "wc_id": 48,
+      "lang_subcodes": "J",
+      "date_start": "2009-09-18",
+      "date_end": "2009-11-10"
+    },
+    {
+      "shortname": "10AnnivMew",
+      "valid_games": "GS",
+      "wc_id": 53,
+      "lang_subcodes": "J",
+      "date_start": "2009-11-11",
+      "date_end": "2009-11-23"
+    },
+    {
+      "shortname": "EnigmaStone",
+      "valid_games": "GS",
+      "wc_id": 54,
+      "lang_subcodes": "J",
+      "date_start": "2009-11-27",
+      "date_end": "2010-01-11"
+    },
+    {
+      "shortname": "WinPath",
+      "valid_games": "GS",
+      "wc_id": 51,
+      "lang_subcodes": "J",
+      "date_start": "2010-01-13",
+      "date_end": "2010-01-27"
+    },
+    {
+      "shortname": "10AnnivMew",
+      "valid_games": "DPTGS",
+      "wc_id": 53,
+      "lang_subcodes": "J",
+      "date_start": "2010-01-29",
+      "date_end": "2010-02-14"
+    },
+    {
+      "shortname": "YForest",
+      "valid_games": "GS",
+      "wc_id": 48,
+      "lang_subcodes": "J",
+      "date_start": "2010-02-16",
+      "date_end": "2010-02-28"
+    },
+    {
+      "shortname": "GooneScizor",
+      "valid_games": "DPTGS",
+      "wc_id": 63,
+      "lang_subcodes": "J",
+      "date_start": "2010-06-18",
+      "date_end": "2010-07-14"
+    },
+    {
+      "shortname": "AshPikachu",
+      "valid_games": "DPTGS",
+      "wc_id": 65,
+      "lang_subcodes": "J",
+      "date_start": "2010-07-15",
+      "date_end": "2010-08-10"
+    },
+    {
+      "shortname": "NZ_Manaphy",
+      "valid_games": "DPTGS",
+      "wc_id": 66,
+      "lang_subcodes": "J",
+      "date_start": "2010-08-14",
+      "date_end": "2010-09-12"
+    },
+    {
+      "shortname": "AzureFlute",
+      "valid_games": "T",
+      "wc_id": 119,
+      "lang_subcodes": "K",
+      "date_start": "2009-12-24",
+      "date_end": "2010-01-31"
+    },
+    {
+      "shortname": "YForest",
+      "valid_games": "GS",
+      "wc_id": 22,
+      "lang_subcodes": "K",
+      "date_start": "2010-02-04",
+      "date_end": "2010-03-31"
+    },
+    {
+      "shortname": "EnigmaStone",
+      "valid_games": "GS",
+      "wc_id": 26,
+      "lang_subcodes": "K",
+      "date_start": "2010-07-26",
+      "date_end": "2010-08-31"
+    },
+    {
+      "shortname": "WinPath",
+      "valid_games": "GS",
+      "wc_id": 25,
+      "lang_subcodes": "K",
+      "date_start": "2010-09-01",
+      "date_end": "2010-10-31"
+    },
+    {
+      "shortname": "GooneScizor",
+      "valid_games": "DPTGS",
+      "wc_id": 63,
+      "lang_subcodes": "K",
+      "date_start": "2011-01-07",
+      "date_end": "2011-01-31"
+    },
+    {
+      "shortname": "AshPikachu",
+      "valid_games": "DPTGS",
+      "wc_id": 65,
+      "lang_subcodes": "K",
+      "date_start": "2011-02-01",
+      "date_end": "2011-02-28"
+    }    
+  ]
+}
