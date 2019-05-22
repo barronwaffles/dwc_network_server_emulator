@@ -250,104 +250,104 @@ def todays_g4_event_filename(today, gamecd):
     if date(2010, 4, 1) <= today <= date(2010, 5, 5):
       if gamecd in ['IPKE', 'IPGE', 'IPKP', 'IPGP']:
         return "ENG_048_HGSS_YForest.myg"
-      elif gamecd in ['IPKF', 'IPGF', 'IPKF', 'IPGF']:
+      elif gamecd in ['IPKF', 'IPGF']:
         return "FRA_048_HGSS_YForest.myg"
-      elif gamecd in ['IPKD', 'IPGD', 'IPKD', 'IPGD']:
+      elif gamecd in ['IPKD', 'IPGD']:
         return "GER_048_HGSS_YForest.myg"
-      elif gamecd in ['IPKI', 'IPGI', 'IPKI', 'IPGI']:
+      elif gamecd in ['IPKI', 'IPGI']:
         return "ITA_048_HGSS_YForest.myg"
-      elif gamecd in ['IPKS', 'IPGS', 'IPKS', 'IPGS']:
+      elif gamecd in ['IPKS', 'IPGS']:
         return "SPN_048_HGSS_YForest.myg"
     
     # Winner's Path Pokewalker Route, WC 51, HG/SS
     if date(2010, 5, 6) <= today <= date(2010, 6, 25):
       if gamecd in ['IPKE', 'IPGE', 'IPKP', 'IPGP']:
         return "ENG_051_HGSS_WinPath.myg"
-      elif gamecd in ['IPKF', 'IPGF', 'IPKF', 'IPGF']:
+      elif gamecd in ['IPKF', 'IPGF']:
         return "FRA_051_HGSS_WinPath.myg"
-      elif gamecd in ['IPKD', 'IPGD', 'IPKD', 'IPGD']:
+      elif gamecd in ['IPKD', 'IPGD']:
         return "GER_051_HGSS_WinPath.myg"
-      elif gamecd in ['IPKI', 'IPGI', 'IPKI', 'IPGI']:
+      elif gamecd in ['IPKI', 'IPGI']:
         return "ITA_051_HGSS_WinPath.myg"
-      elif gamecd in ['IPKS', 'IPGS', 'IPKS', 'IPGS']:
+      elif gamecd in ['IPKS', 'IPGS']:
         return "SPN_051_HGSS_WinPath.myg"
 
     # Summer 2010 Jirachi (Night Sky), WC 24, D/P/Pt/HG/SS
     if date(2010, 6, 26) <= today <= date(2010, 7, 16):
       if gamecd in ['CPUE', 'CPUP', 'ADAE', 'ADAP', 'APAE', 'APAP', 'IPKE', 'IPGE', 'IPKP', 'IPGP']:
         return "ENG_024_ALL_Jirachi_NightSky.myg"
-      elif gamecd in ['ADAF','APAF', 'CPUF', 'IPKF', 'IPGF', 'IPKF', 'IPGF']:
+      elif gamecd in ['ADAF','APAF', 'CPUF', 'IPKF', 'IPGF']:
         return "FRA_024_ALL_Jirachi_NightSky.myg"
-      elif gamecd in ['ADAD','APAD', 'CPUD', 'IPKD', 'IPGD', 'IPKD', 'IPGD']:
+      elif gamecd in ['ADAD','APAD', 'CPUD', 'IPKD', 'IPGD']:
         return "GER_024_ALL_Jirachi_NightSky.myg"
-      elif gamecd in ['ADAI','APAI', 'CPUI', 'IPKI', 'IPGI', 'IPKI', 'IPGI']:
+      elif gamecd in ['ADAI','APAI', 'CPUI', 'IPKI', 'IPGI']:
         return "ITA_024_ALL_Jirachi_NightSky.myg"
-      elif gamecd in ['ADAS','APAS', 'CPUS', 'IPKS', 'IPGS', 'IPKS', 'IPGS']:
+      elif gamecd in ['ADAS','APAS', 'CPUS', 'IPKS', 'IPGS']:
         return "SPN_024_ALL_Jirachi_NightSky.myg"
     
     # Engima Stone, WC 54, HG/SS
     if date(2010, 7, 31) <= today <= date(2010, 8, 27):
       if gamecd in ['IPKE', 'IPGE', 'IPKP', 'IPGP']:
         return "ENG_054_HGSS_EnigmaStone.myg"
-      elif gamecd in ['IPKF', 'IPGF', 'IPKF', 'IPGF']:
+      elif gamecd in ['IPKF', 'IPGF']:
         return "FRA_054_HGSS_EnigmaStone.myg"
-      elif gamecd in ['IPKD', 'IPGD', 'IPKD', 'IPGD']:
+      elif gamecd in ['IPKD', 'IPGD']:
         return "GER_054_HGSS_EnigmaStone.myg"
-      elif gamecd in ['IPKI', 'IPGI', 'IPKI', 'IPGI']:
+      elif gamecd in ['IPKI', 'IPGI']:
         return "ITA_054_HGSS_EnigmaStone.myg"
-      elif gamecd in ['IPKS', 'IPGS', 'IPKS', 'IPGS']:
+      elif gamecd in ['IPKS', 'IPGS']:
         return "SPN_054_HGSS_EnigmaStone.myg"
     
     # Fall 2010/10th Anniversary Mew, WC 53, HG/SS
     if date(2010, 10, 15) <= today <= date(2010, 10, 30):
       if gamecd in ['IPKE', 'IPGE', 'IPKP', 'IPGP']:
         return "ENG_053_HGSS_10AnnivMew.myg"
-      elif gamecd in ['IPKF', 'IPGF', 'IPKF', 'IPGF']:
+      elif gamecd in ['IPKF', 'IPGF']:
         return "FRA_053_HGSS_10AnnivMew.myg"
-      elif gamecd in ['IPKD', 'IPGD', 'IPKD', 'IPGD']:
+      elif gamecd in ['IPKD', 'IPGD']:
         return "GER_053_HGSS_10AnnivMew.myg"
-      elif gamecd in ['IPKI', 'IPGI', 'IPKI', 'IPGI']:
+      elif gamecd in ['IPKI', 'IPGI']:
         return "ITA_053_HGSS_10AnnivMew.myg"
-      elif gamecd in ['IPKS', 'IPGS', 'IPKS', 'IPGS']:
+      elif gamecd in ['IPKS', 'IPGS']:
         return "SPN_053_HGSS_10AnnivMew.myg"
     
     # Winter 2011 Shiny Raikou, WC 59, D/P/Pt/HG/SS
     if date(2011, 2, 7) <= today <= date(2011, 2, 13):
       if gamecd in ['CPUE', 'CPUP', 'ADAE', 'ADAP', 'APAE', 'APAP', 'IPKE', 'IPGE', 'IPKP', 'IPGP']:
         return "ENG_059_ALL_ShinyRaikou.myg"
-      elif gamecd in ['ADAF','APAF', 'CPUF', 'IPKF', 'IPGF', 'IPKF', 'IPGF']:
+      elif gamecd in ['ADAF','APAF', 'CPUF', 'IPKF', 'IPGF']:
         return "FRA_059_ALL_ShinyRaikou.myg"
-      elif gamecd in ['ADAD','APAD', 'CPUD', 'IPKD', 'IPGD', 'IPKD', 'IPGD']:
+      elif gamecd in ['ADAD','APAD', 'CPUD', 'IPKD', 'IPGD']:
         return "GER_059_ALL_ShinyRaikou.myg"
-      elif gamecd in ['ADAI','APAI', 'CPUI', 'IPKI', 'IPGI', 'IPKI', 'IPGI']:
+      elif gamecd in ['ADAI','APAI', 'CPUI', 'IPKI', 'IPGI']:
         return "ITA_059_ALL_ShinyRaikou.myg"
-      elif gamecd in ['ADAS','APAS', 'CPUS', 'IPKS', 'IPGS', 'IPKS', 'IPGS']:
+      elif gamecd in ['ADAS','APAS', 'CPUS', 'IPKS', 'IPGS']:
         return "SPN_059_ALL_ShinyRaikou.myg"
     
     # Winter 2011 Shiny Entei, WC 60, D/P/Pt/HG/SS
     if date(2011, 2, 14) <= today <= date(2011, 2, 20):
       if gamecd in ['CPUE', 'CPUP', 'ADAE', 'ADAP', 'APAE', 'APAP', 'IPKE', 'IPGE', 'IPKP', 'IPGP']:
         return "ENG_060_ALL_ShinyEntei.myg"
-      elif gamecd in ['ADAF','APAF', 'CPUF', 'IPKF', 'IPGF', 'IPKF', 'IPGF']:
+      elif gamecd in ['ADAF','APAF', 'CPUF', 'IPKF', 'IPGF']:
         return "FRA_060_ALL_ShinyEntei.myg"
-      elif gamecd in ['ADAD','APAD', 'CPUD', 'IPKD', 'IPGD', 'IPKD', 'IPGD']:
+      elif gamecd in ['ADAD','APAD', 'CPUD', 'IPKD', 'IPGD']:
         return "GER_060_ALL_ShinyEntei.myg"
-      elif gamecd in ['ADAI','APAI', 'CPUI', 'IPKI', 'IPGI', 'IPKI', 'IPGI']:
+      elif gamecd in ['ADAI','APAI', 'CPUI', 'IPKI', 'IPGI']:
         return "ITA_060_ALL_ShinyEntei.myg"
-      elif gamecd in ['ADAS','APAS', 'CPUS', 'IPKS', 'IPGS', 'IPKS', 'IPGS']:
+      elif gamecd in ['ADAS','APAS', 'CPUS', 'IPKS', 'IPGS']:
         return "SPN_060_ALL_ShinyEntei.myg"
     
     #Winter 2011 Shiny Suicune, WC 61, D/P/Pt/HG/SS
     if date(2011, 2, 21) <= today <= date(2011, 2, 27):
       if gamecd in ['CPUE', 'CPUP', 'ADAE', 'ADAP', 'APAE', 'APAP', 'IPKE', 'IPGE', 'IPKP', 'IPGP']:
         return "ENG_061_ALL_ShinySuicune.myg"
-      elif gamecd in ['ADAF','APAF', 'CPUF', 'IPKF', 'IPGF', 'IPKF', 'IPGF']:
+      elif gamecd in ['ADAF','APAF', 'CPUF', 'IPKF', 'IPGF']:
         return "FRA_061_ALL_ShinySuicune.myg"
-      elif gamecd in ['ADAD','APAD', 'CPUD', 'IPKD', 'IPGD', 'IPKD', 'IPGD']:
+      elif gamecd in ['ADAD','APAD', 'CPUD', 'IPKD', 'IPGD']:
         return "GER_061_ALL_ShinySuicune.myg"
-      elif gamecd in ['ADAI','APAI', 'CPUI', 'IPKI', 'IPGI', 'IPKI', 'IPGI']:
+      elif gamecd in ['ADAI','APAI', 'CPUI', 'IPKI', 'IPGI']:
         return "ITA_061_ALL_ShinySuicune.myg"
-      elif gamecd in ['ADAS','APAS', 'CPUS', 'IPKS', 'IPGS', 'IPKS', 'IPGS']:
+      elif gamecd in ['ADAS','APAS', 'CPUS', 'IPKS', 'IPGS']:
         return "SPN_061_ALL_ShinySuicune.myg"
     
     # If we reach this point without returning an event, no event was found
@@ -559,7 +559,7 @@ def download_count(dlc_path, post):
       time_struct = time.strptime(userData['devtime'], '%y%m%d%H%M%S')
       ds_date = date(time_struct.tm_year, time_struct.tm_mon, time_struct.tm_mday)
       event_filename = todays_g4_event_filename(ds_date, gamecd)
-      if todays_g4_event_filename(ds_date, gamecd) != "null":
+      if event_filename != "null":
         return "1"
       else:
         return "0"
