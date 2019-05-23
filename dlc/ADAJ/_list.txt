@@ -1,4 +1,5 @@
 JPN_046_DPPt_NZ_Jirachi.myg					936
+JPN_053_ALL_10AnnivMew.myg					936
 JPN_063_ALL_GooneScizor.myg					936
 JPN_065_ALL_AshPikachu.myg					936
 JPN_066_ALL_NZ_Manaphy.myg					936
