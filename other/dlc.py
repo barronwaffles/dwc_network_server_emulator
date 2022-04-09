@@ -200,7 +200,7 @@ def download_list(dlc_path, post):
     attr2 = post.get("attr2", None)
     attr3 = post.get("attr3", None)
 
-    if post["gamecd"].startswith("IRA") and attr1.startswith("MYSTERY"):
+    if post["gamecd"].startswith("IRA") and (attr1.startswith("MYSTERY") or attr1.startswith("CGEAR") or attr1.startswith("ZUKAN") or attr1.startswith("MUSICAL")):
         # Pokemon BW Mystery Gifts, until we have a better solution for that
         ret = filter_list(list_data, attr1, attr2, attr3)
         ret = filter_list_g5_mystery_gift(ret, post["rhgamecd"])
