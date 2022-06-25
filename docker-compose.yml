@@ -9,4 +9,6 @@ services:
   proxy:
     build:
       context: tools/apache-hosts
+#    environment:
+#      - HOST=example.com
     network_mode: "host"
