@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  backend:
+    build:
+      context: .
+    network_mode: "host"
+
+  proxy:
+    build:
+      context: tools/apache-hosts
+    network_mode: "host"
