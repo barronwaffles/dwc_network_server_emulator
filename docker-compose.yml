@@ -8,7 +8,7 @@ services:
 
   proxy:
     build:
-      context: tools/apache-hosts
+      context: tools/docker/apache-hosts
 #    environment:
-#      - HOST=example.com
+#      - DWC_HOST=example.com
     network_mode: "host"
