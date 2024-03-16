@@ -547,6 +547,9 @@ class GameSpyBackendServer(object):
         localip_int_be = localaddr[3]
 
         def find_server(gameid):
+            if gameid not in self.server_list:
+                return None
+
             best_match = None
 
             for server in self.server_list[gameid]:
