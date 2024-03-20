@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  backend:
+    build:
+      context: .
+    network_mode: "host"
+
+  proxy:
+    build:
+      context: tools/docker/apache-hosts
+#    environment:
+#      - DWC_HOST=example.com
+    network_mode: "host"
