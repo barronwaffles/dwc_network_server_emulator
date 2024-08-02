@@ -122,6 +122,12 @@ def handle_natneg_init(nn, recv_data, addr, socket):
         if client_session['connected'] or client == client_id:
             continue
 
+        def get_ip(obj):
+            """Get the public or local IP address when needed."""
+            if client_session['addr'][0] == client_id_session['addr'][0]:
+                return obj['localaddr'][0]
+            return obj['addr'][0]
+
         # --- Send to requesting client
         # Get server info
         serveraddr = nn.get_server_addr(gameid, session_id, client)
@@ -139,7 +145,7 @@ def handle_natneg_init(nn, recv_data, addr, socket):
                 client_session['addr'][1]
 
         output = bytearray(recv_data[0:12])
-        output += utils.get_bytes_from_ip_str(client_session['addr'][0])
+        output += utils.get_bytes_from_ip_str(get_ip(client_session))
         output += utils.get_bytes_from_short(publicport, True)
 
         # Unknown, always seems to be \x42\x00
@@ -169,7 +175,7 @@ def handle_natneg_init(nn, recv_data, addr, socket):
                 client_id_session['addr'][1]
 
         output = bytearray(recv_data[0:12])
-        output += utils.get_bytes_from_ip_str(client_id_session['addr'][0])
+        output += utils.get_bytes_from_ip_str(get_ip(client_id_session))
         output += utils.get_bytes_from_short(publicport, True)
 
         # Unknown, always seems to be \x42\x00
